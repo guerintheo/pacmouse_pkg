@@ -18,8 +18,8 @@ def main():
     # does not show a warning of no TF data
     broadcaster = tf.TransformBroadcaster()
     # omega_left_seq = [800 + 2000*np.sin(num) for num in np.linspace(0., 10., 1000)]
-    omega_left_seq = [2000 for _ in np.linspace(0., 10., 1000)]
-    omega_right_seq = [2000 + 200*np.sin(3*num) for num in np.linspace(0., 10., 1000)]
+    omega_right_seq = [100 for _ in np.linspace(0., 10., 1000)]
+    omega_left_seq = [100 + 200*np.sin(3*num) for num in np.linspace(0., 10., 1000)]
     # omega_right_seq = [800 for _ in np.linspace(0., 10., 1000)]
     i = 0
     control_seq_len = len(omega_left_seq)
