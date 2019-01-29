@@ -2,20 +2,36 @@ import numpy as np
 from scipy.sparse.csgraph import dijkstra
 
 class Maze:
+
+	"""Stores a representation of the maze.
+
+	The maze is indexed by [x,y] (increasing to the right, increasing down)
+	coordinates with the 0,0 cell in the top left corner.
+
+	The maze is stored as an adjacency matrix. A value of 1 in the matrix
+	indicates that the cells are connected. A value of zero indicates that
+	the cells are disconnected.
+	
+	Attributes:
+	    adj_matrix (TYPE): Description
+	    height (int): The width of the Maze
+	    width (int): The height of the Maze
+	"""
+	
 	def __init__(self, width=16, height=16):
 		self.width = width
 		self.height = height
 
-		self.adj_matrix = np.ones([self.width * self.height, self.width * self.height])
-		self.disconnect_non_adjacent()
+		self.adj_matrix = np.zeros([self.width * self.height, self.width * self.height])
+		self.connect_all()
 
-	def disconnect_non_adjacent(self):
-		for c1_index in xrange(self.width * self.height):
-			for c2_index in xrange(self.width * self.height):
-				c1 = self.find_x_y(c1_index)
-				c2 = self.find_x_y(c2_index)
-				self.adj_matrix[c1, c2] = ((abs(c1[0] - c2[0]) + abs(c1[1] - c2[1])) == 1)
-		
+	def connect_all(self):
+		for x in range(self.width):
+			for y in range(self.height):
+				if x < self.width - 1:
+					self.set_connected([x,y], [x+1, y], 1)
+				if y < self.height - 1:
+					self.set_connected([x,y], [x, y+1], 1)
 
 	def get_connected(self, c1, c2):
 		"""Check whether a wall exists between adjacent cells
@@ -27,11 +43,11 @@ class Maze:
 		Returns:
 		    float: probability of wall between those two cells
 		"""
-		assert (abs(c1[0] - c2[0]) + abs(c1[1] - c2[1])) == 1, 'Cells must be adjacent.'
-		c1_cell_number = self.find_adjacency_cell_number(c1)
-		c2_cell_number = self.find_adjacency_cell_number(c2)
+		assert self.check_adjacent_xy(c1, c2), 'Cells must be adjacent.'
+		c1_index = self.xy_to_index(c1)
+		c2_index = self.xy_to_index(c2)
 
-		return self.adj_matrix[max(c1_cell_number,c2_cell_number),min(c1_cell_number, c2_cell_number)]
+		return self.adj_matrix[max(c1_index, c2_index),min(c1_index, c2_index)]
 
 	def set_connected(self, c1, c2, v):
 		"""Set whether a wall exists between adjacent cells
@@ -41,60 +57,92 @@ class Maze:
 		    c2 (tuple): x,y coodrinate of cell2
 		    v  (float): probability of a wall between the cells
 		"""
-		assert (abs(c1[0] - c2[0]) + abs(c1[1] - c2[1])) == 1, 'Cells must be adjacent.'
-		c1_cell_number = self.find_adjacency_cell_number(c1)
-		c2_cell_number = self.find_adjacency_cell_number(c2)
+		assert self.check_adjacent_xy(c1, c2), 'Cells must be adjacent.'
+		c1_index = self.xy_to_index(c1)
+		c2_index = self.xy_to_index(c2)
 
-		self.adj_matrix[max(c1_cell_number,c2_cell_number),min(c1_cell_number, c2_cell_number)] = v
+		self.adj_matrix[max(c1_index,c2_index),min(c1_index, c2_index)] = v
 
-	# TODO: Fix me! 
-	# def __str__(self):
-	# 	output = ''
-	# 	for row in range(self.height + 1):
-	# 		horizontal = ['+---' if w > 0 else '+   ' for w in self.h_walls[row,:]]
-	# 		output += (''.join(horizontal) + '+\n')
+	def solve(self, threshold=0):
+		"""Use Dijkstras to find pairwise distances between all cells in the maze
+		
+		Args:
+		    threshold (int, optional): how confident we must be to pass between two cells
+		"""
+		self.dists, self.predecessors = dijkstra(self.adj_matrix > threshold, directed=False,
+									    unweighted=True, return_predecessors=True)
 
-	# 		if row < self.height:
-	# 			vertical = ['|   ' if w > 0 else '    ' for w in self.v_walls[row,:]]
-	# 			output += (''.join(vertical)[:-3] + '\n')
+	def get_path(self, c1, c2):
+		"""Returns a path between two cells
+		
+		Args:
+		    c1 (tuple): start index [x,y]
+		    c2 (tuple): end index [x,y]
+		
+		Returns:
+		    List(int): the indices of the shortest path from start to end
+		"""
+		c1_index = self.xy_to_index(c1)
+		c2_index = self.xy_to_index(c2)
 
-		# return output
+		if self.dists[c1_index, c2_index] > 0:
+			path = []
+			start = c1_index
+			end = c2_index
 
-	def find_route(self, c1, c2, threshold = 0):
-		r = dijkstra(self.adj_matrix, directed = False, unweighted = True, return_predecessors = True)
-		c1_index = self.find_adjacency_cell_number(c1)
-		c2_index = self.find_adjacency_cell_number(c2)
-		path = []
-		print(r[1])
-		self.unwind_predecessor_matrix(r[1], c1_index, c2_index, path)
-		return path
+			while start != end:
+				path.append(end)
+				end = self.predecessors[start, end]
 
-	def unwind_predecessor_matrix(self, r, c1, c2, path):
-		intermediate_cell = r[c1, c2]
-		if intermediate_cell < 0:
-			return 
-		path.append(intermediate_cell)
-		print("intermediate: %s c1: %s c2: %s path: %s" % (intermediate_cell, c1, c2, path))
-		self.unwind_predecessor_matrix(r, c1, intermediate_cell, path)
+			path.append(start)
+			return np.flipud(path)
 
-	def find_adjacency_cell_number(self, c1):
-		return self.width * c1[1] + c1[0]
+		else: return []
 
-	def find_x_y(self, n):
+	def xy_to_index(self, c):
+		return c[0] + self.width * c[1]
+
+	def index_to_xy(self, n):
 		return np.array([n % self.width, np.floor(n / self.width)], dtype=int)
 
-	def build_adjacency(self):
-		self.v_walls
-		self.h_walls
+	def check_adjacent_index(self, c1_index, c2_index):
+		c1 = self.index_to_xy(c1_index)
+		c2 = self.index_to_xy(c2_index)
+		return self. check_adjacent_xy(c1, c2)
+
+	def check_adjacent_xy(self, c1, c2):
+		return (abs(c1[0] - c2[0]) + abs(c1[1] - c2[1])) == 1
+
+	def __str__(self):
+		cap = ''.join(['+---' for _ in range(self.width)]) + '+'
+		output = cap + '\n'
+		for y in range(self.height):
+			lines = ['|' if self.get_connected([x,y], [x+1,y]) == 0
+					     else ' ' for x in range(self.width - 1)]
+			output += '|   ' + '   '.join(lines) + '   |\n'
+
+			if y < self.height - 1:
+				for x in range(self.width):
+					output += '+---' if self.get_connected([x,y], [x,y+1]) == 0 else '+   '
+				output += '+\n'
+
+		output += cap
+		return output
 
 
 if __name__ == '__main__':
-	m = Maze(2,2)
+	m = Maze(3,2)
 	# add some walls
-	# m.h_walls[1,1] = 1
-	# m.h_walls[2,3] = 1
-	# m.v_walls[2,3] = 1
-	# m.set_connected([1,1],[0,1], 1)
-	# m.set_connected([1,2],[1,1], 1)
+	m.set_connected([1,1],[0,1], 0)
+	m.set_connected([1,0],[1,1], 0)
 	# see what it looks like
 	print(m)
+	# solve the maze
+	m.solve()
+	# and get some of the resulting paths
+	start, end = [0,0], [2,1]
+	print 'The path from {} to {} is {}'.format(start, end, m.get_path(start, end))
+	start, end = [2,1], [0,0]
+	print 'The path from {} to {} is {}'.format(start, end, m.get_path(start, end))
+	start, end = [0,1], [1,1]
+	print 'The path from {} to {} is {}'.format(start, end, m.get_path(start, end))
