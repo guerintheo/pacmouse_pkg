@@ -1,9 +1,5 @@
 import numpy as np
 
-# TODO(izzy): how do we want to index the maze? Right now I've got the (0,0)
-# cell in the top left corner
-
-# NOTE(izzy): we might decide to use this class with probailities on the walls
 class Maze:
 	def __init__(self, width=16, height=16):
 		self.width = width
@@ -18,6 +14,36 @@ class Maze:
 	def add_perimeter_walls(self):
 		self.v_walls[:, [0,-1]] = 1
 		self.h_walls[[0,-1], :] = 1
+
+	def get_connected(self, c1, c2):
+		"""Check whether a wall exists between adjacent cells
+		
+		Args:
+		    c1 (tuple): x,y coordinate of cell1
+		    c2 (tuple): x,y coodrinate of cell2
+		
+		Returns:
+		    float: probability of wall between those two cells
+		"""
+		assert (abs(c1[0] - c2[0]) + abs(c1[1] - c2[1])) == 1, 'Cells must be adjacent.'
+		if c1[0] == c2[0]:
+			return self.h_walls[max(c1[1], c2[1]), c1[0]]
+		else:
+			return self.v_walls[c1[1], max(c1[0], c2[0])]
+
+	def set_connected(self, c1, c2, v):
+		"""Set whether a wall exists between adjacent cells
+		
+		Args:
+		    c1 (tuple): x,y coordinate of cell1
+		    c2 (tuple): x,y coodrinate of cell2
+		    v  (float): probability of a wall between the cells
+		"""
+		assert (abs(c1[0] - c2[0]) + abs(c1[1] - c2[1])) == 1, 'Cells must be adjacent.'
+		if c1[0] == c2[0]:
+			self.h_walls[max(c1[1], c2[1]), c1[0]] = v
+		else:
+			self.v_walls[c1[1], max(c1[0], c2[0])] = v
 
 	def __str__(self):
 		output = ''

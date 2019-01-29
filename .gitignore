@@ -2,3 +2,4 @@
 __pycache__/
 sftp-config.json
 venv/
+.DS_Store
