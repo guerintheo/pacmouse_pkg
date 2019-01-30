@@ -34,14 +34,14 @@ class Maze:
 					self.set_connected([x,y], [x, y+1], 1)
 
 	def get_connected(self, c1, c2):
-		"""Check whether a wall exists between adjacent cells
+		"""Check whether it is possible to pass between adjacent cells
 		
 		Args:
 		    c1 (tuple): x,y coordinate of cell1
 		    c2 (tuple): x,y coodrinate of cell2
 		
 		Returns:
-		    float: probability of wall between those two cells
+		    float: probability it is possible to pass between these cells
 		"""
 		assert self.check_adjacent_xy(c1, c2), 'Cells must be adjacent.'
 		c1_index = self.xy_to_index(c1)
@@ -50,12 +50,12 @@ class Maze:
 		return self.adj_matrix[max(c1_index, c2_index),min(c1_index, c2_index)]
 
 	def set_connected(self, c1, c2, v):
-		"""Set whether a wall exists between adjacent cells
+		"""Set whether it is possible to pass between adjacent cells
 		
 		Args:
 		    c1 (tuple): x,y coordinate of cell1
 		    c2 (tuple): x,y coodrinate of cell2
-		    v  (float): probability of a wall between the cells
+		    v  (float): probability it is possible to pass between these cells
 		"""
 		assert self.check_adjacent_xy(c1, c2), 'Cells must be adjacent.'
 		c1_index = self.xy_to_index(c1)
@@ -82,6 +82,7 @@ class Maze:
 		Returns:
 		    List(int): the indices of the shortest path from start to end
 		"""
+		self.solve()
 		c1_index = self.xy_to_index(c1)
 		c2_index = self.xy_to_index(c2)
 
@@ -108,7 +109,7 @@ class Maze:
 	def check_adjacent_index(self, c1_index, c2_index):
 		c1 = self.index_to_xy(c1_index)
 		c2 = self.index_to_xy(c2_index)
-		return self. check_adjacent_xy(c1, c2)
+		return self.check_adjacent_xy(c1, c2)
 
 	def check_adjacent_xy(self, c1, c2):
 		return (abs(c1[0] - c2[0]) + abs(c1[1] - c2[1])) == 1
@@ -137,8 +138,7 @@ if __name__ == '__main__':
 	m.set_connected([1,0],[1,1], 0)
 	# see what it looks like
 	print(m)
-	# solve the maze
-	m.solve()
+
 	# and get some of the resulting paths
 	start, end = [0,0], [2,1]
 	print 'The path from {} to {} is {}'.format(start, end, m.get_path(start, end))
