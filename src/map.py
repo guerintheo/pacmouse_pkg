@@ -18,12 +18,26 @@ class Maze:
 	    width (int): The height of the Maze
 	"""
 	
-	def __init__(self, width=16, height=16):
-		self.width = width
-		self.height = height
+	def __init__(self, width=16, height=16, filename=None):
+		if filename is not None:
+			self.load(filename)
+		else:
+			self.width = width
+			self.height = height
 
-		self.adj_matrix = np.zeros([self.width * self.height, self.width * self.height])
-		self.connect_all()
+			self.adj_matrix = np.zeros([self.width * self.height, self.width * self.height])
+			self.connect_all()
+
+	def save(self, name):
+		# save as plaintext so we can store a header
+		np.savetxt(name, self.adj_matrix, header='{},{}'.format(self.width, self.height))
+
+	def load(self, name):
+		with open(name) as f:
+			w, h = f.readline()[2:-1].split(',') # read the header
+			self.width = int(w)
+			self.height = int(h)
+			self.adj_matrix = np.loadtxt(f)
 
 	def connect_all(self):
 		for x in range(self.width):
