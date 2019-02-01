@@ -155,8 +155,8 @@ if __name__ == '__main__':
 
 	# and get some of the resulting paths
 	start, end = [0,0], [2,1]
-	print 'The path from {} to {} is {}'.format(start, end, m.get_path(start, end))
+	print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))
 	start, end = [2,1], [0,0]
-	print 'The path from {} to {} is {}'.format(start, end, m.get_path(start, end))
+	print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))
 	start, end = [0,1], [1,1]
-	print 'The path from {} to {} is {}'.format(start, end, m.get_path(start, end))
+	print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))
