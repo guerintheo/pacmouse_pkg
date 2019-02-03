@@ -41,6 +41,13 @@ class IOTest(unittest.TestCase):
         path3 = m.get_path(start, end)
         self.assertTrue(np.array_equal(path3, []), 'Finding path from a square to itself should return an empty array')
 
+    def test_set_connected(self):
+        # TODO: set_connected() should validate input and make sure the input coords aren't out of bounds. 
+        pass
+    
+    def test_generated_maze(self):
+        # TODO: generate_random_maze() should always produce a connected maze. 
+        pass
 
 if __name__ == '__main__':
     unittest.main()

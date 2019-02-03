@@ -26,18 +26,8 @@ class Maze:
 			self.height = height
 
 			self.adj_matrix = np.zeros([self.width * self.height, self.width * self.height])
-			self.connect_all()
-
-	def save(self, name):
-		# save as plaintext so we can store a header
-		np.savetxt(name, self.adj_matrix, header='{},{}'.format(self.width, self.height))
-
-	def load(self, name):
-		with open(name) as f:
-			w, h = f.readline()[2:-1].split(',') # read the header
-			self.width = int(w)
-			self.height = int(h)
-			self.adj_matrix = np.loadtxt(f)
+			self.generate_random_maze()
+			# self.connect_all()
 
 	def connect_all(self):
 		for x in range(self.width):
@@ -46,6 +36,18 @@ class Maze:
 					self.set_connected([x,y], [x+1, y], 1)
 				if y < self.height - 1:
 					self.set_connected([x,y], [x, y+1], 1)
+
+	def save(self, name):
+		# save as plaintext so we can store a header
+		file_format_explanation = "Lines starting with '#' will be ignored. This map represents:"
+		np.savetxt(name, self.adj_matrix, header='{},{}\n{}\n{}'.format(self.width, self.height, file_format_explanation, self.__str__()))
+
+	def load(self, name):
+		with open(name) as f:
+			w, h = f.readline()[2:-1].split(',') # read the header
+			self.width = int(w)
+			self.height = int(h)
+			self.adj_matrix = np.loadtxt(f)
 
 	def get_connected(self, c1, c2):
 		"""Check whether it is possible to pass between adjacent cells
@@ -86,6 +88,42 @@ class Maze:
 		self.dists, self.predecessors = dijkstra(self.adj_matrix > threshold, directed=False,
 									    unweighted=True, return_predecessors=True)
 
+	def generate_random_maze(self, discrete=True):
+		"""Generates a random maze given the class size and height. 
+
+		Args: 
+			discrete (boolean): Whether the generated maze should be discrete (0,1) or continous (0.1~0.8)
+		"""
+		visited = np.zeros([self.height, self.width])
+		visited = np.pad(visited, 1, 'constant', constant_values=1)
+		
+		def dfs(self, current):
+			visited[current] = 1
+			y = current[0]
+			x = current[1]
+			frontier = [(y-1,x), (y+1,x), (y,x-1), (y,x+1)]
+			np.random.shuffle(frontier)
+
+			for next in frontier:
+				if visited[next]: continue
+				self.set_connected((next[1]-1,next[0]-1), (current[1]-1,current[0]-1), 1 if discrete else np.random())
+
+				dfs(self, next)
+		start = (1,1)
+		dfs(self, start)
+
+		# Add 2x2 square to the center of the maze
+		if self.width > 3 and self.height > 3:
+			x_middle , y_middle = (int(np.floor(self.width/2))-1, int(np.floor(self.height/2))-1)
+			print(x_middle, y_middle)
+			self.set_connected((x_middle, y_middle),(x_middle + 1, y_middle),1)
+			self.set_connected((x_middle, y_middle),(x_middle, y_middle + 1),1)
+			self.set_connected((x_middle + 1, y_middle),(x_middle + 1, y_middle + 1),1)
+			self.set_connected((x_middle, y_middle + 1),(x_middle + 1, y_middle + 1),1)
+
+		# TODO: Prune some random walls to make the maze have more than 1 solution. I'll need to 
+		# figure out a better way to generate the maze to reproduce the competition mazes. 
+
 	def get_path(self, c1, c2):
 		"""Returns a path between two cells
 		
@@ -106,6 +144,8 @@ class Maze:
 			end = c2_index
 
 			while start != end:
+				if end < 0: 
+					return -1 # No solution exists
 				path.append(end)
 				end = self.predecessors[start, end]
 
@@ -148,8 +188,8 @@ class Maze:
 if __name__ == '__main__':
 	m = Maze(3,2)
 	# add some walls
-	m.set_connected([1,1],[0,1], 0)
-	m.set_connected([1,0],[1,1], 0)
+	# m.set_connected([1,1],[0,1], 0)
+	# m.set_connected([1,0],[1,1], 0)
 	# see what it looks like
 	print(m)
 
