@@ -115,7 +115,6 @@ class Maze:
 		# Add 2x2 square to the center of the maze
 		if self.width > 3 and self.height > 3:
 			x_middle , y_middle = (int(np.floor(self.width/2))-1, int(np.floor(self.height/2))-1)
-			print(x_middle, y_middle)
 			self.set_connected((x_middle, y_middle),(x_middle + 1, y_middle),1)
 			self.set_connected((x_middle, y_middle),(x_middle, y_middle + 1),1)
 			self.set_connected((x_middle + 1, y_middle),(x_middle + 1, y_middle + 1),1)
