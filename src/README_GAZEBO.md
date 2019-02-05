@@ -3,10 +3,10 @@
 In order for gazebo to know where the models for the maze are, you need to make them available to
 gazebo in a known installation location. (The alternative to this is forcing you to edit your
 `GAZEBO_RESOURCE_PATH` environment variable, but I went with the other method. The model for the
-walls of the maze is in `pacmouse_description/gazebo_models`. You need to make a symlink from
+walls of the maze is in `pacmouse_pkg/gazebo_models`. You need to make a symlink from
 gazebo's model database to the actual model location, e.g.
 ```
-ln -s /home/aaron/ros_ws/src/pacmouse_description/gazebo_models/maze_wall
+ln -s /home/aaron/ros_ws/src/pacmouse_pkg/gazebo_models/maze_wall
 /home/aaron/.gazebo/models/maze_wall
 ```
 Note that using full paths when making the link is important. (You will know if you screwed up if
@@ -20,7 +20,7 @@ Also requires the ros `controller_manager` package. Probably also requires one o
 packages, but that might included with the ros/gazebo stuff
 
 ```
-roslaunch pacmouse_description mousedrive.launch world_name:=pacmouse_description/gazebo_worlds/TestMazeAutogen.world
+roslaunch pacmouse_pkg mousedrive.launch world_name:=pacmouse_pkg/gazebo_worlds/TestMazeAutogen.world
 ```
 
 Rviz and gazebo don't seem to shut down very happily. I usually end up having to force quit them
