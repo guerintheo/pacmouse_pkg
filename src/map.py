@@ -170,14 +170,14 @@ class Maze:
 	def __str__(self):
 		cap = ''.join(['+---' for _ in range(self.width)]) + '+'
 		output = cap + '\n'
-		for y in range(self.height):
+		for y in range(self.height-1,-1,-1):
 			lines = ['|' if self.get_connected([x,y], [x+1,y]) == 0
 					     else ' ' for x in range(self.width - 1)]
 			output += '|   ' + '   '.join(lines) + '   |\n'
 
-			if y < self.height - 1:
+			if y > 0:
 				for x in range(self.width):
-					output += '+---' if self.get_connected([x,y], [x,y+1]) == 0 else '+   '
+					output += '+---' if self.get_connected([x,y], [x,y-1]) == 0 else '+   '
 				output += '+\n'
 
 		output += cap
