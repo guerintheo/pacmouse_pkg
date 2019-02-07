@@ -13,6 +13,11 @@ Note that using full paths when making the link is important. (You will know if 
 when you try to launch everything, it crashes with an error about too many symlinks). I will make a
 script for this setup step eventually. 
 
+You will also need to modify one of your environment variables. Add this to your .bashrc or .zshrc
+```
+export GAZEBO_RESOURCE_PATH="/home/<user>/<ros_ws>/src"
+```
+
 # Running
 
 Run to see the model in `rviz` and `gazebo`. Requires all of the ros/gazebo related packages.
