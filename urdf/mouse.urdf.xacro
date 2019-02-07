@@ -115,22 +115,34 @@
   <xacro:wheel prefix="left" suffix="front" x_offset="${wheel_front_offset}" y_offset="${wheel_lateral_offset}" />
   <xacro:wheel prefix="left" suffix="rear" x_offset="${wheel_rear_offset}" y_offset="${wheel_lateral_offset}" />
 
-  <xacro:laser_rangefinder xyz="0.051362 0.024628 -0.000868"
-                  rpy="0 0 0"
+  <xacro:laser_rangefinder xyz="0.047535 -0.038236 -0.000868"
+                  rpy="0 0 ${-pi/2}"
                   parent="base_link"
-                  name = "4">
+                  name = "0">
   </xacro:laser_rangefinder>
-
+  
   <xacro:laser_rangefinder xyz="0.051362 -0.024628 -0.000868"
                   rpy="0 0 0"
                   parent="base_link"
                   name = "1">
   </xacro:laser_rangefinder>
-
-  <xacro:laser_rangefinder xyz="0.047535 -0.038236 -0.000868"
-                  rpy="0 0 ${-pi/2}"
+  
+  <xacro:laser_rangefinder xyz="0.059890 -0.009768 -0.000868"
+                  rpy="0 0 ${-pi/4}"
                   parent="base_link"
-                  name = "0">
+                  name = "2">
+  </xacro:laser_rangefinder>
+  
+  <xacro:laser_rangefinder xyz="0.059890 0.009768 -0.000868"
+                  rpy="0 0 ${pi/4}"
+                  parent="base_link"
+                  name = "3">
+  </xacro:laser_rangefinder>
+
+  <xacro:laser_rangefinder xyz="0.051362 0.024628 -0.000868"
+                  rpy="0 0 0"
+                  parent="base_link"
+                  name = "4">
   </xacro:laser_rangefinder>
 
   <xacro:laser_rangefinder xyz="0.047535 0.038236 -0.000868"
@@ -139,17 +151,7 @@
                   name = "5">
   </xacro:laser_rangefinder>
 
-  <xacro:laser_rangefinder xyz="0.059890 0.009768 -0.000868"
-                  rpy="0 0 ${pi/4}"
-                  parent="base_link"
-                  name = "2">
-  </xacro:laser_rangefinder>
-
-  <xacro:laser_rangefinder xyz="0.059890 -0.009768 -0.000868"
-                  rpy="0 0 ${-pi/4}"
-                  parent="base_link"
-                  name = "3">
-  </xacro:laser_rangefinder>
+  
 
   <!-- Gazebo plugin for ROS Control -->
   <gazebo>
