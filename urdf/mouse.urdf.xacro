@@ -1,0 +1,161 @@
+<?xml version="1.0"?>
+<robot name="roscontrol" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find pacmouse_pkg)/urdf/laser_rangefinder.urdf.xacro"/>
+
+  <xacro:property name="width" value="0.2" />
+  <xacro:property name="leglen" value="0.6" />
+  <xacro:property name="polelen" value="0.2" />
+  <xacro:property name="bodylen" value="0.6" />
+  <xacro:property name="baselen" value="0.4" />
+  <xacro:property name="wheeldiam" value="0.07" />
+
+  <xacro:property name="chassis_width" value=".0335" />
+  <xacro:property name="chassis_length" value=".073572" />
+  <xacro:property name="chassis_height" value=".037260" />
+  <xacro:property name="chassis_vert_offset" value="0.005393" />
+  <xacro:property name="chassis_forward_offset" value="0.008926" />
+
+  <xacro:property name="wheel_radius" value="${.035535 / 2}" />
+  <xacro:property name="wheel_width" value=".009144" />
+
+  <xacro:property name="wheel_front_offset" value=".018382" />
+  <xacro:property name="wheel_rear_offset" value="-.018382" />
+  <xacro:property name="wheel_lateral_offset" value=".033498" />
+  <xacro:property name="wheel_vert_offset" value="0" />
+
+
+  <material name="blue">
+    <color rgba="0 0 0.8 1"/>
+  </material>
+
+  <material name="black">
+    <color rgba="0 0 0 1"/>
+  </material>
+
+  <material name="white">
+    <color rgba="1 1 1 1"/>
+  </material>
+
+  <xacro:macro name="default_inertial" params="mass">
+    <inertial>
+      <mass value="${mass}" />
+      <inertia ixx=".001" ixy="0.0" ixz="0.0" iyy=".001" iyz="0.0" izz=".001" />
+    </inertial>
+  </xacro:macro>
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="${chassis_forward_offset} 0 ${chassis_vert_offset}" rpy="0 0 0" />
+      <geometry>
+        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+      </geometry>
+      <material name="blue"/>
+    </visual>
+    <collision>
+      <origin xyz="${chassis_forward_offset} 0 ${chassis_vert_offset}" rpy="0 0 0" />
+      <geometry>
+        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+      </geometry>
+    </collision>
+    <xacro:default_inertial mass="10"/>
+  </link>
+
+  <xacro:macro name="wheel" params="prefix suffix x_offset y_offset">
+
+    <link name="${prefix}_${suffix}_wheel">
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0" />
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+        <material name="black"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0" />
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+      </collision>
+      <xacro:default_inertial mass="1"/>
+    </link>
+    <joint name="${prefix}_${suffix}_wheel_joint" type="continuous">
+      <axis xyz="0 1 0" rpy="0 0 0" />
+      <parent link="base_link"/>
+      <child link="${prefix}_${suffix}_wheel"/>
+      <origin xyz="${x_offset} ${y_offset} ${wheel_vert_offset}" rpy="0 0 0"/>
+    </joint>
+
+    <!-- This block provides the simulator (Gazebo) with information on a few additional
+    physical properties. See http://gazebosim.org/tutorials/?tut=ros_urdf for more-->
+    <gazebo reference="${prefix}_${suffix}_wheel">
+      <mu1 value="100"/>
+      <mu2 value="50"/>
+      <kp value="10000000.0" />
+      <kd value="1.0" />
+      <material>Gazebo/Grey</material>
+    </gazebo>
+
+    <!-- This block connects the wheel joint to an actuator (motor), which informs both
+    simulation and visualization of the robot -->
+    <transmission name="${prefix}_${suffix}_wheel_trans">
+      <type>transmission_interface/SimpleTransmission</type>
+      <actuator name="${prefix}_${suffix}_wheel_motor">
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+      <joint name="${prefix}_${suffix}_wheel_joint">
+        <hardwareInterface>hardware_interface/VelocityJointInterface</hardwareInterface>
+      </joint>
+    </transmission>
+
+  </xacro:macro>
+
+  <xacro:wheel prefix="right" suffix="front" x_offset="${wheel_front_offset}" y_offset="${-wheel_lateral_offset}" />
+  <xacro:wheel prefix="right" suffix="rear" x_offset="${wheel_rear_offset}" y_offset="${-wheel_lateral_offset}" />
+  <xacro:wheel prefix="left" suffix="front" x_offset="${wheel_front_offset}" y_offset="${wheel_lateral_offset}" />
+  <xacro:wheel prefix="left" suffix="rear" x_offset="${wheel_rear_offset}" y_offset="${wheel_lateral_offset}" />
+
+  <xacro:laser_rangefinder xyz="0.051362 0.024628 -0.000868"
+                  rpy="0 0 0"
+                  parent="base_link"
+                  name = "4">
+  </xacro:laser_rangefinder>
+
+  <xacro:laser_rangefinder xyz="0.051362 -0.024628 -0.000868"
+                  rpy="0 0 0"
+                  parent="base_link"
+                  name = "1">
+  </xacro:laser_rangefinder>
+
+  <xacro:laser_rangefinder xyz="0.047535 -0.038236 -0.000868"
+                  rpy="0 0 ${-pi/2}"
+                  parent="base_link"
+                  name = "0">
+  </xacro:laser_rangefinder>
+
+  <xacro:laser_rangefinder xyz="0.047535 0.038236 -0.000868"
+                  rpy="0 0 ${pi/2}"
+                  parent="base_link"
+                  name = "5">
+  </xacro:laser_rangefinder>
+
+  <xacro:laser_rangefinder xyz="0.059890 0.009768 -0.000868"
+                  rpy="0 0 ${pi/4}"
+                  parent="base_link"
+                  name = "2">
+  </xacro:laser_rangefinder>
+
+  <xacro:laser_rangefinder xyz="0.059890 -0.009768 -0.000868"
+                  rpy="0 0 ${-pi/4}"
+                  parent="base_link"
+                  name = "3">
+  </xacro:laser_rangefinder>
+
+  <!-- Gazebo plugin for ROS Control -->
+  <gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+      <robotNamespace>/</robotNamespace>
+    </plugin>
+  </gazebo>
+
+</robot>

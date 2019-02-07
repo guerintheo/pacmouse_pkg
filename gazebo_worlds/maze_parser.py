@@ -45,7 +45,7 @@ def parse_maze_file(fn):
             cols: number of columns in the maze
     """
 
-    with open(fn,'r') as fo:
+    with open('testmaze.txt','r') as fo:
         lines = fo.readlines()
 
     try:
