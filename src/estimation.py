@@ -1,4 +1,5 @@
 from map import Maze
+import time
 import params as p
 import numpy as np
 
@@ -32,23 +33,65 @@ def rotate2d(coord, theta):
                   [np.sin(theta),  np.cos(theta)]])
     return np.dot(r, coord)
 
-def estimate_lidar_returns(pose, maze):
+def plot_lidar_returns(pose, maze):
+    from matplotlib import pyplot as plt
     segment_list = maze_to_segment_list(maze)
+    line_list = [line(seg[:2], seg[2:]) for seg in segment_list]
+    lidar_list = []
+    returns = []
     for lidar_transform in p.lidar_transforms:
         lidar_global_xy = pose[:2] + rotate2d(lidar_transform[:2], pose[2])
         lidar_global_theta = pose[2] + lidar_transform[2]
-        lidar_global_end = rotate2d([5.,0], lidar_global_theta)
-        segment_list.append(lidar_global_xy.tolist() + lidar_global_end.tolist())
+        lidar_global_end = rotate2d([5.,0], lidar_global_theta) + lidar_global_xy
+        intersections = [lidar_global_end]
+        lidar_line = line(lidar_global_end, lidar_global_xy)
+        for l,seg in zip(line_list, segment_list):
+            if intersect(lidar_global_xy, lidar_global_end, seg[:2], seg[2:]):
+                intersections.append(get_intersection(lidar_line, l))
+                plt.plot(intersections[-1][0], intersections[-1][1],'bo')
 
-    from matplotlib import pyplot as plt
+        returns.append(np.min(np.sqrt(np.sum((lidar_global_xy[None,:] - np.array(intersections))**2,axis=1))))
+        min_index = np.argmin(np.sqrt(np.sum((lidar_global_xy[None,:] - np.array(intersections))**2,axis=1)))
+        plt.plot(intersections[min_index][0],intersections[min_index][1], 'ro')
+        lidar_list.append(lidar_global_xy.tolist() + lidar_global_end.tolist())
 
-    for seg in segment_list[:-6]:
+
+    print np.array(returns)
+    for seg in segment_list:
         plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k')
-    for seg in segment_list[-6:]:
+    for seg in lidar_list:
         plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'r')
     plt.show()
 
+# return true of the points A,B,C are aranged in a counterclockwise orientation
+def ccw(A, B, C):
+    return (C[1]-A[1]) * (B[0]-A[0]) > (B[1]-A[1]) * (C[0]-A[0])
 
+# Return true if line segments AB and CD intersect
+def intersect(A, B, C, D):
+    return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
+
+# get the slope-point form of a line through a pair of points
+def line(p1, p2):
+    A = (p1[1] - p2[1])
+    B = (p2[0] - p1[0])
+    C = (p1[0]*p2[1] - p2[0]*p1[1])
+    return A, B, -C
+
+# find the intersection of two lines
+def get_intersection(L1, L2):
+    D  = L1[0] * L2[1] - L1[1] * L2[0]
+    Dx = L1[2] * L2[1] - L1[1] * L2[2]
+    Dy = L1[0] * L2[2] - L1[2] * L2[0]
+    if D != 0:
+        x = Dx / D
+        y = Dy / D
+        return x,y
+    else:
+        return False
+
+
+# generate a list of line segments corresponding to the walls of the maze
 def maze_to_segment_list(maze):
     segment_list = []
     c = p.maze_inner_size
@@ -68,18 +111,16 @@ def maze_to_segment_list(maze):
     segment_list.append([0, maze.height*c, maze.width*c, maze.height*c])
     return segment_list
 
-def test_generate_segment_list():
-    # verify that generate segment list works as intended
+def plot_segment_list(segment_list):
     from matplotlib import pyplot as plt
-    m = Maze(6,5)
-    print m
-    segment_list = maze_to_segment_list(m)
+    segment_list
     for seg in segment_list:
         plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k')
     plt.show()
 
 if __name__ == '__main__':
-    # test_generate_segment_list()
-    pose = [0.1,0.2, np.pi/4]
     m = Maze(16,16)
-    estimate_lidar_returns(pose, m)
+    segment_list = maze_to_segment_list(m)
+    # plot_segment_list(segment_list)
+    pose = [0.084, 0.084, np.pi/4]
+    plot_lidar_returns(pose, m)
