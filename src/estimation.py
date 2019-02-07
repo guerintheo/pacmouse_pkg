@@ -26,5 +26,10 @@ class Pose:
 # * write a func to get estiamted lidar returns (distributions given a pose and a maze)
 # * 
 
+
+def estimate_lidar_returns(pose, maze):
+    for lidar_transform in p.lidar_transforms:
+        pass
+
 if __name__ = '__main__':
     pass
