@@ -11,13 +11,13 @@ class Maze:
 	The maze is stored as an adjacency matrix. A value of 1 in the matrix
 	indicates that the cells are connected. A value of zero indicates that
 	the cells are disconnected.
-	
+
 	Attributes:
 	    adj_matrix (TYPE): Description
 	    height (int): The width of the Maze
 	    width (int): The height of the Maze
 	"""
-	
+
 	def __init__(self, width=16, height=16, filename=None):
 		if filename is not None:
 			self.load(filename)
@@ -51,11 +51,11 @@ class Maze:
 
 	def get_connected(self, c1, c2):
 		"""Check whether it is possible to pass between adjacent cells
-		
+
 		Args:
 		    c1 (tuple): x,y coordinate of cell1
 		    c2 (tuple): x,y coodrinate of cell2
-		
+
 		Returns:
 		    float: probability it is possible to pass between these cells
 		"""
@@ -67,7 +67,7 @@ class Maze:
 
 	def set_connected(self, c1, c2, v):
 		"""Set whether it is possible to pass between adjacent cells
-		
+
 		Args:
 		    c1 (tuple): x,y coordinate of cell1
 		    c2 (tuple): x,y coodrinate of cell2
@@ -81,7 +81,7 @@ class Maze:
 
 	def solve(self, threshold=0):
 		"""Use Dijkstras to find pairwise distances between all cells in the maze
-		
+
 		Args:
 		    threshold (int, optional): how confident we must be to pass between two cells
 		"""
@@ -89,14 +89,14 @@ class Maze:
 									    unweighted=True, return_predecessors=True)
 
 	def generate_random_maze(self, discrete=True):
-		"""Generates a random maze given the class size and height. 
+		"""Generates a random maze given the class size and height.
 
-		Args: 
+		Args:
 			discrete (boolean): Whether the generated maze should be discrete (0,1) or continous (0.1~0.8)
 		"""
 		visited = np.zeros([self.height, self.width])
 		visited = np.pad(visited, 1, 'constant', constant_values=1)
-		
+
 		def dfs(self, current):
 			visited[current] = 1
 			y = current[0]
@@ -120,16 +120,16 @@ class Maze:
 			self.set_connected((x_middle + 1, y_middle),(x_middle + 1, y_middle + 1),1)
 			self.set_connected((x_middle, y_middle + 1),(x_middle + 1, y_middle + 1),1)
 
-		# TODO: Prune some random walls to make the maze have more than 1 solution. I'll need to 
-		# figure out a better way to generate the maze to reproduce the competition mazes. 
+		# TODO: Prune some random walls to make the maze have more than 1 solution. I'll need to
+		# figure out a better way to generate the maze to reproduce the competition mazes.
 
 	def get_path(self, c1, c2):
 		"""Returns a path between two cells
-		
+
 		Args:
 		    c1 (tuple): start index [x,y]
 		    c2 (tuple): end index [x,y]
-		
+
 		Returns:
 		    List(int): the indices of the shortest path from start to end
 		"""
@@ -143,7 +143,7 @@ class Maze:
 			end = c2_index
 
 			while start != end:
-				if end < 0: 
+				if end < 0:
 					return -1 # No solution exists
 				path.append(end)
 				end = self.predecessors[start, end]
@@ -166,6 +166,44 @@ class Maze:
 
 	def check_adjacent_xy(self, c1, c2):
 		return (abs(c1[0] - c2[0]) + abs(c1[1] - c2[1])) == 1
+
+	#
+	def get_v_wall(self, x, y):
+		"""access the vertical walls of the maze as if they were in a width+1
+		by height array (including the outer walls)
+
+		Args:
+		    x (int): x index of vertical wall
+		    y (int): y index of vertical wall
+
+		Returns:
+		    float:  (0,1) representing the connectedness (absense of a wall)
+		"""
+		assert 0 <= x <= self.width
+		assert 0 <= y < self.height
+		if x == 0 or x == self.width:
+			return 0
+		else:
+			return self.get_connected([x-1,y], [x,y])
+
+	def get_h_wall(self, x, y):
+		"""access the horizontal walls of the maze as if they were in a width
+		by height+1 array (including the outer walls)
+
+		Args:
+		    x (int): x index of horizontal wall
+		    y (int): y index of horizontal wall
+
+		Returns:
+		    float:  (0,1) representing the connectedness (absense of a wall)
+		"""
+		assert 0 <= x < self.width
+		assert 0 <= y <= self.height
+		if y == 0 or y == self.height:
+			return 0
+		else:
+			return self.get_connected([x,y-1], [x,y])
+
 
 	def __str__(self):
 		cap = ''.join(['+---' for _ in range(self.width)]) + '+'

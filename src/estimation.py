@@ -1,40 +1,18 @@
+from matplotlib import pyplot as plt
 from map import Maze
 import time
 import params as p
 import numpy as np
 
-# def get_2d_rotation(theta):
-#     return np.array([[np.cos(theta), -np.sin(theta)],
-#                      [np.sin(theta), np.cos(theta)]])
-
-# class Pose:
-#     def __init__(self, t=np.zeros(2), r=np.zeros(2,2)):
-#         assert t.size == r.shape[0] == r.shape[1]
-#         self.t = t
-#         self.rotation = r
-#         self.dim = self.t.size
-
-#     def __mul__(self, other):
-#         # TODO: apply to another pose
-#         pass
-
-#     def inverse(self):
-#         # TODO: get the inverse
-#         pass
-
-# TODO:
-# * settle on a representation for the robot pose -- rotation, translation (2D?) 
-# * choose the origin for the maze coordinate system
-# * write a func to get estiamted lidar returns (distributions given a pose and a maze)
-# * 
 
 def rotate2d(coord, theta):
     r = np.array([[np.cos(theta), -np.sin(theta)],
                   [np.sin(theta),  np.cos(theta)]])
     return np.dot(r, coord)
 
-def plot_lidar_returns(pose, maze):
-    from matplotlib import pyplot as plt
+def estimate_lidar_returns_old(pose, maze):
+    plot = False
+
     segment_list = maze_to_segment_list(maze)
     line_list = [line(seg[:2], seg[2:]) for seg in segment_list]
     lidar_list = []
@@ -48,20 +26,83 @@ def plot_lidar_returns(pose, maze):
         for l,seg in zip(line_list, segment_list):
             if intersect(lidar_global_xy, lidar_global_end, seg[:2], seg[2:]):
                 intersections.append(get_intersection(lidar_line, l))
-                plt.plot(intersections[-1][0], intersections[-1][1],'bo')
+                if plot: plt.plot(intersections[-1][0], intersections[-1][1],'bo')
 
         returns.append(np.min(np.sqrt(np.sum((lidar_global_xy[None,:] - np.array(intersections))**2,axis=1))))
         min_index = np.argmin(np.sqrt(np.sum((lidar_global_xy[None,:] - np.array(intersections))**2,axis=1)))
-        plt.plot(intersections[min_index][0],intersections[min_index][1], 'ro')
+        if plot: plt.plot(intersections[min_index][0],intersections[min_index][1], 'ro')
         lidar_list.append(lidar_global_xy.tolist() + lidar_global_end.tolist())
 
 
-    print np.array(returns)
-    for seg in segment_list:
-        plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k')
-    for seg in lidar_list:
-        plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'r')
-    plt.show()
+    if plot:
+        print np.array(returns)
+        for seg in segment_list:
+            plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k')
+        for seg in lidar_list:
+            plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'r')
+        plt.show()
+
+    return returns
+
+
+# NOTE(izzy): I rewrote this function to avoid using line intersections.
+# It's about 6 times faster, and from my testing, the two implementations seem to agree.
+# there's certainly some performance left to be extracted, but I'll leave that for later if
+# we need to
+def estimate_lidar_returns(pose, maze):
+    plot = False
+
+    c = p.maze_inner_size
+    returns = np.zeros(p.lidar_transforms.shape[0])
+    for lidar, lidar_transform in enumerate(p.lidar_transforms):
+        lidar_global_xy = pose[:2] + rotate2d(lidar_transform[:2], pose[2])
+        lidar_global_theta = pose[2] + lidar_transform[2]
+        lidar_global_vector = rotate2d([1,0], lidar_global_theta) # x, y
+        move_right, move_up = lidar_global_vector > 0 # boolean vector
+
+        # get the coordinate of where the lidar line will hit the walls
+        h_wall_y_coords = np.arange(0,maze.height+1) * c
+        v_wall_x_coords = np.arange(0,maze.width+1) * c
+
+        # calculate the distance from the lidar to those points
+        x_dists_to_v_walls = v_wall_x_coords - lidar_global_xy[0]
+        y_dists_to_h_walls = h_wall_y_coords - lidar_global_xy[1]
+
+        # only take the walls that are in front of the lidar
+        x_dists_to_v_walls = x_dists_to_v_walls[np.sign(x_dists_to_v_walls) == np.sign(lidar_global_vector[0])]
+        y_dists_to_h_walls = y_dists_to_h_walls[np.sign(y_dists_to_h_walls) == np.sign(lidar_global_vector[1])]
+
+        # get the other coordinates
+        x_dists_to_h_walls = y_dists_to_h_walls/lidar_global_vector[1]*lidar_global_vector[0]
+        y_dists_to_v_walls = x_dists_to_v_walls/lidar_global_vector[0]*lidar_global_vector[1]
+
+        # and pair them off and shift back to global coordinates
+        h_wall_intersection_coords = np.vstack([x_dists_to_h_walls, y_dists_to_h_walls]).T + lidar_global_xy[None,:]
+        v_wall_intersection_coords = np.vstack([x_dists_to_v_walls, y_dists_to_v_walls]).T + lidar_global_xy[None,:]
+
+        if plot:
+            lidar_end = lidar_global_xy + lidar_global_vector*5
+            plt.plot((lidar_global_xy[0], lidar_end[0]), (lidar_global_xy[1],lidar_end[1]), 'r')
+
+        dists = [] # store the distances to actual wall collisions in this list
+
+        # for each place where a lidar could intersect a wall, check if that wall actually exists
+        for h_wall in h_wall_intersection_coords:
+            if maze.width*c >= h_wall[0] >= 0 and not maze.get_h_wall(*np.floor(h_wall/c)) > 0:
+                dists.append(np.linalg.norm(h_wall - lidar_global_xy))
+                if plot: plt.plot(h_wall[0], h_wall[1], 'ro')
+
+        for v_wall in v_wall_intersection_coords:
+            if maze.height*c >= v_wall[1] >= 0 and not maze.get_v_wall(*np.floor(v_wall/c)) > 0:
+                dists.append(np.linalg.norm(v_wall - lidar_global_xy))
+                if plot: plt.plot(v_wall[0], v_wall[1], 'ro')
+
+        # the minimum return is the first wall that the lidar hits
+        returns[lidar] = np.min(dists)
+
+    if plot: plot_segment_list(maze_to_segment_list(maze))
+    return returns
+
 
 # return true of the points A,B,C are aranged in a counterclockwise orientation
 def ccw(A, B, C):
@@ -112,7 +153,6 @@ def maze_to_segment_list(maze):
     return segment_list
 
 def plot_segment_list(segment_list):
-    from matplotlib import pyplot as plt
     segment_list
     for seg in segment_list:
         plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k')
@@ -121,6 +161,14 @@ def plot_segment_list(segment_list):
 if __name__ == '__main__':
     m = Maze(16,16)
     segment_list = maze_to_segment_list(m)
-    # plot_segment_list(segment_list)
-    pose = [0.084, 0.084, np.pi/4]
-    plot_lidar_returns(pose, m)
+    pose = [0.168 * 4.2, 0.168 * 3.2, np.pi/4]
+
+    start = time.time()
+    ans =  estimate_lidar_returns_old(pose, m)
+    duration = time.time() - start
+    print 'OLD: {} seconds\t{}'.format(duration, ans)
+
+    start = time.time()
+    ans =  estimate_lidar_returns(pose, m)
+    duration = time.time() - start
+    print 'NEW: {} seconds\t{}'.format(duration, ans)
