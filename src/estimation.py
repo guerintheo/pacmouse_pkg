@@ -98,9 +98,11 @@ def estimate_lidar_returns(pose, maze):
                 if plot: plt.plot(v_wall[0], v_wall[1], 'ro')
 
         # the minimum return is the first wall that the lidar hits
-        returns[lidar] = np.min(dists)
+        returns[lidar] = np.min(dists) if len(dists) > 0 else -1
 
-    if plot: plot_segment_list(maze_to_segment_list(maze))
+    if plot:
+        plot_segment_list(plt, maze_to_segment_list(maze))
+        plt.show()
     return returns
 
 
@@ -152,11 +154,10 @@ def maze_to_segment_list(maze):
     segment_list.append([0, maze.height*c, maze.width*c, maze.height*c])
     return segment_list
 
-def plot_segment_list(segment_list):
+def plot_segment_list(plt, segment_list):
     segment_list
     for seg in segment_list:
         plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k')
-    plt.show()
 
 if __name__ == '__main__':
     m = Maze(16,16)
