@@ -9,14 +9,13 @@ from ParticleFilter import particle_filter_update
 from map import Maze
 import params as p
 
-def gaussian_2d(self, mu, sigma, x, y):
+def gaussian_2d(mu, sigma, x, y):
     X = np.array([x,y])
     return np.exp(-1/2 * np.dot((X - mu).transpose(),np.dot(np.linalg.inv(sigma),(X - mu))))/\
            (np.sqrt((2*np.pi)**2 * np.linalg.det(sigma)))
 
 
 class SimpleParticleFilterTest(object):
-
     def __init__(self):
         self.mu = np.array([0,0])
         self.sigma = np.array([[5,0],[0,5]])
@@ -35,12 +34,10 @@ class SimpleParticleFilterTest(object):
         self.u_mu = np.array([.1,.1])
         self.u_sigma = np.array([.05,.05])
 
-
     def obs_func(self, Z, x):
         """ P(Z | x) """
         z_exp = gaussian_2d(self.mu, self.sigma, x[0], x[1])
         return np.exp(-(100*(z_exp - Z))**2)
-
 
     def animate_plot(self, i):
 
@@ -57,11 +54,11 @@ class SimpleParticleFilterTest(object):
 
 class MazeParticleFilterTest:
     def __init__(self):
-        self.maze = Maze(5,5)
+        self.maze = Maze(4,4)
         self.segment_list = maze_to_segment_list(self.maze)
-        self.pose = np.array([0.084, 0.084, np.pi/4]) # x, y, theta
-        self.Z = estimate_lidar_returns(self.pose, self.maze)
-        self.num_particles = 100
+        self.pose = np.array([1.5*p.maze_inner_size, 1.5*p.maze_inner_size, np.pi/4]) # x, y, theta
+
+        self.num_particles = 20
 
         # create a bunch of particles in different positions and rotations
         self.particles = np.zeros([self.num_particles, 3])
@@ -69,28 +66,41 @@ class MazeParticleFilterTest:
         self.particles[:,1] = np.random.uniform(low=0, high=self.maze.height*p.maze_inner_size, size=self.num_particles)
         self.particles[:,2] = np.random.uniform(low=0, high=np.pi*2, size=self.num_particles)
 
-        self.u_mu = np.array([0,0,0]) # assume the bot doesn't move
-        self.u_sigma = np.array([.01,.01,.01])
+        self.u_mu = np.array([0,0,0.05]) # assume the bot rotates in place
+        self.u_sigma = np.array([.005,.005, 1e-5]) # we lock the rotation because we have IMU
 
     def obs_func(self, Z, x):
         z_exp = estimate_lidar_returns(x, self.maze)
-        return np.sum(np.exp(-(100*(z_exp - Z))**2))
+        # NOTE(izzy): experimenting with different loss functions
+        return np.mean(np.exp(-np.abs(z_exp - Z)))        # exponential
+        # return np.max([np.mean(1-np.abs(z_exp - Z)), 0])    # linear
+        # TODO: add normal (gaussian) loss (mu is Z)
 
     def update(self):
+        self.pose[2] += 0.05 # rotate the robot
+        self.Z = estimate_lidar_returns(self.pose, self.maze)
+        self.particles[:,2] = self.pose[2] # lock the lidar rotations
         self.particles = particle_filter_update(self.particles, self.u_mu, self.u_sigma, self.Z, self.obs_func)
 
     def animate_plot(self, i):
         self.update()
         ax1.clear()
         plot_segment_list(ax1, self.segment_list)
-        ax1.scatter(self.particles[:,0], self.particles[:,1], color='r', alpha=.2)
-        ax1.scatter(self.pose[0], self.pose[1], color='b')
+        for p in self.particles:
+            self.draw_bot(ax1, p, 'r', 0.2)
+        self.draw_bot(ax1, self.pose, 'b', 1)
+
+    def draw_bot(self, plt, pose, color, alpha, size=0.03):
+        plt.scatter(pose[0], pose[1], color=color, alpha=alpha)
+        tip_pose = pose[:2] + np.array([np.cos(pose[2]),np.sin(pose[2])])*size
+        plt.plot((pose[0], tip_pose[0]), (pose[1], tip_pose[1]), color=color, alpha=alpha)
+
 
 if __name__ == "__main__":
     fig = plt.figure()
     ax1 = fig.add_subplot(1,1,1)
     # pf = SimpleParticleFilterTest()
     pf = MazeParticleFilterTest()
-    num_iterations = 80
+    num_iterations = 200
     animation = animation.FuncAnimation(fig, pf.animate_plot, frames=num_iterations, repeat=False, interval=10)
     plt.show()
