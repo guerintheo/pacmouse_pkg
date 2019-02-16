@@ -154,7 +154,7 @@ class Maze:
 		else: return []
 
 	def xy_to_index(self, c):
-		return c[0] + self.width * c[1]
+		return int(c[0] + self.width * c[1])
 
 	def index_to_xy(self, n):
 		return np.array([n % self.width, np.floor(n / self.width)], dtype=int)

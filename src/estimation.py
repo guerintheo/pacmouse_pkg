@@ -50,6 +50,8 @@ def estimate_lidar_returns_old(pose, maze):
 # there's certainly some performance left to be extracted, but I'll leave that for later if
 # we need to
 def estimate_lidar_returns(pose, maze):
+    # Only use this when debugging. If this is true when you
+    # run ParticleFilterTests it will break due to matplotlib. 
     plot = False
 
     c = p.maze_inner_size
