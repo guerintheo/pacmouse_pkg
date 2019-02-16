@@ -24,6 +24,11 @@ class StateEstimatorParticleFilter(object):
         self.wheel_dist_y = 0.04 # 0.04 meters, 4 cm
         self.gear_ratio = 3*29.86
         
+        # Angular velocity control inputs self.omega_l and self.omega_r
+        self.omega_l = 1000
+        self.omega_r = 1000
+        self.input_increment = 30
+        
     def initialize_background_gaussian(self):
         self.mu = np.array([0, 0]) #  mean of background Gaussian
         self.sigma = np.array([[5,0],[0,5]]) # covariance of background Gaussian
@@ -75,15 +80,7 @@ class StateEstimatorParticleFilter(object):
         return np.exp(-(100*(z_exp - Z))**2)
 
     def animate_plot(self, i, pf):
-        print(i)
-        # Provide angular velocity control inputs omega_l and omega_r
-        omega_l = 1000
-        omega_r = 1000
-        if 20<i<=30 or 50<i<=60:
-            omega_r = 1100
-        if 30<i<=50:
-            omega_l = 1100
-        mean_change = self.motion_model_mean(self.real_obj_state, np.array([omega_l, omega_r]), 0.2)
+        mean_change = self.motion_model_mean(self.real_obj_state, np.array([self.omega_l, self.omega_r]), 0.2)
         # Add motion and noise to real robot
         self.real_obj_state += np.random.normal(mean_change, self.u_sigma)
         
@@ -99,11 +96,29 @@ class StateEstimatorParticleFilter(object):
         #ax1.scatter(self.real_obj_state[0], self.real_obj_state[1], color='b')
         arrow = mpatches.Arrow(self.real_obj_state[0], self.real_obj_state[1], 0.4*np.cos(self.real_obj_state[2]), 0.4*np.sin(self.real_obj_state[2]), color="blue", width=0.3)
         ax1.add_patch(arrow)
+        
+    def on_key_press(self, event):
+        """
+        Matplotlib keypress event handler that adjusts the angular velocities of
+        the left and right motors of the robot.
+        """
+        if (event.key == "left"):
+            self.omega_r += self.input_increment
+            self.omega_l -= self.input_increment
+        elif (event.key == "right"):
+            self.omega_l += self.input_increment
+            self.omega_r -= self.input_increment
+        elif (event.key == "up"):
+            self.omega_l += self.input_increment
+            self.omega_r += self.input_increment
+        elif (event.key == "down"):
+            self.omega_l -= self.input_increment
+            self.omega_r -= self.input_increment
 
 if __name__ == "__main__":
     fig = plt.figure(figsize=(14, 7))
     ax1 = fig.add_subplot(1,1,1)
     pf = StateEstimatorParticleFilter()
-    num_iterations = 200
-    animation = animation.FuncAnimation(fig, pf.animate_plot, frames=num_iterations, repeat=False, fargs=(pf,), interval=10)
+    animation = animation.FuncAnimation(fig, pf.animate_plot, fargs=(pf,), interval=10)
+    cid = fig.canvas.mpl_connect('key_press_event', pf.on_key_press)
     plt.show()
