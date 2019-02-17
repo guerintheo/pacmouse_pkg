@@ -35,7 +35,7 @@ def estimate_lidar_returns_old(pose, maze):
 
 
     if plot:
-        print np.array(returns)
+        print(np.array(returns))
         for seg in segment_list:
             plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k')
         for seg in lidar_list:
@@ -169,9 +169,9 @@ if __name__ == '__main__':
     start = time.time()
     ans =  estimate_lidar_returns_old(pose, m)
     duration = time.time() - start
-    print 'OLD: {} seconds\t{}'.format(duration, ans)
+    print('OLD: {} seconds\t{}'.format(duration, ans))
 
     start = time.time()
     ans =  estimate_lidar_returns(pose, m)
     duration = time.time() - start
-    print 'NEW: {} seconds\t{}'.format(duration, ans)
+    print('NEW: {} seconds\t{}'.format(duration, ans))
