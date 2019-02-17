@@ -39,10 +39,10 @@
             <ray>
                 <scan>
                     <horizontal>
-                        <samples>1</samples>
+                        <samples>2</samples>
                         <resolution>1</resolution>
-                        <min_angle>0</min_angle>
-                        <max_angle>0</max_angle>
+                        <min_angle>-.00001</min_angle>
+                        <max_angle>.00001</max_angle>
                     </horizontal>
                 </scan>
                 <range>
@@ -57,7 +57,7 @@
                 </noise>
             </ray>
             <plugin name="gazebo_ros_head_laser_controller" filename="libgazebo_ros_laser.so">
-                <robotNamespace></robotNamespace>
+              <robotNamespace>/</robotNamespace>
                 <topicName>laser_scan_${name}</topicName>
                 <frameName>laser_rangefinder_link_${name}</frameName>
             </plugin>
