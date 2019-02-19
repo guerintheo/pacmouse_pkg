@@ -42,3 +42,29 @@ def resample(X, pmf):
     """
     new_ix = np.random.choice(len(pmf), size=X.shape[0], replace=True, p=pmf)
     return X[new_ix, :]
+
+
+# NOTE(izzy): the update function should have the same functionality as the one above
+class ParticleFilter:
+    def __init__(self, particles):
+        self.particles = particles
+        self.n = self.particles.shape[0]
+        self.d = self.particles.shape[1]
+        self.likelihoods = np.ones(n)/n
+
+    def resample(self):
+        new_ix = np.random.choice(len(pmf), size=self.n, replace=True, p=self.likelihoods)
+        self.particles = self.particles[new_ix, :]
+
+    def perturb(self, u_mu, u_sigma):
+        self.particles += np.random.normal(u_mu, u_sigma, size=[self.n, self.d])
+
+    def calc_likelihoods(self, Z, obs_func):
+        self.likelihoods = np.array([obs_func(Z, x) for x in self.particles])
+        self.likelihoods += np.min(self.likelihoods)
+        self.likelihoods /= np.sum(self.likelihoods)
+
+    def update(self, u_mu, u_sigma, Z, obs_func):
+        self.perturb(u_mu, u_sigma)
+        self.calc_likelihoods(Z, obs_func)
+        self.resample()
