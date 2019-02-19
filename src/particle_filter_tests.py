@@ -112,13 +112,7 @@ class StateEstimatorParticleFilter(object):
         self.particles = np.random.uniform(low=-5,high=5, size=(self.n_parts, self.n_dims))
         # Noise due to motion
         self.u_sigma = np.array([.008, .008, .008, .008, .008, .008])
-        
-        # Some geometric parameters for kinematics. These are just test values
-        self.wheel_radius = 0.03 # 0.03 meters, 3 cm
-        self.wheel_dist_x = 0.015 # 0.015 meters, 1.5 cm
-        self.wheel_dist_y = 0.04 # 0.04 meters, 4 cm
-        self.gear_ratio = 3*29.86
-        
+                
         # Angular velocity control inputs self.omega_l and self.omega_r
         self.omega_l = 1000
         self.omega_r = 1000
@@ -147,8 +141,8 @@ class StateEstimatorParticleFilter(object):
         dt: time step
         """
         # From robot kinematics. See LaTeX document for this math
-        v = self.wheel_radius/2.0*((u[0]+u[1])/self.gear_ratio)
-        psi_dot = (self.wheel_radius*self.wheel_dist_y)/(2*(self.wheel_dist_x**2 + self.wheel_dist_y**2))*((u[1]-u[0])/self.gear_ratio)
+        v = p.wheel_radius/2.0*((u[0]+u[1])/p.gear_ratio)
+        psi_dot = (p.wheel_radius*p.wheel_dist_y)/(2*(p.wheel_dist_x**2 + p.wheel_dist_y**2))*((u[1]-u[0])/p.gear_ratio)
         # TODO: Handle the psi_dot = 0 case perhaps a bit better, to avoid division by zero
         if psi_dot == 0:
             psi_dot = 0.00001
@@ -229,10 +223,10 @@ class DrivingMazeParticleFilterTest:
         self.lidar_sigma = 0.001 # standard deviation
 
         # Some geometric parameters for kinematics. These are just test values
-        self.wheel_radius = 0.03 # 0.03 meters, 3 cm
-        self.wheel_dist_x = 0.015 # 0.015 meters, 1.5 cm
-        self.wheel_dist_y = 0.04 # 0.04 meters, 4 cm
-        self.gear_ratio = 3*29.86
+        p.wheel_radius = 0.03 # 0.03 meters, 3 cm
+        p.wheel_dist_x = 0.015 # 0.015 meters, 1.5 cm
+        p.wheel_dist_y = 0.04 # 0.04 meters, 4 cm
+        p.gear_ratio = 3*29.86
         
         # Angular velocity control inputs self.omega_l and self.omega_r
         self.omega_l = 100
@@ -268,8 +262,8 @@ class DrivingMazeParticleFilterTest:
         dt: time step
         """
         # From robot kinematics. See LaTeX document for this math
-        v = self.wheel_radius/2.0*((u[0]+u[1])/self.gear_ratio)
-        psi_dot = (self.wheel_radius*self.wheel_dist_y)/(2*(self.wheel_dist_x**2 + self.wheel_dist_y**2))*((u[1]-u[0])/self.gear_ratio)
+        v = p.wheel_radius/2.0*((u[0]+u[1])/p.gear_ratio)
+        psi_dot = (p.wheel_radius*p.wheel_dist_y)/(2*(p.wheel_dist_x**2 + p.wheel_dist_y**2))*((u[1]-u[0])/p.gear_ratio)
         # TODO: Handle the psi_dot = 0 case perhaps a bit better, to avoid division by zero
         if psi_dot == 0:
             psi_dot = 0.00001
