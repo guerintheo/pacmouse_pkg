@@ -51,7 +51,7 @@ class SimpleParticleFilterTest(object):
         ax1.scatter(self.real_obj[0], self.real_obj[1], color='b')
 
 
-class MazeParticleFilterTest:
+class SimpleMazeParticleFilterTest:
     def __init__(self):
         self.maze = Maze(4,4)
         self.segment_list = maze_to_segment_list(self.maze)
@@ -96,9 +96,9 @@ class MazeParticleFilterTest:
         self.draw_bot(ax1, self.pose, 'b', 1)
 
     def draw_bot(self, plt, pose, color, alpha, size=0.03):
-        plt.scatter(pose[0], pose[1], color=color, alpha=alpha)
-        tip_pose = pose[:2] + np.array([np.cos(pose[2]),np.sin(pose[2])])*size
-        plt.plot((pose[0], tip_pose[0]), (pose[1], tip_pose[1]), color=color, alpha=alpha)
+        arrow = mpatches.Arrow(pose[0], pose[1], size*np.cos(pose[2]), size*np.sin(pose[2]),
+                               color=color, width=size/2, alpha=alpha)
+        plt.add_patch(arrow)
 
 
 class StateEstimatorParticleFilter(object):
@@ -312,16 +312,16 @@ class DrivingMazeParticleFilterTest:
         self.draw_bot(ax1, self.state[:3], 'b', 1)
 
     def draw_bot(self, plt, pose, color, alpha, size=0.03):
-        plt.scatter(pose[0], pose[1], color=color, alpha=alpha)
-        tip_pose = pose[:2] + np.array([np.cos(pose[2]),np.sin(pose[2])])*size
-        plt.plot((pose[0], tip_pose[0]), (pose[1], tip_pose[1]), color=color, alpha=alpha)
+        arrow = mpatches.Arrow(pose[0], pose[1], size*np.cos(pose[2]), size*np.sin(pose[2]),
+                               color=color, width=size/2, alpha=alpha)
+        plt.add_patch(arrow)
 
 if __name__ == "__main__":
     #### To run MazeParticleFilter or SimpleParticelFilter ####
     fig = plt.figure()
     ax1 = fig.add_subplot(1,1,1)
     # pf = SimpleParticleFilterTest()
-    # pf = MazeParticleFilterTest()
+    # pf = SimpleMazeParticleFilterTest()
     pf = DrivingMazeParticleFilterTest()
     num_iterations = 200
     animation = animation.FuncAnimation(fig, pf.animate_plot, frames=num_iterations, repeat=False, interval=10)
