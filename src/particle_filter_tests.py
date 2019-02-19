@@ -297,6 +297,10 @@ class DrivingMazeParticleFilterTest:
 
     def update(self):
         # Add motion and noise to real robot
+        
+        # TODO: Consider whether to model each particle as a 3-vector or a
+        # 6-vector. If modeled as 6-vectors, then we should probably use the
+        # complete motion model on each of the particles
         self.u_mu = self.motion_model_mean(self.state, np.array([self.omega_l, self.omega_r]), 0.2)
         self.state += np.random.normal(self.u_mu, self.u_sigma)  
 
