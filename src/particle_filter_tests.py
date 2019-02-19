@@ -224,7 +224,7 @@ class DrivingMazeParticleFilterTest:
         self.particles[:,:] = self.state[None,:3]
 
         self.u_mu = np.array([0, 0, 0, 0, 0, 0]) # assume the bot rotates in place
-        self.u_sigma = np.array([.005,.005, 0.05, 0, 0, 0]) # we lock the rotation because we have IMU
+        self.u_sigma = np.array([.001,.001, 0.05, 1e-4, 1e-4, 1e-4]) # we lock the rotation because we have IMU
 
         self.lidar_sigma = 0.001 # standard deviation
 
@@ -235,8 +235,8 @@ class DrivingMazeParticleFilterTest:
         self.gear_ratio = 3*29.86
         
         # Angular velocity control inputs self.omega_l and self.omega_r
-        self.omega_l = 1000
-        self.omega_r = 1000
+        self.omega_l = 100
+        self.omega_r = 100
         self.input_increment = 30
 
     def on_key_press(self, event):
@@ -296,15 +296,14 @@ class DrivingMazeParticleFilterTest:
         # TODO: add normal (gaussian) loss (mu is Z)
 
     def update(self):
-
-        mean_change = self.motion_model_mean(self.state, np.array([self.omega_l, self.omega_r]), 0.2)
         # Add motion and noise to real robot
-        self.state += np.random.normal(mean_change, self.u_sigma)  
+        self.u_mu = self.motion_model_mean(self.state, np.array([self.omega_l, self.omega_r]), 0.2)
+        self.state += np.random.normal(self.u_mu, self.u_sigma)  
 
         # get the sensor data
         self.Z = estimate_lidar_returns(self.state[:3], self.maze) + np.random.normal(0, self.lidar_sigma, 6)
 
-        self.particles = particle_filter_update(self.particles, mean_change[:3], self.u_sigma[:3], self.Z, self.obs_func)
+        self.particles = particle_filter_update(self.particles, self.u_mu[:3], self.u_sigma[:3], self.Z, self.obs_func)
 
     def animate_plot(self, i):
         self.update()
@@ -328,6 +327,7 @@ if __name__ == "__main__":
     pf = DrivingMazeParticleFilterTest()
     num_iterations = 200
     animation = animation.FuncAnimation(fig, pf.animate_plot, frames=num_iterations, repeat=False, interval=10)
+    cid = fig.canvas.mpl_connect('key_press_event', pf.on_key_press)
     plt.show()
 
     #### To run StateEstimatorParticleFilter ####
