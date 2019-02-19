@@ -68,21 +68,25 @@ class MazeParticleFilterTest:
         # self.particles[:,2] = np.random.uniform(low=0, high=np.pi*2, size=self.num_particles)
         self.particles[:,:] = self.pose[None,:]
 
-        self.u_mu = np.array([0, 0, 0.0]) # assume the bot rotates in place
+        self.u_mu = np.array([0, 0, 0.05]) # assume the bot rotates in place
         self.u_sigma = np.array([.005,.005, 0.05]) # we lock the rotation because we have IMU
+
+        self.lidar_sigma = 0.001 # standard deviation
 
     def obs_func(self, Z, x):
         z_exp = estimate_lidar_returns(x, self.maze)
         # NOTE(izzy): experimenting with different loss functions
-        # return np.prod(np.exp(-np.abs(z_exp - Z)))        # exponential
-        return np.prod(1/(np.abs(z_exp - Z) + 1e-5))        # inverse
-        # return np.max([np.mean(1-np.abs(z_exp - Z)), 0])    # linear
+        # return np.prod(np.exp(-np.abs(z_exp - Z)))            # exponential
+        # return np.sum(-np.abs(z_exp - Z))                     # log exponential
+        return np.prod(1/(np.abs(z_exp - Z) + 1e-5))          # inverse
+        # return np.sum(np.log(1/(np.abs(z_exp - Z) + 1e-5)))   # log inverse
         # TODO: add normal (gaussian) loss (mu is Z)
 
     def update(self):
         self.pose[2] += 0.05 # rotate the robot
-        self.Z = estimate_lidar_returns(self.pose, self.maze)
-        self.particles[:,2] = self.pose[2] # lock the lidar rotations
+        # get the sensor data
+        self.Z = estimate_lidar_returns(self.pose, self.maze) + np.random.normal(0, self.lidar_sigma, 6)
+
         self.particles = particle_filter_update(self.particles, self.u_mu, self.u_sigma, self.Z, self.obs_func)
 
     def animate_plot(self, i):
