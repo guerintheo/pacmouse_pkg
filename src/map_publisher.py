@@ -1,5 +1,5 @@
 import rospy
-import Maze
+from map import Maze
 from pacmouse_pkg.msg import Map
 
 
