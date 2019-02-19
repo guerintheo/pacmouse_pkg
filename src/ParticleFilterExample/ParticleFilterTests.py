@@ -63,17 +63,19 @@ class MazeParticleFilterTest:
 
         # create a bunch of particles in different positions and rotations
         self.particles = np.zeros([self.num_particles, 3])
-        self.particles[:,0] = np.random.uniform(low=0, high=self.maze.width*p.maze_inner_size, size=self.num_particles)
-        self.particles[:,1] = np.random.uniform(low=0, high=self.maze.height*p.maze_inner_size, size=self.num_particles)
-        self.particles[:,2] = np.random.uniform(low=0, high=np.pi*2, size=self.num_particles)
+        # self.particles[:,0] = np.random.uniform(low=0, high=self.maze.width*p.maze_inner_size, size=self.num_particles)
+        # self.particles[:,1] = np.random.uniform(low=0, high=self.maze.height*p.maze_inner_size, size=self.num_particles)
+        # self.particles[:,2] = np.random.uniform(low=0, high=np.pi*2, size=self.num_particles)
+        self.particles[:,:] = self.pose[None,:]
 
-        self.u_mu = np.array([0,0,0.05]) # assume the bot rotates in place
-        self.u_sigma = np.array([.005,.005, 1e-5]) # we lock the rotation because we have IMU
+        self.u_mu = np.array([0, 0, 0.0]) # assume the bot rotates in place
+        self.u_sigma = np.array([.005,.005, 0.05]) # we lock the rotation because we have IMU
 
     def obs_func(self, Z, x):
         z_exp = estimate_lidar_returns(x, self.maze)
         # NOTE(izzy): experimenting with different loss functions
-        return np.mean(np.exp(-np.abs(z_exp - Z)))        # exponential
+        # return np.prod(np.exp(-np.abs(z_exp - Z)))        # exponential
+        return np.prod(1/(np.abs(z_exp - Z) + 1e-5))        # inverse
         # return np.max([np.mean(1-np.abs(z_exp - Z)), 0])    # linear
         # TODO: add normal (gaussian) loss (mu is Z)
 

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -43,8 +43,9 @@ class StateEstimatorParticleFilter(object):
     
     def gaussian_2d(self, mu, sigma, x, y):
         X = np.array([x,y])
-        return np.exp(-1/2 * (X - mu).transpose() @ np.linalg.inv(sigma) @ (X - mu))/(np.sqrt((2*np.pi)**2 * np.linalg.det(sigma)))
-        
+        return np.exp(-1/2 * np.dot((X - mu).transpose(),np.dot(np.linalg.inv(sigma),(X - mu))))/\
+               (np.sqrt((2*np.pi)**2 * np.linalg.det(sigma)))
+
     def motion_model_mean(self, x, u, dt):
         """
         Given the previous state (x) and control input (u), calculate the
