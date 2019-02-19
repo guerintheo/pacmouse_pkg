@@ -5,6 +5,7 @@ import matplotlib.patches as mpatches
 import matplotlib.animation as animation
 from estimation import estimate_lidar_returns, maze_to_segment_list, plot_segment_list
 from ParticleFilter import particle_filter_update
+from dynamics import motion_model
 from map import Maze
 import params as p
 
@@ -130,42 +131,13 @@ class StateEstimatorParticleFilter(object):
                 y = ypoints[iy]
                 self.zpoints[iy][ix] = gaussian_2d(self.mu, self.sigma, x, y)
 
-    def motion_model_mean(self, x, u, dt):
-        """
-        Given the previous state (x) and control input (u), calculate the
-        predicted change in state at the next time step.
-        
-        x: previous state
-        u: control input; NumPy array containing [angular_velocity_left_motor,
-           angular_velocity_right_motor]
-        dt: time step
-        """
-        # From robot kinematics. See LaTeX document for this math
-        v = p.wheel_radius/2.0*((u[0]+u[1])/p.gear_ratio)
-        psi_dot = (p.wheel_radius*p.wheel_dist_y)/(2*(p.wheel_dist_x**2 + p.wheel_dist_y**2))*((u[1]-u[0])/p.gear_ratio)
-        # TODO: Handle the psi_dot = 0 case perhaps a bit better, to avoid division by zero
-        if psi_dot == 0:
-            psi_dot = 0.00001
-        
-        psi = x[2]
-        a = x[4]
-        
-        dpsi = psi_dot*dt
-        dv = a*dt
-        
-        dx = 1.0/(psi_dot**2.0)*((v+dv)*psi_dot*np.sin(psi + dpsi) - v*psi_dot*np.sin(psi) + a*np.cos(psi + dpsi) - a*np.cos(psi))
-        dy = 1.0/(psi_dot**2.0)*((-v-dv)*psi_dot*np.cos(psi + dpsi) + v*psi_dot*np.cos(psi) + a*np.sin(psi + dpsi) - a*np.sin(psi))
-        
-        change_in_state = np.array([dx, dy, dpsi, dv, 0.0, 0.0])
-        return change_in_state
-
     def obs_func(self, Z, x):
         """ P(Z | x) """
         z_exp = gaussian_2d(self.mu, self.sigma, x[0], x[1])
         return np.exp(-(100*(z_exp - Z))**2)
 
     def animate_plot(self, i, pf):
-        mean_change = self.motion_model_mean(self.real_obj_state, np.array([self.omega_l, self.omega_r]), 0.2)
+        mean_change = motion_model(self.real_obj_state, np.array([self.omega_l, self.omega_r]), 0.2)
         # Add motion and noise to real robot
         self.real_obj_state += np.random.normal(mean_change, self.u_sigma)
         
@@ -220,7 +192,7 @@ class DrivingMazeParticleFilterTest:
         self.u_mu = np.array([0, 0, 0, 0, 0, 0]) # assume the bot rotates in place
         self.u_sigma = np.array([.001,.001, 0.05, 1e-4, 1e-4, 1e-4]) # we lock the rotation because we have IMU
 
-        self.lidar_sigma = 0.001 # standard deviation
+        self.lidar_sigma = 0.005 # standard deviation
 
         # Some geometric parameters for kinematics. These are just test values
         p.wheel_radius = 0.03 # 0.03 meters, 3 cm
@@ -251,35 +223,6 @@ class DrivingMazeParticleFilterTest:
             self.omega_l -= self.input_increment
             self.omega_r -= self.input_increment
 
-    def motion_model_mean(self, x, u, dt):
-        """
-        Given the previous state (x) and control input (u), calculate the
-        predicted change in state at the next time step.
-        
-        x: previous state
-        u: control input; NumPy array containing [angular_velocity_left_motor,
-           angular_velocity_right_motor]
-        dt: time step
-        """
-        # From robot kinematics. See LaTeX document for this math
-        v = p.wheel_radius/2.0*((u[0]+u[1])/p.gear_ratio)
-        psi_dot = (p.wheel_radius*p.wheel_dist_y)/(2*(p.wheel_dist_x**2 + p.wheel_dist_y**2))*((u[1]-u[0])/p.gear_ratio)
-        # TODO: Handle the psi_dot = 0 case perhaps a bit better, to avoid division by zero
-        if psi_dot == 0:
-            psi_dot = 0.00001
-        
-        psi = x[2]
-        a = x[4]
-        
-        dpsi = psi_dot*dt
-        dv = a*dt
-        
-        dx = 1.0/(psi_dot**2.0)*((v+dv)*psi_dot*np.sin(psi + dpsi) - v*psi_dot*np.sin(psi) + a*np.cos(psi + dpsi) - a*np.cos(psi))
-        dy = 1.0/(psi_dot**2.0)*((-v-dv)*psi_dot*np.cos(psi + dpsi) + v*psi_dot*np.cos(psi) + a*np.sin(psi + dpsi) - a*np.sin(psi))
-        
-        change_in_state = np.array([dx, dy, dpsi, dv, 0.0, 0.0])
-        return change_in_state
-
     def obs_func(self, Z, x):
         z_exp = estimate_lidar_returns(x, self.maze)
         # NOTE(izzy): experimenting with different loss functions
@@ -295,7 +238,7 @@ class DrivingMazeParticleFilterTest:
         # TODO: Consider whether to model each particle as a 3-vector or a
         # 6-vector. If modeled as 6-vectors, then we should probably use the
         # complete motion model on each of the particles
-        self.u_mu = self.motion_model_mean(self.state, np.array([self.omega_l, self.omega_r]), 0.2)
+        self.u_mu = motion_model(self.state, np.array([self.omega_l, self.omega_r]), 0.2)
         self.state += np.random.normal(self.u_mu, self.u_sigma)  
 
         # get the sensor data
