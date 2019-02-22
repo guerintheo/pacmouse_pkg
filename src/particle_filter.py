@@ -48,12 +48,11 @@ def resample(X, pmf):
 class ParticleFilter:
     def __init__(self, particles):
         self.particles = particles
-        self.n = self.particles.shape[0]
-        self.d = self.particles.shape[1]
-        self.likelihoods = np.ones(n)/n
+        self.n, self.d = self.particles.shape
+        self.likelihoods = np.ones(self.n)/self.n
 
     def resample(self):
-        new_ix = np.random.choice(len(pmf), size=self.n, replace=True, p=self.likelihoods)
+        new_ix = np.random.choice(self.n, size=self.n, replace=True, p=self.likelihoods)
         self.particles = self.particles[new_ix, :]
 
     def perturb(self, u_mu, u_sigma):

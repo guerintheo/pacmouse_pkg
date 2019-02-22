@@ -6,7 +6,8 @@ import numpy as np
 from util import rotate_2d
 
 def lidar_observation_function(Z, x, maze):
-    """Computes a likelihood given sensor data and a particle position
+    """Computes a likelihood given sensor data and a particle position. A higher
+    number means x is more likely to produce an observation similar to Z
 
     Args:
         Z (1d numpy array): a 6-vector of lidar measurements

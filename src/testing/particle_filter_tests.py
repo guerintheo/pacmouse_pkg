@@ -6,8 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.animation as animation
-from sensor_model import estimate_lidar_returns, maze_to_segment_list, plot_segment_list
-from particle_filter import particle_filter_update
+from sensor_model import estimate_lidar_returns, maze_to_segment_list, plot_segment_list, lidar_observation_function
+from particle_filter import particle_filter_update, ParticleFilter
 from dynamics import motion_model
 from control import step, get_sp, mix
 from maze import Maze
@@ -177,94 +177,6 @@ class StateEstimatorParticleFilter(object):
             self.omega_r -= self.input_increment
 
 
-class DrivingMazeParticleFilterTest:
-
-    def __init__(self):
-        self.maze = Maze(6,6)
-        self.segment_list = maze_to_segment_list(self.maze)
-        self.state = np.array([0.5*p.maze_inner_size, 0.5*p.maze_inner_size, np.pi/2,0,0,0]) # x, y, theta, dx, dy, psi
-        self.target_cell = [self.maze.width-1, self.maze.height-1]
-
-        self.num_particles = 20
-
-        # create a bunch of particles in different positions and rotations
-        self.particles = np.zeros([self.num_particles, 3])
-        # self.particles[:,0] = np.random.uniform(low=0, high=self.maze.width*p.maze_inner_size, size=self.num_particles)
-        # self.particles[:,1] = np.random.uniform(low=0, high=self.maze.height*p.maze_inner_size, size=self.num_particles)
-        # self.particles[:,2] = np.random.uniform(low=0, high=np.pi*2, size=self.num_particles)
-        self.particles[:,:] = self.state[None,:3]
-
-        self.u_mu = np.array([0, 0, 0, 0, 0, 0]) # assume the bot rotates in place
-        self.u_sigma = np.array([.001,.001, 0.05, 1e-4, 1e-4, 1e-4]) # we lock the rotation because we have IMU
-
-        self.lidar_sigma = 0.005 # standard deviation
-
-        # Some geometric parameters for kinematics. These are just test values
-        p.wheel_radius = 0.03 # 0.03 meters, 3 cm
-        p.wheel_dist_x = 0.015 # 0.015 meters, 1.5 cm
-        p.wheel_dist_y = 0.04 # 0.04 meters, 4 cm
-        p.gear_ratio = 3*29.86
-        
-        # Angular velocity control inputs self.omega_l and self.omega_r
-        self.omega_l = 100
-        self.omega_r = 100
-        # self.input_increment = 30
-
-    # def on_key_press(self, event):
-    #     """
-    #     Matplotlib keypress event handler that adjusts the angular velocities of
-    #     the left and right motors of the robot.
-    #     """
-    #     if (event.key == "left"):
-    #         self.omega_r += self.input_increment
-    #         self.omega_l -= self.input_increment
-    #     elif (event.key == "right"):
-    #         self.omega_l += self.input_increment
-    #         self.omega_r -= self.input_increment
-    #     elif (event.key == "up"):
-    #         self.omega_l += self.input_increment
-    #         self.omega_r += self.input_increment
-    #     elif (event.key == "down"):
-    #         self.omega_l -= self.input_increment
-    #         self.omega_r -= self.input_increment
-
-    def obs_func(self, Z, x):
-        z_exp = estimate_lidar_returns(x, self.maze)
-        # NOTE(izzy): experimenting with different loss functions
-        # return np.prod(np.exp(-np.abs(z_exp - Z)))            # exponential
-        # return np.sum(-np.abs(z_exp - Z))                     # log exponential
-        return np.prod(1/(np.abs(z_exp - Z) + 1e-5))          # inverse
-        # return np.sum(np.log(1/(np.abs(z_exp - Z) + 1e-5)))   # log inverse
-        # TODO: add normal (gaussian) loss (mu is Z)
-
-    def update(self):
-        # Add motion and noise to real robot
-        self.set_point = get_sp(self.state, self.maze, self.target_cell)
-        (self.omega_l, self.omega_r) = mix(step(self.state, self.set_point))
-
-        # TODO: Consider whether to model each particle as a 3-vector or a
-        # 6-vector. If modeled as 6-vectors, then we should probably use the
-        # complete motion model on each of the particles
-        self.u_mu = motion_model(self.state, np.array([self.omega_l, self.omega_r]), 0.2)
-        self.state += np.random.normal(self.u_mu, self.u_sigma)  
-
-        # get the sensor data
-        self.Z = estimate_lidar_returns(self.state[:3], self.maze) + np.random.normal(0, self.lidar_sigma, 6)
-
-        self.particles = particle_filter_update(self.particles, self.u_mu[:3], self.u_sigma[:3], self.Z, self.obs_func)
-
-    def animate_plot(self, i):
-        self.update()
-        ax1.clear()
-        plot_segment_list(ax1, self.segment_list)
-        for p in self.particles:
-            self.draw_bot(ax1, p, 'r', 0.2)
-        self.draw_bot(ax1, self.state[:3], 'b', 1)
-
-    def draw_bot(self, plt, pose, color, alpha, size=0.03):
-        arrow = mpatches.Arrow(pose[0], pose[1], size*np.cos(pose[2]), size*np.sin(pose[2]),
-                               color=color, width=size/2, alpha=alpha)
-        plt.add_patch(arrow)
 
 if __name__ == "__main__":
     #### To run MazeParticleFilter or SimpleParticelFilter ####
