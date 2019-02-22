@@ -5,6 +5,20 @@ import params as p
 import numpy as np
 from util import rotate_2d
 
+def lidar_observation_function(Z, x, maze):
+    """Computes a likelihood given sensor data and a particle position
+
+    Args:
+        Z (1d numpy array): a 6-vector of lidar measurements
+        x (1d numpy array): a 6-vector of state (of a particle)
+        maze (Maze): the maze
+
+    Returns:
+        float: how likely that particle is based on agreement the sensor data, Z
+    """
+    z_exp = estimate_lidar_returns(x, maze)
+    return np.prod(1/(np.abs(z_exp - Z) + 1e-5))
+
 def estimate_lidar_returns_old(pose, maze):
     plot = False
 
