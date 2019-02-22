@@ -13,9 +13,11 @@ def adj_to_ascii(adj_matrix, height, width):
         Returns:
             string: printable ascii representation of maze
     """
-    
-    rows = height
-    cols = width
+   
+   
+    adj_matrix = np.rot90(adj_matrix, -1)
+    rows = width
+    cols = height
     output = '%d,%d\n' % (rows, cols)
     cap = ''.join(['+---' for _ in range(cols)]) + '+\n'
     output += cap
@@ -41,8 +43,8 @@ def parse_maze_file(fn):
         Returns:
             (adj_matrix, rows, cols)
             adj_matrix: adjacency matrix representing the maze
-            rows: number of rows in the maze
-            cols: number of columns in the maze
+            x: number of x cells in the maze 
+            y: number of y cells in the maze
     """
 
     with open(fn,'r') as fo:
@@ -75,7 +77,11 @@ def parse_maze_file(fn):
     adj_matrix += adj_matrix.transpose()
     adj_matrix += np.eye(n_cells)
 
-    return (adj_matrix, maze_rows, maze_cols)
+    # This is to account for the fact that the adjacency matrix needs
+    # to be in x,y instead of rows, columns
+    adj_matrix = np.rot90(adj_matrix)
+
+    return (adj_matrix, maze_cols, maze_rows)
 
 def main():
     parser = argparse.ArgumentParser('Tests the ascii <-> adjacency graph functionality')
