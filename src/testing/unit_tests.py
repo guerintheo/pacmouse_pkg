@@ -20,6 +20,18 @@ class IOTest(unittest.TestCase):
         m.set_connected([1,2],[1,1], 0)
         return m
 
+    def test_adjacency_loading(self):
+        test_adj = np.array([[0, 1, 0, 0],\
+            [1, 0, 0, 1],\
+            [0, 0, 0, 1],\
+            [0, 1, 1, 0]])
+        m = Maze(2,2,adj_matrix=test_adj)
+        prob = m.get_connected([0,0],[1,0])
+        self.assertEqual(prob, 1, 'Passing our own adj_matrix is borked')
+        prob = m.get_connected([0,0],[0,1])
+        self.assertEqual(prob, 0, 'Passing our own adj_matrix is borked')
+
+
     def test_adjacency_basics(self):
         m = self.configure_test_maze()
         m.set_connected([2,0],[2,1], 0.5)

@@ -13,20 +13,25 @@ class Maze:
 	the cells are disconnected.
 
 	Attributes:
-	    adj_matrix (TYPE): Description
 	    height (int): The width of the Maze
 	    width (int): The height of the Maze
+		filename (String): filename
+	    adj_matrix (2d-nparray): adjacency matrix to start with
 	"""
 
-	def __init__(self, width=16, height=16, filename=None):
+	def __init__(self, width=16, height=16, filename=None, adj_matrix=None):
 		if filename is not None:
 			self.load(filename)
 		else:
 			self.width = width
 			self.height = height
 
-			self.adj_matrix = np.zeros([self.width * self.height, self.width * self.height])
-			self.generate_random_maze()
+			if adj_matrix is not None:
+				self.adj_matrix = adj_matrix
+			else:
+				self.adj_matrix = np.zeros([self.width * self.height, self.width * self.height])
+				self.generate_random_maze()
+			
 			# self.connect_all()
 
 	def connect_all(self):
