@@ -9,7 +9,7 @@ import matplotlib.animation as animation
 from sensor_model import estimate_lidar_returns, maze_to_segment_list, plot_segment_list
 from particle_filter import particle_filter_update
 from dynamics import motion_model
-from control import step
+from control import step, get_sp
 from maze import Maze
 import params as p
 
@@ -180,10 +180,10 @@ class StateEstimatorParticleFilter(object):
 class DrivingMazeParticleFilterTest:
 
     def __init__(self):
-        self.maze = Maze(4,4)
+        self.maze = Maze(6,6)
         self.segment_list = maze_to_segment_list(self.maze)
-        self.state = np.array([1.5*p.maze_inner_size, 1.5*p.maze_inner_size, np.pi/4,0,0,0]) # x, y, theta, dx, dy, psi
-        self.set_point = np.array([3.5*p.maze_inner_size, 0.5*p.maze_inner_size, np.pi/4,0,0,0])
+        self.state = np.array([0.5*p.maze_inner_size, 0.5*p.maze_inner_size, np.pi/2,0,0,0]) # x, y, theta, dx, dy, psi
+        self.target_cell = [self.maze.width-1, self.maze.height-1]
 
         self.num_particles = 20
 
@@ -239,7 +239,7 @@ class DrivingMazeParticleFilterTest:
 
     def update(self):
         # Add motion and noise to real robot
-        
+        self.set_point = get_sp(self.state, self.maze, self.target_cell)
         (self.omega_l, self.omega_r) = step(self.state, self.set_point)
 
         # TODO: Consider whether to model each particle as a 3-vector or a
@@ -273,7 +273,7 @@ if __name__ == "__main__":
     # pf = SimpleParticleFilterTest()
     # pf = SimpleMazeParticleFilterTest()
     pf = DrivingMazeParticleFilterTest()
-    num_iterations = 200
+    num_iterations = 10000
     animation = animation.FuncAnimation(fig, pf.animate_plot, frames=num_iterations, repeat=False, interval=10)
     # cid = fig.canvas.mpl_connect('key_press_event', pf.on_key_press)
     plt.show()
