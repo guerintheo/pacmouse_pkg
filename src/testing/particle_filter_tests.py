@@ -9,6 +9,7 @@ import matplotlib.animation as animation
 from sensor_model import estimate_lidar_returns, maze_to_segment_list, plot_segment_list
 from particle_filter import particle_filter_update
 from dynamics import motion_model
+from control import step
 from maze import Maze
 import params as p
 
@@ -182,6 +183,7 @@ class DrivingMazeParticleFilterTest:
         self.maze = Maze(4,4)
         self.segment_list = maze_to_segment_list(self.maze)
         self.state = np.array([1.5*p.maze_inner_size, 1.5*p.maze_inner_size, np.pi/4,0,0,0]) # x, y, theta, dx, dy, psi
+        self.set_point = np.array([3.5*p.maze_inner_size, 0.5*p.maze_inner_size, np.pi/4,0,0,0])
 
         self.num_particles = 20
 
@@ -206,25 +208,25 @@ class DrivingMazeParticleFilterTest:
         # Angular velocity control inputs self.omega_l and self.omega_r
         self.omega_l = 100
         self.omega_r = 100
-        self.input_increment = 30
+        # self.input_increment = 30
 
-    def on_key_press(self, event):
-        """
-        Matplotlib keypress event handler that adjusts the angular velocities of
-        the left and right motors of the robot.
-        """
-        if (event.key == "left"):
-            self.omega_r += self.input_increment
-            self.omega_l -= self.input_increment
-        elif (event.key == "right"):
-            self.omega_l += self.input_increment
-            self.omega_r -= self.input_increment
-        elif (event.key == "up"):
-            self.omega_l += self.input_increment
-            self.omega_r += self.input_increment
-        elif (event.key == "down"):
-            self.omega_l -= self.input_increment
-            self.omega_r -= self.input_increment
+    # def on_key_press(self, event):
+    #     """
+    #     Matplotlib keypress event handler that adjusts the angular velocities of
+    #     the left and right motors of the robot.
+    #     """
+    #     if (event.key == "left"):
+    #         self.omega_r += self.input_increment
+    #         self.omega_l -= self.input_increment
+    #     elif (event.key == "right"):
+    #         self.omega_l += self.input_increment
+    #         self.omega_r -= self.input_increment
+    #     elif (event.key == "up"):
+    #         self.omega_l += self.input_increment
+    #         self.omega_r += self.input_increment
+    #     elif (event.key == "down"):
+    #         self.omega_l -= self.input_increment
+    #         self.omega_r -= self.input_increment
 
     def obs_func(self, Z, x):
         z_exp = estimate_lidar_returns(x, self.maze)
@@ -238,6 +240,8 @@ class DrivingMazeParticleFilterTest:
     def update(self):
         # Add motion and noise to real robot
         
+        (self.omega_l, self.omega_r) = step(self.state, self.set_point)
+
         # TODO: Consider whether to model each particle as a 3-vector or a
         # 6-vector. If modeled as 6-vectors, then we should probably use the
         # complete motion model on each of the particles
@@ -271,7 +275,7 @@ if __name__ == "__main__":
     pf = DrivingMazeParticleFilterTest()
     num_iterations = 200
     animation = animation.FuncAnimation(fig, pf.animate_plot, frames=num_iterations, repeat=False, interval=10)
-    cid = fig.canvas.mpl_connect('key_press_event', pf.on_key_press)
+    # cid = fig.canvas.mpl_connect('key_press_event', pf.on_key_press)
     plt.show()
 
     #### To run StateEstimatorParticleFilter ####

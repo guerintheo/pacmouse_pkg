@@ -5,10 +5,12 @@ import params as p
 import numpy as np
 
 
-def rotate2d(coord, theta):
-    r = np.array([[np.cos(theta), -np.sin(theta)],
-                  [np.sin(theta),  np.cos(theta)]])
-    return np.dot(r, coord)
+def rotation_matrix_2d(theta):
+    return np.array([[np.cos(theta), -np.sin(theta)],
+                     [np.sin(theta),  np.cos(theta)]])
+
+def rotate_2d(coord, theta):
+    return np.dot(rotation_matrix_2d(theta), coord)
 
 def estimate_lidar_returns_old(pose, maze):
     plot = False
@@ -18,9 +20,9 @@ def estimate_lidar_returns_old(pose, maze):
     lidar_list = []
     returns = []
     for lidar_transform in p.lidar_transforms:
-        lidar_global_xy = pose[:2] + rotate2d(lidar_transform[:2], pose[2])
+        lidar_global_xy = pose[:2] + rotate_2d(lidar_transform[:2], pose[2])
         lidar_global_theta = pose[2] + lidar_transform[2]
-        lidar_global_end = rotate2d([5.,0], lidar_global_theta) + lidar_global_xy
+        lidar_global_end = rotate_2d([5.,0], lidar_global_theta) + lidar_global_xy
         intersections = [lidar_global_end]
         lidar_line = line(lidar_global_end, lidar_global_xy)
         for l,seg in zip(line_list, segment_list):
@@ -57,9 +59,9 @@ def estimate_lidar_returns(pose, maze):
     c = p.maze_inner_size
     returns = np.zeros(p.lidar_transforms.shape[0])
     for lidar, lidar_transform in enumerate(p.lidar_transforms):
-        lidar_global_xy = pose[:2] + rotate2d(lidar_transform[:2], pose[2])
+        lidar_global_xy = pose[:2] + rotate_2d(lidar_transform[:2], pose[2])
         lidar_global_theta = pose[2] + lidar_transform[2]
-        lidar_global_vector = rotate2d([1,0], lidar_global_theta) # x, y
+        lidar_global_vector = rotate_2d([1,0], lidar_global_theta) # x, y
         move_right, move_up = lidar_global_vector > 0 # boolean vector
 
         # get the coordinate of where the lidar line will hit the walls
