@@ -5,6 +5,8 @@ import rospy
 from geometry_msgs.msg import PoseStamped
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import control
+from maze_parser import parse_maze_file
+from maze import Maze
 
 pose_est = np.zeros(6) # x,y,theta
 def pose_est_callback(msg):
@@ -24,7 +26,10 @@ def main():
     traj_pub = rospy.Publisher('/traj', PoseStamped, queue_size=1)
 
     # Load maze
-    maze = parse_maze_file('../gazebo_worlds/testmaze.txt')
+    (adj_matrix, size_x, size_y) = parse_maze_file('../gazebo_worlds/testmaze.txt')
+    
+    m = Maze(size_x, size_y)
+    m.adj_matrix = adj_matrix
 
     # DEFINE TARGET CELL
     TARGET_CELL = np.array([0,0])

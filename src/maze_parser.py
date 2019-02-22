@@ -81,6 +81,7 @@ def parse_maze_file(fn):
     # to be in x,y instead of rows, columns
     adj_matrix = np.rot90(adj_matrix)
 
+    #                       x          y
     return (adj_matrix, maze_cols, maze_rows)
 
 def main():
