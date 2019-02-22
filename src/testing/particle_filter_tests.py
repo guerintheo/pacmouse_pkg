@@ -9,7 +9,7 @@ import matplotlib.animation as animation
 from sensor_model import estimate_lidar_returns, maze_to_segment_list, plot_segment_list
 from particle_filter import particle_filter_update
 from dynamics import motion_model
-from control import step, get_sp
+from control import step, get_sp, mix
 from maze import Maze
 import params as p
 
@@ -240,7 +240,7 @@ class DrivingMazeParticleFilterTest:
     def update(self):
         # Add motion and noise to real robot
         self.set_point = get_sp(self.state, self.maze, self.target_cell)
-        (self.omega_l, self.omega_r) = step(self.state, self.set_point)
+        (self.omega_l, self.omega_r) = mix(step(self.state, self.set_point))
 
         # TODO: Consider whether to model each particle as a 3-vector or a
         # 6-vector. If modeled as 6-vectors, then we should probably use the

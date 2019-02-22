@@ -3,14 +3,7 @@ from maze import Maze
 import time
 import params as p
 import numpy as np
-
-
-def rotation_matrix_2d(theta):
-    return np.array([[np.cos(theta), -np.sin(theta)],
-                     [np.sin(theta),  np.cos(theta)]])
-
-def rotate_2d(coord, theta):
-    return np.dot(rotation_matrix_2d(theta), coord)
+from util import rotate_2d
 
 def estimate_lidar_returns_old(pose, maze):
     plot = False
