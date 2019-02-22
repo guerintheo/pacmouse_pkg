@@ -1,12 +1,15 @@
 #!/usr/bin/env python
+import os,sys
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.animation as animation
-from estimation import estimate_lidar_returns, maze_to_segment_list, plot_segment_list
-from ParticleFilter import particle_filter_update
+from sensor_model import estimate_lidar_returns, maze_to_segment_list, plot_segment_list
+from particle_filter import particle_filter_update
 from dynamics import motion_model
-from map import Maze
+from maze import Maze
 import params as p
 
 def gaussian_2d(mu, sigma, x, y):

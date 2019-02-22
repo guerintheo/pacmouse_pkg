@@ -1,6 +1,9 @@
+import os,sys,inspect
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+
 import unittest
 import numpy as np
-from map import Maze
+from maze import Maze
 
 class IOTest(unittest.TestCase):
     """

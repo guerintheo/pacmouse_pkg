@@ -1,5 +1,5 @@
 from matplotlib import pyplot as plt
-from map import Maze
+from maze import Maze
 import time
 import params as p
 import numpy as np
