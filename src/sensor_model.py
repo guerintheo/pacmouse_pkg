@@ -89,32 +89,51 @@ def estimate_lidar_returns(pose, maze):
         y_dists_to_v_walls = x_dists_to_v_walls/lidar_global_vector[0]*lidar_global_vector[1]
 
         # and pair them off and shift back to global coordinates
-        h_wall_intersection_coords = np.vstack([x_dists_to_h_walls, y_dists_to_h_walls]).T + lidar_global_xy[None,:]
-        v_wall_intersection_coords = np.vstack([x_dists_to_v_walls, y_dists_to_v_walls]).T + lidar_global_xy[None,:]
+        h_wall_hit_coords = np.vstack([x_dists_to_h_walls, y_dists_to_h_walls]).T + lidar_global_xy[None,:]
+        v_wall_hit_coords = np.vstack([x_dists_to_v_walls, y_dists_to_v_walls]).T + lidar_global_xy[None,:]
+
+        # make sure that we only consider intersections that happen in the maze
+        h_wall_hit_coords = h_wall_hit_coords[h_wall_hit_coords[:,0] >= 0]
+        h_wall_hit_coords = h_wall_hit_coords[h_wall_hit_coords[:,0] <= maze.width*c]
+        v_wall_hit_coords = v_wall_hit_coords[v_wall_hit_coords[:,1] >= 0]
+        v_wall_hit_coords = v_wall_hit_coords[v_wall_hit_coords[:,1] <= maze.height*c]
+
+        # convert coordinates to x,y indices of the walls
+        h_wall_hit_indices = np.floor(h_wall_hit_coords/c).astype(int)
+        v_wall_hit_indices = np.floor(v_wall_hit_coords/c).astype(int)
+
+        # create index masks for where the lidars hit the walls
+        h_walls = np.zeros([maze.width, maze.height+1])
+        v_walls = np.zeros([maze.width+1, maze.height])
+        h_walls[h_wall_hit_indices[:,0], h_wall_hit_indices[:,1]] = 1 + np.arange(h_wall_hit_indices.shape[0])
+        v_walls[v_wall_hit_indices[:,0], v_wall_hit_indices[:,1]] = 1 + np.arange(v_wall_hit_indices.shape[0])
+
+        # and then mask them by where the walls actually are
+        h_walls *= (maze.h_walls < 1)
+        v_walls *= (maze.v_walls < 1)
+
+        # get the nonzero cells and make two lists of indices
+        h_walls = np.ravel(h_walls)
+        v_walls = np.ravel(v_walls)
+        h_walls = h_walls[h_walls > 0] - 1
+        v_walls = v_walls[v_walls > 0] - 1
+
+        # finally, get the min dist to a point where we hit a wall
+        dists = np.hstack([np.linalg.norm(h_wall_hit_coords[h_walls.astype(int)] - lidar_global_xy, axis=1),
+                           np.linalg.norm(v_wall_hit_coords[v_walls.astype(int)] - lidar_global_xy, axis=1)])
+        returns[lidar] = np.min(dists) if dists.size else -1
 
         if plot:
             lidar_end = lidar_global_xy + lidar_global_vector*5
             plt.plot((lidar_global_xy[0], lidar_end[0]), (lidar_global_xy[1],lidar_end[1]), 'r')
-
-        dists = [] # store the distances to actual wall collisions in this list
-
-        # for each place where a lidar could intersect a wall, check if that wall actually exists
-        for h_wall in h_wall_intersection_coords:
-            if maze.width*c >= h_wall[0] >= 0 and not maze.get_h_wall(*np.floor(h_wall/c)) > 0:
-                dists.append(np.linalg.norm(h_wall - lidar_global_xy))
-                if plot: plt.plot(h_wall[0], h_wall[1], 'ro')
-
-        for v_wall in v_wall_intersection_coords:
-            if maze.height*c >= v_wall[1] >= 0 and not maze.get_v_wall(*np.floor(v_wall/c)) > 0:
-                dists.append(np.linalg.norm(v_wall - lidar_global_xy))
-                if plot: plt.plot(v_wall[0], v_wall[1], 'ro')
-
-        # the minimum return is the first wall that the lidar hits
-        returns[lidar] = np.min(dists) if len(dists) > 0 else -1
+            
+            plt.scatter(*h_wall_hit_coords[h_walls.astype(int)].T)
+            plt.scatter(*v_wall_hit_coords[v_walls.astype(int)].T)
 
     if plot:
         plot_segment_list(plt, maze_to_segment_list(maze))
         plt.show()
+
     return returns
 
 
@@ -173,15 +192,18 @@ def plot_segment_list(plt, segment_list):
 
 if __name__ == '__main__':
     m = Maze(16,16)
+    m.build_wall_matrices()
     segment_list = maze_to_segment_list(m)
     pose = [0.168 * 4.2, 0.168 * 3.2, np.pi/4]
 
     start = time.time()
-    ans =  estimate_lidar_returns_old(pose, m)
+    old_ans =  estimate_lidar_returns_old(pose, m)
     duration = time.time() - start
-    print('OLD: {} seconds\t{}'.format(duration, ans))
+    print('OLD: {} seconds\t{}'.format(duration, old_ans))
 
     start = time.time()
-    ans =  estimate_lidar_returns(pose, m)
+    new_ans =  estimate_lidar_returns(pose, m)
     duration = time.time() - start
-    print('NEW: {} seconds\t{}'.format(duration, ans))
+    print('NEW: {} seconds\t{}'.format(duration, new_ans))
+
+    print np.sum(np.abs(old_ans - new_ans))

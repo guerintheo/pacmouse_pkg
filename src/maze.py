@@ -31,7 +31,7 @@ class Maze:
 			else:
 				self.adj_matrix = np.zeros([self.width * self.height, self.width * self.height])
 				self.generate_random_maze()
-			
+
 			# self.connect_all()
 
 	def connect_all(self):
@@ -208,6 +208,20 @@ class Maze:
 			return 0
 		else:
 			return self.get_connected([x,y-1], [x,y])
+
+	def build_wall_matrices(self):
+		h_wall_indices = np.arange(self.width * (self.height+1))
+		v_wall_indices = np.arange((self.width+1) * self.height)
+
+		self.h_walls = np.zeros([self.width, self.height+1])
+		for i in range(self.width):
+			for j in range(self.height + 1):
+				self.h_walls[i,j] = self.get_h_wall(i,j)
+
+		self.v_walls = np.zeros([self.width+1, self.height])
+		for i in range(self.width + 1):
+			for j in range(self.height):
+				self.v_walls[i,j] = self.get_v_wall(i,j)
 
 
 	def __str__(self):

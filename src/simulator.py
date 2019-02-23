@@ -7,6 +7,7 @@ from particle_filter import ParticleFilter
 from dynamics import motion_model
 from control import step, get_sp, mix
 from maze import Maze
+from util import rotate_2d
 import params as p
 
 
@@ -14,6 +15,7 @@ class DrivingMazeParticleFilterTest:
 
     def __init__(self):
         self.maze = Maze(6,6)
+        self.maze.build_wall_matrices()
         self.segment_list = maze_to_segment_list(self.maze)
         self.state = np.array([0.5*p.maze_inner_size, 0.5*p.maze_inner_size, np.pi/2,0,0,0]) # x, y, theta, dx, dy, psi
         self.target_cell = [self.maze.width-1, self.maze.height-1]
@@ -57,12 +59,24 @@ class DrivingMazeParticleFilterTest:
         plot_segment_list(ax1, self.segment_list)
         for p in self.pf.particles:
             self.draw_bot(ax1, p, 'r', 0.2)
-        self.draw_bot(ax1, self.state[:3], 'b', 1)
+        self.draw_outer_chassis(ax1, self.state[:3], 'b', 1)
 
     def draw_bot(self, plt, pose, color, alpha, size=0.03):
         arrow = mpatches.Arrow(pose[0], pose[1], size*np.cos(pose[2]), size*np.sin(pose[2]),
                                color=color, width=size/2, alpha=alpha)
         plt.add_patch(arrow)
+
+    def draw_outer_chassis(self, plt, pose, color, alpha):
+        corners = np.array([[0,1,1,0], [0,0,1,1]]) - 0.5
+        corners *= np.array([p.robot_length, p.robot_width])[:, None]
+        corners = np.array([rotate_2d(c, pose[2]) for c in corners.T])
+        corners += pose[None, :2]
+
+        for i in range(4):
+            j = (i+1)%4
+            x1, y1 = corners[i]
+            x2, y2 = corners[j]
+            plt.plot((x1, x2), (y1, y2), color=color, alpha=alpha)
 
 
 if __name__ == "__main__":
