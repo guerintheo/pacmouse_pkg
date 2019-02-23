@@ -4,8 +4,8 @@ import matplotlib.patches as mpatches
 import matplotlib.animation as animation
 from sensor_model import *
 from estimation import Estimator
-from dynamics import motion_model
-from control import step, get_sp, mix
+from dynamics import motion_model, inverse_motion_model
+from control import step, get_sp
 from maze import Maze
 from util import rotate_2d
 import params as p
@@ -40,7 +40,7 @@ class Simulator:
     def update(self):
         # run the planner and controller to get commands (using the estimated state)
         self.set_point = get_sp(self.estimator.state, self.maze, self.target_cell)
-        cmd = mix(step(self.estimator.state, self.set_point))
+        cmd = inverse_motion_model(step(self.estimator.state, self.set_point))
 
         # run the simulator to update the "real" robot
         Z = self.simulate(cmd)
