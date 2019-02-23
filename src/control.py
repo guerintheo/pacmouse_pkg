@@ -39,7 +39,7 @@ def get_sp(x, maze, target_cell):
 	Returns:
 	    1d numpy array: The coordinates that the robot should drive to
 	"""
-	cell_coord = np.floor(x[:2] / p.maze_inner_size).astype(int)
+	cell_coord = np.floor(x[:2] / p.maze_cell_size).astype(int)
 	path = maze.get_path(cell_coord, target_cell)
 	target_theta = 0
 
@@ -50,7 +50,7 @@ def get_sp(x, maze, target_cell):
 		dx, dy = maze.index_to_xy(path[2]) - maze.index_to_xy(path[1])
 		target_theta = np.arctan2(dy, dx)
 
-	tx, ty = (maze.index_to_xy(path[1]) + 0.5) * p.maze_inner_size
+	tx, ty = (maze.index_to_xy(path[1]) + 0.5) * p.maze_cell_size
 	
 	return np.array([tx, ty, target_theta])
 

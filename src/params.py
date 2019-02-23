@@ -1,9 +1,10 @@
 import numpy as np
 
 # MAZE
-maze_thickness = 0.012 # m
+maze_wall_thickness = 0.012 # m
 maze_tolerance = 0.0005 # m
 maze_inner_size = 0.168 # m (not including the thickness of the walls)
+maze_cell_size = maze_inner_size + maze_wall_thickness
 
 # ROBOT
 lidar_transforms = np.array([[0.047535,	-0.038236,	-np.pi/2.0], # x, y, theta (body frame)

@@ -21,12 +21,12 @@ class Simulator:
         self.target_cell = [self.maze.width-1, self.maze.height-1]
 
         # specify the initial state
-        self.real_bot_state = np.array([0.5*p.maze_inner_size, 0.5*p.maze_inner_size, np.pi/2,0,0,0])
+        self.real_bot_state = np.array([0.5*p.maze_cell_size, 0.5*p.maze_cell_size, np.pi/2,0,0,0])
 
         # a nosie model for when the robot moves (should be the same as the estimator)
         # NOTE(izzy): this sigma should be estimated by the dyanmics model somehow???
         # We might have to collect mocap data in order to get this
-        self.u_sigma = np.array([.005,.005, np.radians(2), 1e-4, 1e-4, 1e-4])
+        self.u_sigma = np.array([.002,.002, np.radians(2), 1e-4, 1e-4, 1e-4])
         # noise to add to simulated sensor data
         self.lidar_sigma = 0.005
         self.encoder_sigma = 5

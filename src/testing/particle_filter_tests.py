@@ -60,14 +60,14 @@ class SimpleMazeParticleFilterTest:
     def __init__(self):
         self.maze = Maze(4,4)
         self.segment_list = maze_to_segment_list(self.maze)
-        self.pose = np.array([1.5*p.maze_inner_size, 1.5*p.maze_inner_size, np.pi/4]) # x, y, theta
+        self.pose = np.array([1.5*p.maze_cell_size, 1.5*p.maze_cell_size, np.pi/4]) # x, y, theta
 
         self.num_particles = 20
 
         # create a bunch of particles in different positions and rotations
         self.particles = np.zeros([self.num_particles, 3])
-        # self.particles[:,0] = np.random.uniform(low=0, high=self.maze.width*p.maze_inner_size, size=self.num_particles)
-        # self.particles[:,1] = np.random.uniform(low=0, high=self.maze.height*p.maze_inner_size, size=self.num_particles)
+        # self.particles[:,0] = np.random.uniform(low=0, high=self.maze.width*p.maze_cell_size, size=self.num_particles)
+        # self.particles[:,1] = np.random.uniform(low=0, high=self.maze.height*p.maze_cell_size, size=self.num_particles)
         # self.particles[:,2] = np.random.uniform(low=0, high=np.pi*2, size=self.num_particles)
         self.particles[:,:] = self.pose[None,:]
 

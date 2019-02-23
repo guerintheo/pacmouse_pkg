@@ -64,7 +64,8 @@ def estimate_lidar_returns(pose, maze):
     # run ParticleFilterTests it will break due to matplotlib. 
     plot = False
 
-    c = p.maze_inner_size
+    c = p.maze_cell_size
+    w = p.maze_wall_thickness/2.
     returns = np.zeros(p.lidar_transforms.shape[0])
     for lidar, lidar_transform in enumerate(p.lidar_transforms):
         lidar_global_xy = pose[:2] + rotate_2d(lidar_transform[:2], pose[2])
@@ -159,7 +160,7 @@ def get_intersection(L1, L2):
 # generate a list of line segments corresponding to the walls of the maze
 def maze_to_segment_list(maze):
     segment_list = []
-    c = p.maze_inner_size
+    c = p.maze_cell_size
     for x in range(maze.width):
         for y in range(maze.height):
             if x < maze.width - 1:
