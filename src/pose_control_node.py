@@ -65,7 +65,7 @@ def main():
     #cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
     cmd_vel_pub = rospy.Publisher('/mouse_diff_drive_controller/cmd_vel', Twist, queue_size=1)
 
-    loop_rate = rospy.Rate(10)
+    loop_rate = rospy.Rate(20)
     while not rospy.is_shutdown():
         vel_msg = calc_command()
         cmd_vel_pub.publish(vel_msg)

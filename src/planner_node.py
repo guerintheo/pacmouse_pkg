@@ -33,7 +33,7 @@ def main():
     m.adj_matrix = adj_matrix
 
     # DEFINE TARGET CELL
-    TARGET_CELL = np.array([0,0])
+    TARGET_CELL = np.array([5,0])
 
     traj = PoseStamped()
     loop_rate = rospy.Rate(20)

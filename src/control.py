@@ -21,6 +21,11 @@ def step(x, sp):
 	d = np.sqrt(e_x**2 + e_y**2)				# the distance to the desired position
 	facing_target = (np.pi - np.abs(e_t))/np.pi # 1 when facing the target. 0 when facing away from target
 
+        if np.abs(e_t) < np.pi/4:
+            facing_target = (np.pi - np.abs(e_t))/np.pi # 1 when facing the target. 0 when facing away from target
+        else:
+            facing_target = 0
+
 	steering_command = e_t * steering_coeff				# turn to face the target
 	drive_command =  d * facing_target * drive_coeff	# drive forward faster when facing the target
 

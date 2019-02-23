@@ -82,6 +82,7 @@ def main():
         est_state_message.pose.position.y = est_state[1]
 
         quat = quaternion_from_euler(0,0,est_state[2])
+        print('Estimated Theta: %f' % est_state[2])
 
         est_state_message.pose.orientation.x = quat[0]
         est_state_message.pose.orientation.y = quat[1]
