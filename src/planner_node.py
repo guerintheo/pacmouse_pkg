@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # planner_node.py -- Outputs a /traj command based on current /pose_est
-
+import numpy as np
 import rospy
 from geometry_msgs.msg import PoseStamped
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
@@ -9,6 +9,7 @@ from maze_parser import parse_maze_file
 from maze import Maze
 
 pose_est = np.zeros(6) # x,y,theta
+
 def pose_est_callback(msg):
     global pose_est
     pose_est[0] = msg.pose.position.x
@@ -38,15 +39,20 @@ def main():
     loop_rate = rospy.Rate(20)
     while not rospy.is_shutdown():
         # TODO: Instead of target pose, we should specify a target pose + velocity
-        target_pose = control.get_sp(pose_est, maze, TARGET_CELL)
+
+        target_pose = control.get_sp(pose_est, m, TARGET_CELL)
 
         traj.pose.position.x = target_pose[0]
         traj.pose.position.y = target_pose[1]
 
         quat = quaternion_from_euler(0,0,target_pose[2])
-        traj.pose.orientation = quat
+        traj.pose.orientation.x = quat[0]
+        traj.pose.orientation.y = quat[1]
+        traj.pose.orientation.z = quat[2]
+        traj.pose.orientation.w = quat[3]
 
-        pose_pub.publish(traj)
+
+        traj_pub.publish(traj)
 
         loop_rate.sleep()
 

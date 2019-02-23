@@ -67,7 +67,6 @@ def main():
 
     loop_rate = rospy.Rate(10)
     while not rospy.is_shutdown():
-        print('des. rotation: %f' % desired_rotation)
         vel_msg = calc_command()
         cmd_vel_pub.publish(vel_msg)
         loop_rate.sleep()
