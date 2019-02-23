@@ -92,43 +92,34 @@ def estimate_lidar_returns(pose, maze):
         h_wall_hit_coords = np.vstack([x_dists_to_h_walls, y_dists_to_h_walls]).T + lidar_global_xy[None,:]
         v_wall_hit_coords = np.vstack([x_dists_to_v_walls, y_dists_to_v_walls]).T + lidar_global_xy[None,:]
 
-        # make sure that we only consider intersections that happen in the maze
-        h_wall_hit_coords = h_wall_hit_coords[h_wall_hit_coords[:,0] >= 0]
-        h_wall_hit_coords = h_wall_hit_coords[h_wall_hit_coords[:,0] <= maze.width*c]
-        v_wall_hit_coords = v_wall_hit_coords[v_wall_hit_coords[:,1] >= 0]
-        v_wall_hit_coords = v_wall_hit_coords[v_wall_hit_coords[:,1] <= maze.height*c]
-
         # convert coordinates to x,y indices of the walls
         h_wall_hit_indices = np.floor(h_wall_hit_coords/c).astype(int)
         v_wall_hit_indices = np.floor(v_wall_hit_coords/c).astype(int)
 
-        # create index masks for where the lidars hit the walls
-        h_walls = np.zeros([maze.width, maze.height+1])
-        v_walls = np.zeros([maze.width+1, maze.height])
-        h_walls[h_wall_hit_indices[:,0], h_wall_hit_indices[:,1]] = 1 + np.arange(h_wall_hit_indices.shape[0])
-        v_walls[v_wall_hit_indices[:,0], v_wall_hit_indices[:,1]] = 1 + np.arange(v_wall_hit_indices.shape[0])
+        # conver x,y indices to global array indices
+        h_wall_hit_indices = (maze.height+1) * h_wall_hit_indices[:,0] + h_wall_hit_indices[:,1]
+        v_wall_hit_indices = maze.height * v_wall_hit_indices[:,0] + v_wall_hit_indices[:,1]
 
-        # and then mask them by where the walls actually are
-        h_walls *= (maze.h_walls < 1)
-        v_walls *= (maze.v_walls < 1)
+        # only consider indices inside the array
+        h_wall_hit_indices = np.clip(h_wall_hit_indices, 0, maze.h_walls.size-1)
+        v_wall_hit_indices = np.clip(v_wall_hit_indices, 0, maze.v_walls.size-1)
 
-        # get the nonzero cells and make two lists of indices
-        h_walls = np.ravel(h_walls)
-        v_walls = np.ravel(v_walls)
-        h_walls = h_walls[h_walls > 0] - 1
-        v_walls = v_walls[v_walls > 0] - 1
+        # look up on the maze by index where the walls are, and then only take those intersection coordinates
+        h_wall_hit_coords = h_wall_hit_coords[maze.h_walls[h_wall_hit_indices] < 1,:]
+        v_wall_hit_coords = v_wall_hit_coords[maze.v_walls[v_wall_hit_indices] < 1,:]
 
-        # finally, get the min dist to a point where we hit a wall
-        dists = np.hstack([np.linalg.norm(h_wall_hit_coords[h_walls.astype(int)] - lidar_global_xy, axis=1),
-                           np.linalg.norm(v_wall_hit_coords[v_walls.astype(int)] - lidar_global_xy, axis=1)])
+        # compute the distances to each intersection coordinate
+        dists = np.hstack([np.linalg.norm(h_wall_hit_coords - lidar_global_xy, axis=1),
+                           np.linalg.norm(v_wall_hit_coords - lidar_global_xy, axis=1)])
+
         returns[lidar] = np.min(dists) if dists.size else -1
 
         if plot:
             lidar_end = lidar_global_xy + lidar_global_vector*5
             plt.plot((lidar_global_xy[0], lidar_end[0]), (lidar_global_xy[1],lidar_end[1]), 'r')
             
-            plt.scatter(*h_wall_hit_coords[h_walls.astype(int)].T)
-            plt.scatter(*v_wall_hit_coords[v_walls.astype(int)].T)
+            plt.scatter(*h_wall_hit_coords.T)
+            plt.scatter(*v_wall_hit_coords.T)
 
     if plot:
         plot_segment_list(plt, maze_to_segment_list(maze))

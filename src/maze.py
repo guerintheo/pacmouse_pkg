@@ -223,6 +223,8 @@ class Maze:
 			for j in range(self.height):
 				self.v_walls[i,j] = self.get_v_wall(i,j)
 
+		self.h_walls = np.ravel(self.h_walls)
+		self.v_walls = np.ravel(self.v_walls)
 
 	def __str__(self):
 		cap = ''.join(['+---' for _ in range(self.width)]) + '+'
