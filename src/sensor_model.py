@@ -59,10 +59,9 @@ def estimate_lidar_returns_old(pose, maze):
 # It's about 6 times faster, and from my testing, the two implementations seem to agree.
 # there's certainly some performance left to be extracted, but I'll leave that for later if
 # we need to
-def estimate_lidar_returns(pose, maze):
+def estimate_lidar_returns(pose, maze, plot=False):
     # Only use this when debugging. If this is true when you
     # run ParticleFilterTests it will break due to matplotlib. 
-    plot = False
 
     c = p.maze_cell_size
     w = p.maze_wall_thickness/2.
@@ -71,7 +70,7 @@ def estimate_lidar_returns(pose, maze):
         lidar_global_xy = pose[:2] + rotate_2d(lidar_transform[:2], pose[2])
         lidar_global_theta = pose[2] + lidar_transform[2]
         lidar_global_vector = rotate_2d([1,0], lidar_global_theta) # x, y
-        move_right, move_up = lidar_global_vector > 0 # boolean vector
+        x_wall_thickness, y_wall_thickness = np.sign(lidar_global_vector) * w
 
         # get the coordinate of where the lidar line will hit the walls
         h_wall_y_coords = np.arange(0,maze.height+1) * c
@@ -108,6 +107,12 @@ def estimate_lidar_returns(pose, maze):
         # look up on the maze by index where the walls are, and then only take those intersection coordinates
         h_wall_hit_coords = h_wall_hit_coords[maze.h_walls[h_wall_hit_indices] < 1,:]
         v_wall_hit_coords = v_wall_hit_coords[maze.v_walls[v_wall_hit_indices] < 1,:]
+
+        # retract by the wall thickness
+        # NOTE(izzy): for very oblique hits, it's possible that when retracting from the middle of the wall
+        # to the outside of the wall that we record an intersection that doesn't actually occur on the wall
+        h_wall_hit_coords -= lidar_global_vector / np.abs(lidar_global_vector[1]) * w
+        v_wall_hit_coords -= lidar_global_vector / np.abs(lidar_global_vector[0]) * w
 
         # compute the distances to each intersection coordinate
         dists = np.hstack([np.linalg.norm(h_wall_hit_coords - lidar_global_xy, axis=1),
@@ -161,20 +166,29 @@ def get_intersection(L1, L2):
 def maze_to_segment_list(maze):
     segment_list = []
     c = p.maze_cell_size
+    w = p.maze_wall_thickness/2.
     for x in range(maze.width):
         for y in range(maze.height):
             if x < maze.width - 1:
                 if not maze.get_connected([x,y], [x+1,y]):
-                    segment_list.append([(x+1)*c, y*c, (x+1)*c, (y+1)*c])
+                    segment_list.append([(x+1)*c-w, y*c-w, (x+1)*c-w, (y+1)*c+w])
+                    segment_list.append([(x+1)*c+w, y*c-w, (x+1)*c+w, (y+1)*c+w])
             if y < maze.height - 1:
                 if not maze.get_connected([x,y], [x,y+1]):
-                    segment_list.append([x*c, (y+1)*c, (x+1)*c, (y+1)*c])
+                    segment_list.append([x*c-w, (y+1)*c-w, (x+1)*c+w, (y+1)*c-w])
+                    segment_list.append([x*c-w, (y+1)*c+w, (x+1)*c+w, (y+1)*c+w])
 
+    # inner walls
+    segment_list.append([w, w, maze.width*c-w, w])
+    segment_list.append([w, w, w, maze.height*c-w])
+    segment_list.append([maze.width*c-w,w, maze.width*c-w, maze.height*c-w])
+    segment_list.append([w, maze.height*c-w, maze.width*c-w, maze.height*c-w])
 
-    segment_list.append([0, 0, maze.width*c, 0])
-    segment_list.append([0, 0, 0, maze.height*c])
-    segment_list.append([maze.width*c,0, maze.width*c, maze.height*c])
-    segment_list.append([0, maze.height*c, maze.width*c, maze.height*c])
+    # outer walls
+    segment_list.append([-w, -w, maze.width*c+w, -w])
+    segment_list.append([-w, -w, -w, maze.height*c+w])
+    segment_list.append([maze.width*c+w,-w, maze.width*c+w, maze.height*c+w])
+    segment_list.append([-w, maze.height*c+w, maze.width*c+w, maze.height*c+w])
     return segment_list
 
 def plot_segment_list(plt, segment_list):
@@ -186,7 +200,7 @@ if __name__ == '__main__':
     m = Maze(16,16)
     m.build_wall_matrices()
     segment_list = maze_to_segment_list(m)
-    pose = [0.168 * 4.2, 0.168 * 3.2, np.pi/4]
+    pose = [0.168 * 4.2, 0.168 * 3.2, np.random.rand() * np.pi/2]
 
     start = time.time()
     old_ans =  estimate_lidar_returns_old(pose, m)
@@ -198,4 +212,7 @@ if __name__ == '__main__':
     duration = time.time() - start
     print('NEW: {} seconds\t{}'.format(duration, new_ans))
 
-    print np.sum(np.abs(old_ans - new_ans))
+    total_error = np.sum(np.abs(old_ans - new_ans))
+    print 'Total Error:', total_error
+    if total_error > 1e-6:
+        estimate_lidar_returns(pose, m, True)
