@@ -6,7 +6,7 @@ def motion_model(x, u, dt):
     Given the previous state (x) and control input (u), calculate the
     predicted change in state at the next time step.
     
-    x: previous state
+    x: previous state: [x, y, psi, v_body, a_body, psi_dot]
     u: control input; NumPy array containing [angular_velocity_left_motor,
        angular_velocity_right_motor]
     dt: time step
