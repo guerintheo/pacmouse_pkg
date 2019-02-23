@@ -18,15 +18,11 @@ pip install numpy
 ```
 
 ```
-./odom_estimation_converter.py
-```
-
-```
 ./planner_node.py
 ```
 
 ```
-./pose_control.py
+./pose_control_node.py
 ```
 
 ```
