@@ -1,6 +1,6 @@
 import numpy as np
-import params as p
-from util import wrap
+import pacmouse_pkg.src.params as p
+from pacmouse_pkg.src.utils.math_utils import wrap
 
 def step(x, sp):
     """Generates commands to drive the robot to a desired pose

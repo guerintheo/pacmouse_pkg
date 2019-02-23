@@ -1,5 +1,5 @@
 import numpy as np
-import params as p
+import pacmouse_pkg.src.params as p
 
 def motion_model(x, u, dt):
     """

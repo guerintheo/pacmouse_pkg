@@ -1,5 +1,5 @@
 import rospy
-from maze import Maze
+from pacmouse_pkg.src.utils.maze import Maze
 from pacmouse_pkg.msg import Maze as MazeMsg
 
 

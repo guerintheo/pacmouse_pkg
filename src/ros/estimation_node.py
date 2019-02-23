@@ -12,11 +12,10 @@ from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import PoseStamped, Twist
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
-import control
-from estimation import Estimator
-
-from maze_parser import parse_maze_file
-from maze import Maze
+import pacmouse_pkg.src.estimation_control.control as control
+from pacmouse_pkg.src.estimation_control.estimation import Estimator
+from pacmouse_pkg.src.utils.maze_parser import parse_maze_file
+from pacmouse_pkg.src.utils.maze import Maze
 
 
 laser_ranges = np.zeros(6)
@@ -54,7 +53,7 @@ def main():
     u_sigma = [.001, .001, .05, 1e-4, 1e-4, 1e-4]
 
 
-    (adj_matrix, size_x, size_y) = parse_maze_file('../gazebo_worlds/testmaze.txt')
+    (adj_matrix, size_x, size_y) = parse_maze_file('../../gazebo_worlds/testmaze.txt')
     
     m = Maze(size_x, size_y)
     m.adj_matrix = adj_matrix 

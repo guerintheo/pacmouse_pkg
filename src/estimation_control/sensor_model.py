@@ -1,9 +1,10 @@
-from matplotlib import pyplot as plt
-from maze import Maze
-import time
-import params as p
 import numpy as np
-from util import rotate_2d
+from matplotlib import pyplot as plt
+import time
+
+from pacmouse_pkg.src.utils.maze import Maze
+import pacmouse_pkg.src.params as p
+from pacmouse_pkg.src.utils.math_utils import rotate_2d
 
 def lidar_observation_function(Z, x, maze):
     """Computes a likelihood given sensor data and a particle position. A higher

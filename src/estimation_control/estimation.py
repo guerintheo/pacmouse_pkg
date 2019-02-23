@@ -1,9 +1,9 @@
 import numpy as np
-import params as p
 from copy import deepcopy
-from dynamics import motion_model
-from particle_filter import ParticleFilter
-from sensor_model import lidar_observation_function
+import pacmouse_pkg.src.params as p
+from pacmouse_pkg.src.estimation_control.dynamics import motion_model
+from pacmouse_pkg.src.estimation_control.particle_filter import ParticleFilter
+from pacmouse_pkg.src.estimation_control.sensor_model import lidar_observation_function
 
 class Estimator:
 

@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 import os,sys
-sys.path.insert(1, os.path.join(sys.path[0], '..'))
-
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.animation as animation
-from sensor_model import estimate_lidar_returns, maze_to_segment_list, plot_segment_list, lidar_observation_function
-from particle_filter import particle_filter_update, ParticleFilter
-from dynamics import motion_model
-from control import step, get_sp, mix
-from maze import Maze
-import params as p
+from pacmouse_pkg.src.estimation_control.sensor_model import estimate_lidar_returns, maze_to_segment_list, plot_segment_list, lidar_observation_function
+from pacmouse_pkg.src.estimation_control.particle_filter import particle_filter_update, ParticleFilter
+from pacmouse_pkg.src.estimation_control.dynamics import motion_model
+from pacmouse_pkg.src.estimation_control.control import step, get_sp, mix
+from pacmouse_pkg.src.utils.maze import Maze
+import pacmouse_pkg.src.params as p
 
 def gaussian_2d(mu, sigma, x, y):
     X = np.array([x,y])

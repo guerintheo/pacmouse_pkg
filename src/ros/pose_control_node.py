@@ -11,7 +11,7 @@ import rospy
 from geometry_msgs.msg import PoseStamped, Twist
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
-import control
+import pacmouse_pkg.src.estimation_control.control as control
 
 estimated_state = np.zeros(3)
 

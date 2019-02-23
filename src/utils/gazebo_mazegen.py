@@ -2,9 +2,7 @@
 
 import argparse
 import numpy as np
-from maze_parser import parse_maze_file
-
-np.set_printoptions(linewidth=300)
+from pacmouse_pkg.src.utils.maze_parser import parse_maze_file
 
 WALL_URI = 'model://maze_wall'
 WALL_THICKNESS = .012

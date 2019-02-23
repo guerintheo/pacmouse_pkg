@@ -1,9 +1,7 @@
 import os,sys,inspect
-sys.path.insert(1, os.path.join(sys.path[0], '..'))
-
 import unittest
 import numpy as np
-from maze import Maze
+from pacmouse_pkg.src.utils.maze import Maze
 
 class IOTest(unittest.TestCase):
     """

@@ -4,9 +4,9 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import PoseStamped
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
-import control
-from maze_parser import parse_maze_file
-from maze import Maze
+import pacmouse_pkg.src.estimation_control.control as control
+from pacmouse_pkg.src.utils.maze_parser import parse_maze_file
+from pacmouse_pkg.src.utils.maze import Maze
 
 pose_est = np.zeros(6) # x,y,theta
 

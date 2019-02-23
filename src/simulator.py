@@ -2,13 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.animation as animation
-from sensor_model import *
-from estimation import Estimator
-from dynamics import motion_model, inverse_motion_model
-from control import step, get_sp
-from maze import Maze
-from util import rotate_2d
-import params as p
+
+from pacmouse_pkg.src.estimation_control.sensor_model import *
+from pacmouse_pkg.src.estimation_control.estimation import Estimator
+from pacmouse_pkg.src.estimation_control.dynamics import motion_model, inverse_motion_model
+from pacmouse_pkg.src.estimation_control.control import step, get_sp
+from pacmouse_pkg.src.utils.maze import Maze
+from pacmouse_pkg.src.utils.math_utils import rotate_2d
+import pacmouse_pkg.src.params as p
 
 
 class Simulator:

@@ -1,6 +1,5 @@
 # ParticleFilter.py -- TODO SUMMARY
 import numpy as np
-from matplotlib import pyplot as plt
 
 def particle_filter_update(X, u_mu, u_sigma, Z, obs_func):
     """ Update step for a particle filter
@@ -23,8 +22,6 @@ def particle_filter_update(X, u_mu, u_sigma, Z, obs_func):
     # make likelihoods into a pmf
     likelihoods += np.min(likelihoods)
     likelihoods /= np.sum(likelihoods)
-    # plt.plot(likelihoods)
-    # plt.show()
 
     # resample the particles with replacement
     return resample(X_perturbed, likelihoods)
