@@ -4,6 +4,8 @@ import argparse
 import numpy as np
 from maze_parser import parse_maze_file
 
+np.set_printoptions(linewidth=300)
+
 WALL_URI = 'model://maze_wall'
 WALL_THICKNESS = .012
 
@@ -32,12 +34,11 @@ def main():
     parser.add_argument('input_file',type=str,help="Name of ascii maze file to convert into sdf")
     parser.add_argument('output_file', type=str,help="Name of .sdf file to output")
     args = parser.parse_args()
-    (adj_matrix, n_rows, n_cols) = parse_maze_file(args.input_file)
-    # TODO: Add args
+    (adj_matrix, n_x, n_y) = parse_maze_file(args.input_file)
 
     #test_maze = [ [1, 1, 1], [1, 0, 1], [1, 1, 1]]
 
-    ##adj_matrix = np.zeros((9,9))
+    #adj_matrix = np.zeros((9,9))
     #adj_matrix = np.eye(9)
 
 
@@ -68,44 +69,48 @@ def main():
 
     #adj_matrix = np.zeros((9,9))
 
+    #n_x = 3
+    #n_y = 3
+
+    for r in adj_matrix:
+        print(r)
+
     header = make_world_header()
     block_body = ''
     bix = 1
 
-    #n_rows = 3
-    #n_cols = 3
-    max_col = n_cols - 1
-    max_row = n_rows - 1
+    max_x = n_x - 1
+    max_y = n_y - 1
     EWW = WALL_WIDTH + WALL_THICKNESS # "Effective Wall Width" - used for a lot of offset calculations
 
-    for rix in range(n_rows):
-        for cix in range(n_cols):
+    for ix in range(n_x):
+        for iy in range(n_y):
 
-            adj_ix = rix*n_cols + cix
-            if rix == max_row:
-                adj_ix_d = adj_ix
-            else:
-                adj_ix_d = adj_ix + n_cols
-
-            if cix == max_col:
+            adj_ix = iy*n_x + ix
+            if ix == max_x:
                 adj_ix_r = adj_ix
             else:
                 adj_ix_r = adj_ix + 1
 
-            # outside border (half of outside border
-            if rix == 0:
-                block_body += make_block([EWW/2. + cix*EWW, 0, WALL_HEIGHT/2., 0,0,0], 'block%s' % bix)
+            if iy == max_y:
+                adj_ix_u = adj_ix
+            else:
+                adj_ix_u = adj_ix + n_x
+
+            # outside border (half of outside border)
+            if iy == 0:
+                block_body += make_block([EWW/2. + ix*EWW, 0, WALL_HEIGHT/2., 0,0,0], 'block%s' % bix)
                 bix += 1
-            if cix == 0:
-                block_body += make_block([0, rix*EWW + EWW/2., WALL_HEIGHT/2., 0,0,1.5707], 'block%s' % bix)
+            if ix == 0:
+                block_body += make_block([0, iy*EWW + EWW/2., WALL_HEIGHT/2., 0,0,1.5707], 'block%s' % bix)
                 bix += 1
 
-            if (not adj_matrix[adj_ix][adj_ix_r]) or (cix==max_col):
-                block_body += make_block([(cix+1)*EWW, rix*EWW + EWW/2., WALL_HEIGHT/2., 0,0,1.5707], 'block%s' % bix)
+            if (not adj_matrix[adj_ix][adj_ix_r]) or (ix == max_x):
+                block_body += make_block([(ix+1)*EWW, iy*EWW + EWW/2., WALL_HEIGHT/2., 0,0,1.5707], 'block%s' % bix)
                 bix += 1
 
-            if (not adj_matrix[adj_ix][adj_ix_d]) or (rix==max_row) :
-                block_body += make_block([EWW/2. + cix*EWW, (rix + 1)*EWW, WALL_HEIGHT/2., 0,0,0], 'block%s' % bix)
+            if (not adj_matrix[adj_ix][adj_ix_u]) or (iy == max_y) :
+                block_body += make_block([EWW/2. + ix*EWW, (iy + 1)*EWW, WALL_HEIGHT/2., 0,0,0], 'block%s' % bix)
                 bix += 1
 
     footer = make_world_footer()

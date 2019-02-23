@@ -13,9 +13,29 @@ def adj_to_ascii(adj_matrix, height, width):
         Returns:
             string: printable ascii representation of maze
     """
+
+# We need to do the inverse of this process to save the maze properly
+#    # now we go from row,column to x,y
+#    # index -> r,c -> c, MAX_ROW - r
+#    adj_matrix_xy = np.zeros(adj_matrix.shape)
+#    n_x = maze_cols
+#    n_y = maze_rows
+#    for rc_ix1 in range(maze_rows*maze_cols):
+#        row = rc_ix1 // maze_cols
+#        column = rc_ix1 % maze_cols
+#        x1 = column
+#        y1 = (maze_rows - 1) - row
+#        xy_ix1 = n_x*y1 + x1
+#        for rc_ix2 in range(maze_rows*maze_cols):
+#            row = rc_ix2 // maze_cols
+#            column = rc_ix2 % maze_cols
+#            x2 = column
+#            y2 = (maze_rows - 1) - row
+#            xy_ix2 = n_x*y2 + x2
+#
+#            adj_matrix_xy[xy_ix1][xy_ix2] = adj_matrix[rc_ix1][rc_ix2]
+
    
-   
-    adj_matrix = np.rot90(adj_matrix, -1)
     rows = width
     cols = height
     output = '%d,%d\n' % (rows, cols)
@@ -77,12 +97,29 @@ def parse_maze_file(fn):
     adj_matrix += adj_matrix.transpose()
     adj_matrix += np.eye(n_cells)
 
-    # This is to account for the fact that the adjacency matrix needs
-    # to be in x,y instead of rows, columns
-    adj_matrix = np.rot90(adj_matrix)
+
+    # now we go from row,column to x,y
+    # index -> r,c -> c, MAX_ROW - r
+    adj_matrix_xy = np.zeros(adj_matrix.shape)
+    n_x = maze_cols
+    n_y = maze_rows
+    for rc_ix1 in range(maze_rows*maze_cols):
+        row = rc_ix1 // maze_cols
+        column = rc_ix1 % maze_cols
+        x1 = column
+        y1 = (maze_rows - 1) - row
+        xy_ix1 = n_x*y1 + x1
+        for rc_ix2 in range(maze_rows*maze_cols):
+            row = rc_ix2 // maze_cols
+            column = rc_ix2 % maze_cols
+            x2 = column
+            y2 = (maze_rows - 1) - row
+            xy_ix2 = n_x*y2 + x2
+
+            adj_matrix_xy[xy_ix1][xy_ix2] = adj_matrix[rc_ix1][rc_ix2]
 
     #                       x          y
-    return (adj_matrix, maze_cols, maze_rows)
+    return (adj_matrix_xy, maze_cols, maze_rows)
 
 def main():
     parser = argparse.ArgumentParser('Tests the ascii <-> adjacency graph functionality')
