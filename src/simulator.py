@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.animation as animation
 from sensor_model import *
-from particle_filter import ParticleFilter
+from estimation import Estimator
 from dynamics import motion_model
 from control import step, get_sp, mix
 from maze import Maze
@@ -11,55 +11,61 @@ from util import rotate_2d
 import params as p
 
 
-class DrivingMazeParticleFilterTest:
+class Simulator:
 
     def __init__(self):
+        # build a maze and set the target sell
         self.maze = Maze(6,6)
         self.maze.build_wall_matrices()
         self.segment_list = maze_to_segment_list(self.maze)
-        self.state = np.array([0.5*p.maze_inner_size, 0.5*p.maze_inner_size, np.pi/2,0,0,0]) # x, y, theta, dx, dy, psi
         self.target_cell = [self.maze.width-1, self.maze.height-1]
 
-        num_particles = 20
-        particles = np.zeros([num_particles, 3])
-        particles[:,:] = self.state[None,:3] # set the particles to be at the same position as the state
-        self.pf = ParticleFilter(particles)
+        # specify the initial state
+        self.real_bot_state = np.array([0.5*p.maze_inner_size, 0.5*p.maze_inner_size, np.pi/2,0,0,0])
 
-        self.u_mu = np.array([0, 0, 0, 0, 0, 0]) # assume the bot rotates in place
-        self.u_sigma = np.array([.001,.001, 0.05, 1e-4, 1e-4, 1e-4]) # we lock the rotation because we have IMU
+        # a nosie model for when the robot moves (should be the same as the estimator)
+        # NOTE(izzy): this sigma should be estimated by the dyanmics model somehow???
+        # We might have to collect mocap data in order to get this
+        self.u_sigma = np.array([.005,.005, np.radians(2), 1e-4, 1e-4, 1e-4])
+        # noise to add to simulated sensor data
+        self.lidar_sigma = 0.005
+        self.encoder_sigma = 5
 
-        self.lidar_sigma = 0.005 # standard deviation
-        
-        # Angular velocity control inputs self.omega_l and self.omega_r
-        self.omega_l = 100
-        self.omega_r = 100
+        self.estimator = Estimator(self.real_bot_state) # initialize the state estimator
+        self.estimator.set_maze(self.maze)              # pass it the maze
+        self.estimator.u_sigma = self.u_sigma           # and the noise model
 
-    def obs_func(self, Z, x):
-        return lidar_observation_function(Z, x, self.maze)
+        self.dt = 0.2
 
     def update(self):
-        # Add motion and noise to real robot
-        self.set_point = get_sp(self.state, self.maze, self.target_cell)
-        (self.omega_l, self.omega_r) = mix(step(self.state, self.set_point))
+        # run the planner and controller to get commands (using the estimated state)
+        self.set_point = get_sp(self.estimator.state, self.maze, self.target_cell)
+        cmd = mix(step(self.estimator.state, self.set_point))
 
-        # TODO: Consider whether to model each particle as a 3-vector or a
-        # 6-vector. If modeled as 6-vectors, then we should probably use the
-        # complete motion model on each of the particles
-        self.u_mu = motion_model(self.state, np.array([self.omega_l, self.omega_r]), 0.2)
-        self.state += np.random.normal(self.u_mu, self.u_sigma)  
+        # run the simulator to update the "real" robot
+        Z = self.simulate(cmd)
 
-        # get the sensor data
-        self.Z = estimate_lidar_returns(self.state[:3], self.maze) + np.random.normal(0, self.lidar_sigma, 6)
+        # and update the estimator
+        self.estimator.update(Z, self.dt)
 
-        self.pf.update(self.u_mu[:3], self.u_sigma[:3], self.Z, self.obs_func)
+    def simulate(self, cmd):
+        # update the actual robot according to the commands (with noise)
+        u_mu = motion_model(self.real_bot_state, cmd, self.dt)
+        self.real_bot_state += np.random.normal(u_mu, self.u_sigma)  
+
+        # get the sensor data (with noise)
+        lidars = estimate_lidar_returns(self.real_bot_state[:3], self.maze) + np.random.normal(0, self.lidar_sigma, 6)
+        encoders = cmd + np.random.normal(0, self.encoder_sigma, size=2)
+
+        return lidars, encoders
 
     def animate_plot(self, i):
         self.update()
         ax1.clear()
         plot_segment_list(ax1, self.segment_list)
-        for p in self.pf.particles:
-            self.draw_bot(ax1, p, 'r', 0.2)
-        self.draw_outer_chassis(ax1, self.state[:3], 'b', 1)
+        for p in self.estimator.pf.particles: self.draw_bot(ax1, p, 'r', 0.2)   # draw the particles
+        self.draw_outer_chassis(ax1, self.estimator.state[:3], 'g', 0.5)        # draw the estimated bot
+        self.draw_outer_chassis(ax1, self.real_bot_state[:3], 'b', 0.5)         # draw the real bot
 
     def draw_bot(self, plt, pose, color, alpha, size=0.03):
         arrow = mpatches.Arrow(pose[0], pose[1], size*np.cos(pose[2]), size*np.sin(pose[2]),
@@ -82,8 +88,7 @@ class DrivingMazeParticleFilterTest:
 if __name__ == "__main__":
     fig = plt.figure()
     ax1 = fig.add_subplot(1,1,1)
-    pf = DrivingMazeParticleFilterTest()
+    sim = Simulator()
     num_iterations = 10000
-    animation = animation.FuncAnimation(fig, pf.animate_plot, frames=num_iterations, repeat=False, interval=10)
-    # cid = fig.canvas.mpl_connect('key_press_event', pf.on_key_press)
+    animation = animation.FuncAnimation(fig, sim.animate_plot, frames=num_iterations, repeat=False, interval=10)
     plt.show()
