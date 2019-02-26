@@ -62,7 +62,7 @@ def estimate_lidar_returns_old(pose, maze):
 # we need to
 def estimate_lidar_returns(pose, maze, plot=False):
     # Only use this when debugging. If this is true when you
-    # run ParticleFilterTests it will break due to matplotlib. 
+    # run ParticleFilterTests it will break due to matplotlib.
 
     c = p.maze_cell_size
     w = p.maze_wall_thickness/2.
@@ -124,7 +124,7 @@ def estimate_lidar_returns(pose, maze, plot=False):
         if plot:
             lidar_end = lidar_global_xy + lidar_global_vector*5
             plt.plot((lidar_global_xy[0], lidar_end[0]), (lidar_global_xy[1],lidar_end[1]), 'r')
-            
+
             plt.scatter(*h_wall_hit_coords.T)
             plt.scatter(*v_wall_hit_coords.T)
 

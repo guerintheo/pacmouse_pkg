@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.animation as animation
 
-from pacmouse_pkg.src.estimation_control.sensor_model import *
+from pacmouse_pkg.src.estimation_control.sensor_model import estimate_lidar_returns
 from pacmouse_pkg.src.estimation_control.estimation import Estimator
 from pacmouse_pkg.src.estimation_control.dynamics import motion_model, inverse_motion_model
 from pacmouse_pkg.src.estimation_control.control import step, get_sp
@@ -18,7 +18,7 @@ class Simulator:
         # build a maze and set the target sell
         self.maze = Maze(6,6)
         self.maze.build_wall_matrices()
-        self.segment_list = maze_to_segment_list(self.maze)
+        self.maze.build_segment_list()
         self.target_cell = [self.maze.width-1, self.maze.height-1]
 
         # specify the initial state
@@ -52,7 +52,7 @@ class Simulator:
     def simulate(self, cmd):
         # update the actual robot according to the commands (with noise)
         u_mu = motion_model(self.real_bot_state, cmd, self.dt)
-        self.real_bot_state += np.random.normal(u_mu, self.u_sigma)  
+        self.real_bot_state += np.random.normal(u_mu, self.u_sigma)
 
         # get the sensor data (with noise)
         lidars = estimate_lidar_returns(self.real_bot_state[:3], self.maze) + np.random.normal(0, self.lidar_sigma, 6)
@@ -63,7 +63,7 @@ class Simulator:
     def animate_plot(self, i):
         self.update()
         ax1.clear()
-        plot_segment_list(ax1, self.segment_list)
+        self.maze.plot(plt)
         for p in self.estimator.pf.particles: self.draw_bot(ax1, p, 'r', 0.2)   # draw the particles
         self.draw_outer_chassis(ax1, self.estimator.state[:3], 'g', 0.5)        # draw the estimated bot
         self.draw_outer_chassis(ax1, self.real_bot_state[:3], 'b', 0.5)         # draw the real bot
