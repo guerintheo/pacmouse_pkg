@@ -4,7 +4,7 @@ import time
 
 from pacmouse_pkg.src.utils.maze import Maze
 import pacmouse_pkg.src.params as p
-from pacmouse_pkg.src.utils.math_utils import rotate_2d
+from pacmouse_pkg.src.utils.math_utils import *
 
 def lidar_observation_function(Z, x, maze):
     """Computes a likelihood given sensor data and a particle position. A higher
@@ -133,6 +133,14 @@ def estimate_lidar_returns(pose, maze, plot=False):
         plt.show()
 
     return returns
+
+
+def which_walls(pose, lidars):
+    R = rotation_matrix_2d(pose[2])
+    lidar_global_xy = pose[None, :2] + np.dot(R, p.lidar_transforms[:, :2].T).T
+    lidar_global_theta = p.lidar_transforms[:,2] + pose[2]
+    lidar_global_vecs = rotate_2d_multiple(np.array([lidars, np.zeros_like(lidars)]).T, lidar_global_theta)
+    return lidar_global_xy + lidar_global_vecs
 
 
 # return true of the points A,B,C are aranged in a counterclockwise orientation

@@ -3,12 +3,12 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.animation as animation
 
-from pacmouse_pkg.src.estimation_control.sensor_model import estimate_lidar_returns
+from pacmouse_pkg.src.estimation_control.sensor_model import estimate_lidar_returns, which_walls
 from pacmouse_pkg.src.estimation_control.estimation import Estimator
 from pacmouse_pkg.src.estimation_control.dynamics import motion_model, inverse_motion_model
 from pacmouse_pkg.src.estimation_control.control import step, get_sp
 from pacmouse_pkg.src.utils.maze import Maze
-from pacmouse_pkg.src.utils.math_utils import rotate_2d
+from pacmouse_pkg.src.utils.math_utils import rotate_2d, rotation_matrix_2d
 import pacmouse_pkg.src.params as p
 
 
@@ -55,10 +55,10 @@ class Simulator:
         self.real_bot_state += np.random.normal(u_mu, self.u_sigma)
 
         # get the sensor data (with noise)
-        lidars = estimate_lidar_returns(self.real_bot_state[:3], self.maze) + np.random.normal(0, self.lidar_sigma, 6)
+        self.lidars = estimate_lidar_returns(self.real_bot_state[:3], self.maze) + np.random.normal(0, self.lidar_sigma, 6)
         encoders = cmd + np.random.normal(0, self.encoder_sigma, size=2)
 
-        return lidars, encoders
+        return self.lidars, encoders
 
     def animate_plot(self, i):
         self.update()
@@ -84,6 +84,12 @@ class Simulator:
             x1, y1 = corners[i]
             x2, y2 = corners[j]
             plt.plot((x1, x2), (y1, y2), color=color, alpha=alpha)
+
+        # draw the positions of the lidars
+        # R = rotation_matrix_2d(pose[2])
+        # lidar_global_xy = pose[None, :2] + np.dot(R, p.lidar_transforms[:, :2].T).T
+        lidar_global_xy = which_walls(pose ,self.lidars)
+        plt.scatter(lidar_global_xy[:,0], lidar_global_xy[:,1], color=color, alpha=alpha)
 
 
 if __name__ == "__main__":
