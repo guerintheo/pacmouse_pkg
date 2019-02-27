@@ -2,10 +2,10 @@ import numpy as np
 
 def wrap(theta):
 	"""Constrains rotation values from -pi to pi
-	
+
 	Args:
 	    theta (float): angle in radians
-	
+
 	Returns:
 	    float: angle in radians (-pi to pi)
 	"""
