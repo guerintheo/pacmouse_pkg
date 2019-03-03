@@ -4,15 +4,16 @@
 #include <unistd.h>
 
 // gcc test.c -o test -L. -lvl6180_pi -lwiringPi -Wl,-rpath /home/pi/vl6180_pi
-
+// gcc tof_test.c -o tof_test -L. -lvl6180_pi -lwiringPi -Wl,-rpath /home/pi/pacmouse_pkg/src/hardware_working/vl6180_pi
 int main(){
 	setbuf(stdout, NULL);
-	int num_tofs = 5;
-	int power_pins[] = {21, 22,23,24,25};
-	char addresses[] = {0x40, 0x41, 0x42, 0x43, 0x44};
+	int num_tofs = 6;
+	
+	int power_pins[] = {7, 11, 19, 21, 23, 29}; // 6 and 7 are 31 and 37
+	char addresses[] = {0x40, 0x41, 0x42, 0x43, 0x44, 0x45};
 	vl6180 handles[num_tofs];
 
-	wiringPiSetup();
+	wiringPiSetupPhys();
 	
 	for (int i=0; i < num_tofs; i++) {
 		pinMode(power_pins[i], OUTPUT);
@@ -40,8 +41,9 @@ int main(){
 	while (1) {  
 		for (int i=0; i < num_tofs; i++) {
 			distances[i] = get_distance(handles[i]);
+			printf("%d\t", distances[i]);
 		}
-		printf("%d\t%d\t%d\t%d\t%d\n", distances[0], distances[1], distances[2], distances[3], distances[4]);
+		printf("\n");
 	}
 
 
