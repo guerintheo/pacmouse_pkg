@@ -21,3 +21,12 @@ wheel_radius = 0.01763
 wheel_dist_x = 0.02
 wheel_dist_y = 0.04
 gear_ratio = 3*29.86
+
+# these pin numbers are GPIO.BOARD
+button_pins = [12,35,38,40]
+
+# motor one is left (ml). motor two is right (mr)
+ml_dir = 36
+ml_pwm = 32
+mr_dir = 26
+mr_pwm = 33
