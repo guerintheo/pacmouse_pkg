@@ -13,6 +13,7 @@ lidar_transforms = np.array([[0.047535,	-0.038236,	-np.pi/2.0], # x, y, theta (b
 							 [0.059890,	0.009768,	np.pi/4.0],
 							 [0.051362,	0.024628,	0.0],
 							 [0.047535,	0.038236,	np.pi/2.0]])
+num_lidars = lidar_transforms.shape[0]
 robot_length = 0.107
 robot_width = 0.0771
 

@@ -76,8 +76,8 @@ def estimate_lidar_returns(pose, maze, plot=False):
     for lidar, lidar_transform in enumerate(p.lidar_transforms):
         lidar_global_xy = pose[:2] + rotate_2d(lidar_transform[:2], pose[2])
         lidar_global_theta = pose[2] + lidar_transform[2]
-        lidar_global_vector = rotate_2d([1,0], lidar_global_theta) # x, y
-        x_wall_thickness, y_wall_thickness = np.sign(lidar_global_vector) * w
+        lidar_global_vec = rotate_2d([1,0], lidar_global_theta) # x, y
+        x_wall_thickness, y_wall_thickness = np.sign(lidar_global_vec) * w
 
         # get the coordinate of where the lidar line will hit the walls
         h_wall_y_coords = np.arange(0,maze.height+1) * c
@@ -88,12 +88,12 @@ def estimate_lidar_returns(pose, maze, plot=False):
         y_dists_to_h_walls = h_wall_y_coords - lidar_global_xy[1]
 
         # only take the walls that are in front of the lidar
-        x_dists_to_v_walls = x_dists_to_v_walls[np.sign(x_dists_to_v_walls) == np.sign(lidar_global_vector[0])]
-        y_dists_to_h_walls = y_dists_to_h_walls[np.sign(y_dists_to_h_walls) == np.sign(lidar_global_vector[1])]
+        x_dists_to_v_walls = x_dists_to_v_walls[np.sign(x_dists_to_v_walls) == np.sign(lidar_global_vec[0])]
+        y_dists_to_h_walls = y_dists_to_h_walls[np.sign(y_dists_to_h_walls) == np.sign(lidar_global_vec[1])]
 
         # get the other coordinates
-        x_dists_to_h_walls = y_dists_to_h_walls/lidar_global_vector[1]*lidar_global_vector[0]
-        y_dists_to_v_walls = x_dists_to_v_walls/lidar_global_vector[0]*lidar_global_vector[1]
+        x_dists_to_h_walls = y_dists_to_h_walls/lidar_global_vec[1]*lidar_global_vec[0]
+        y_dists_to_v_walls = x_dists_to_v_walls/lidar_global_vec[0]*lidar_global_vec[1]
 
         # and pair them off and shift back to global coordinates
         h_wall_hit_coords = np.vstack([x_dists_to_h_walls, y_dists_to_h_walls]).T + lidar_global_xy[None,:]
@@ -122,8 +122,8 @@ def estimate_lidar_returns(pose, maze, plot=False):
         # retract by the wall thickness
         # NOTE(izzy): for very oblique hits, it's possible that when retracting from the middle of the wall
         # to the outside of the wall that we record an intersection that doesn't actually occur on the wall
-        h_wall_hit_coords -= lidar_global_vector / np.abs(lidar_global_vector[1]) * w
-        v_wall_hit_coords -= lidar_global_vector / np.abs(lidar_global_vector[0]) * w
+        h_wall_hit_coords -= lidar_global_vec / np.abs(lidar_global_vec[1]) * w
+        v_wall_hit_coords -= lidar_global_vec / np.abs(lidar_global_vec[0]) * w
 
         # compute the distances to each intersection coordinate
         dists = np.hstack([np.linalg.norm(h_wall_hit_coords - lidar_global_xy, axis=1),
@@ -132,7 +132,7 @@ def estimate_lidar_returns(pose, maze, plot=False):
         returns[lidar] = np.min(dists) if dists.size else -1
 
         if plot:
-            lidar_end = lidar_global_xy + lidar_global_vector*5
+            lidar_end = lidar_global_xy + lidar_global_vec*5
             plt.plot((lidar_global_xy[0], lidar_end[0]), (lidar_global_xy[1],lidar_end[1]), 'r')
 
             plt.scatter(*h_wall_hit_coords.T)
@@ -144,13 +144,57 @@ def estimate_lidar_returns(pose, maze, plot=False):
 
     return returns
 
+def decrement_walls(pose, lidars, maze, decrement_amount=0.05):
+    assert isinstance(maze, Maze2)
+
+    c = p.maze_cell_size
+
+    # get some information about the positions of the lidars
+    R = rotation_matrix_2d(pose[2])
+    lidar_starts = pose[None, :2] + np.dot(R, p.lidar_transforms[:, :2].T).T
+    lidar_thetas = p.lidar_transforms[:,2] + pose[2]
+    lidar_vecs = rotate_2d_multiple(np.array([lidars, np.zeros_like(lidars)]).T, lidar_thetas)
+    lidar_ends = lidar_starts + lidar_vecs
+
+    # handle vertical walls first
+    x_indices = np.tile(np.arange(maze.width+1), [p.num_lidars, 1])
+    x_coords = x_indices * c
+    # this is a matrix with one row for each of the lidars
+    # y = (x - x0)/dx * dy + y0
+    y_coords = (x_coords - lidar_starts[:,0, None])/lidar_vecs[:,0, None] * lidar_vecs[:,1, None] + lidar_starts[:, 1, None]
+    y_indices = np.floor(y_coords).astype(int)
+    y_indices = np.clip(y_indices, 0, maze.height-1)
+    # create a mask of the intersection coordates that are actually on the rays of the lidars
+    on_vecs_mask = np.sum(np.stack([x_coords > lidar_starts[:,0, None], x_coords < lidar_ends[:,0, None],
+                                    y_coords > lidar_starts[:,1, None], y_coords < lidar_ends[:,1, None]]), axis=0)
+    # and subtract from all the corresponding walls
+    maze.v_walls[x_indices, y_indices] -= decrement_amount * (on_vecs_mask == 4)
+
+    # handle horizontal walls second
+    y_indices = np.tile(np.arange(maze.height+1), [p.num_lidars, 1])
+    y_coords = y_indices * c
+    # this is a matrix with one row for each of the lidars
+    # y = (x - x0)/dx * dy + y0
+    x_coords = (y_coords - lidar_starts[:,1, None])/lidar_vecs[:,1, None] * lidar_vecs[:,0, None] + lidar_starts[:, 0, None]
+    x_indices = np.floor(x_coords).astype(int)
+    x_indices = np.clip(x_indices, 0, maze.width-1)
+    # create a mask of the intersection coordates that are actually on the rays of the lidars
+    on_vecs_mask = np.sum(np.stack([x_coords > lidar_starts[:,0, None], x_coords < lidar_ends[:,0, None],
+                                    y_coords > lidar_starts[:,1, None], y_coords < lidar_ends[:,1, None]]), axis=0)
+    # and subtract from all the corresponding walls
+    maze.h_walls[x_indices, y_indices] -= decrement_amount * (on_vecs_mask==4)
+
+    # make sure the wall probabilities stay between 0 and 1
+    maze.h_walls = np.clip(maze.h_walls, 0, 1)
+    maze.v_walls = np.clip(maze.v_walls, 0, 1)
+
 
 def lidar_end_points(pose, lidars):
     R = rotation_matrix_2d(pose[2])
-    lidar_global_xy = pose[None, :2] + np.dot(R, p.lidar_transforms[:, :2].T).T
+    lidar_global_start = pose[None, :2] + np.dot(R, p.lidar_transforms[:, :2].T).T
     lidar_global_theta = p.lidar_transforms[:,2] + pose[2]
     lidar_global_vecs = rotate_2d_multiple(np.array([lidars, np.zeros_like(lidars)]).T, lidar_global_theta)
-    return lidar_global_xy + lidar_global_vecs
+    return lidar_global_start + lidar_global_vecs
 
 def which_walls(pose, lidars):
     c = p.maze_cell_size
