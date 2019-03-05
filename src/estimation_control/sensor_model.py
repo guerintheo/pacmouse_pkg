@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import time
 
-from pacmouse_pkg.src.utils.maze import Maze
+from pacmouse_pkg.src.utils.maze import Maze, Maze2
 import pacmouse_pkg.src.params as p
 from pacmouse_pkg.src.utils.math_utils import *
 
@@ -64,9 +64,15 @@ def estimate_lidar_returns(pose, maze, plot=False):
     # Only use this when debugging. If this is true when you
     # run ParticleFilterTests it will break due to matplotlib.
 
+    use_maze2 = isinstance(maze, Maze2)
+
     c = p.maze_cell_size
     w = p.maze_wall_thickness/2.
     returns = np.zeros(p.lidar_transforms.shape[0])
+
+    h_walls_list = np.ravel(maze.h_walls)
+    v_walls_list = np.ravel(maze.v_walls)
+
     for lidar, lidar_transform in enumerate(p.lidar_transforms):
         lidar_global_xy = pose[:2] + rotate_2d(lidar_transform[:2], pose[2])
         lidar_global_theta = pose[2] + lidar_transform[2]
@@ -102,12 +108,16 @@ def estimate_lidar_returns(pose, maze, plot=False):
         v_wall_hit_indices = maze.height * v_wall_hit_indices[:,0] + v_wall_hit_indices[:,1]
 
         # only consider indices inside the array
-        h_wall_hit_indices = np.clip(h_wall_hit_indices, 0, maze.h_walls.size-1)
-        v_wall_hit_indices = np.clip(v_wall_hit_indices, 0, maze.v_walls.size-1)
+        h_wall_hit_indices = np.clip(h_wall_hit_indices, 0, h_walls_list.size-1)
+        v_wall_hit_indices = np.clip(v_wall_hit_indices, 0, v_walls_list.size-1)
 
         # look up on the maze by index where the walls are, and then only take those intersection coordinates
-        h_wall_hit_coords = h_wall_hit_coords[maze.h_walls[h_wall_hit_indices] < 1,:]
-        v_wall_hit_coords = v_wall_hit_coords[maze.v_walls[v_wall_hit_indices] < 1,:]
+        if use_maze2:
+            h_wall_hit_coords = h_wall_hit_coords[h_walls_list[h_wall_hit_indices] == 1,:]
+            v_wall_hit_coords = v_wall_hit_coords[v_walls_list[v_wall_hit_indices] == 1,:]
+        else:
+            h_wall_hit_coords = h_wall_hit_coords[h_walls_list[h_wall_hit_indices] < 1,:]
+            v_wall_hit_coords = v_wall_hit_coords[v_walls_list[v_wall_hit_indices] < 1,:]
 
         # retract by the wall thickness
         # NOTE(izzy): for very oblique hits, it's possible that when retracting from the middle of the wall
@@ -161,7 +171,7 @@ def which_walls(pose, lidars):
     h_wall_indices = np.array([np.floor(normalized_ends[:,0]), np.round(normalized_ends[:,1])]).T
     v_wall_indices = np.array([np.round(normalized_ends[:,0]), np.floor(normalized_ends[:,1])]).T
 
-    return closest_walls, h_wall_indices, v_wall_indices
+    return closest_walls, h_wall_indices.astype(int), v_wall_indices.astype(int)
 
 
 # return true of the points A,B,C are aranged in a counterclockwise orientation

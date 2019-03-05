@@ -8,7 +8,7 @@ from pacmouse_pkg.src.estimation_control.sensor_model import *
 from pacmouse_pkg.src.estimation_control.estimation import Estimator
 from pacmouse_pkg.src.estimation_control.dynamics import motion_model, inverse_motion_model
 from pacmouse_pkg.src.estimation_control.control import step, get_sp
-from pacmouse_pkg.src.utils.maze import Maze
+from pacmouse_pkg.src.utils.maze import Maze, Maze2
 from pacmouse_pkg.src.utils.math_utils import rotate_2d, rotation_matrix_2d
 import pacmouse_pkg.src.params as p
 
@@ -96,9 +96,9 @@ class DrivingSimulator:
 
     def __init__(self):
         # build a maze and set the target sell
-        self.real_maze = Maze(6,6)
-        self.real_maze.build_wall_matrices()
-        self.real_maze.build_segment_list()
+        self.real_maze = Maze2(6,6)
+        self.real_maze.h_walls[3,3] = 1
+
         self.target_cell = [self.real_maze.width-1, self.real_maze.height-1]
 
         # specify the initial state
@@ -116,21 +116,35 @@ class DrivingSimulator:
         self.estimator.set_maze(self.real_maze)              # pass it the maze
         self.estimator.u_sigma = self.u_sigma           # and the noise model
 
-        self.estimated_maze = Maze(6,6)
-        self.estimated_maze.connect_all() # clear out the interior of the maze
+        self.estimated_maze = Maze2(6,6)
+        self.estimated_maze.build_segment_list()
 
         self.cmd = np.zeros(2)
         self.forward_increment = 20.
         self.steer_increment = 40.
         self.dt = 0.2
 
-    def estimate_maze(self, hits):
+    def update_estimated_maze(self, hits):
+        maze_changed = False
         is_h_walls, h_walls, v_walls = hits
         for i, is_h_wall in enumerate(is_h_walls):
             if is_h_wall:
-                print h_walls[i]
+                x,y = h_walls[i]
+                if 0 <= x < self.estimated_maze.width and\
+                   0 <= y <= self.estimated_maze.height and\
+                   self.estimated_maze.h_walls[x,y] < 1:
+                    self.estimated_maze.h_walls[x,y] += 0.01
+                    maze_changed |= True
             else:
-                print v_walls[i]
+                x,y = v_walls[i]
+                if 0 <= x <= self.estimated_maze.width and\
+                   0 <= y < self.estimated_maze.height and\
+                   self.estimated_maze.v_walls[x,y] < 1:
+                    self.estimated_maze.v_walls[x,y] += 0.01
+                    maze_changed |=True
+
+        if maze_changed:
+            self.estimated_maze.build_segment_list()
 
     def update(self):
 
@@ -140,7 +154,7 @@ class DrivingSimulator:
 
         hits = which_walls(self.estimator.state[:3], self.lidars)
 
-        self.estimate_maze(hits)
+        self.update_estimated_maze(hits)
 
         # and update the estimator
         self.estimator.update(Z, self.dt)
@@ -159,7 +173,7 @@ class DrivingSimulator:
     def animate_plot(self, i):
         self.update()
         ax1.clear()
-        self.real_maze.plot(plt)
+        self.estimated_maze.plot(plt)
         for p in self.estimator.pf.particles: self.draw_bot(ax1, p, 'r', 0.2)   # draw the particles
         self.draw_outer_chassis(ax1, self.estimator.state[:3], 'g', 0.5)        # draw the estimated bot
         self.draw_outer_chassis(ax1, self.real_bot_state[:3], 'b', 0.5)         # draw the real bot
