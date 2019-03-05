@@ -4,7 +4,7 @@ import time
 
 from pacmouse_pkg.src.utils.maze import Maze
 import pacmouse_pkg.src.params as p
-from pacmouse_pkg.src.utils.math_utils import rotate_2d
+from pacmouse_pkg.src.utils.math_utils import *
 
 def lidar_observation_function(Z, x, maze):
     """Computes a likelihood given sensor data and a particle position. A higher
@@ -62,7 +62,7 @@ def estimate_lidar_returns_old(pose, maze):
 # we need to
 def estimate_lidar_returns(pose, maze, plot=False):
     # Only use this when debugging. If this is true when you
-    # run ParticleFilterTests it will break due to matplotlib. 
+    # run ParticleFilterTests it will break due to matplotlib.
 
     c = p.maze_cell_size
     w = p.maze_wall_thickness/2.
@@ -124,7 +124,7 @@ def estimate_lidar_returns(pose, maze, plot=False):
         if plot:
             lidar_end = lidar_global_xy + lidar_global_vector*5
             plt.plot((lidar_global_xy[0], lidar_end[0]), (lidar_global_xy[1],lidar_end[1]), 'r')
-            
+
             plt.scatter(*h_wall_hit_coords.T)
             plt.scatter(*v_wall_hit_coords.T)
 
@@ -133,6 +133,31 @@ def estimate_lidar_returns(pose, maze, plot=False):
         plt.show()
 
     return returns
+
+
+def lidar_end_points(pose, lidars):
+    R = rotation_matrix_2d(pose[2])
+    lidar_global_xy = pose[None, :2] + np.dot(R, p.lidar_transforms[:, :2].T).T
+    lidar_global_theta = p.lidar_transforms[:,2] + pose[2]
+    lidar_global_vecs = rotate_2d_multiple(np.array([lidars, np.zeros_like(lidars)]).T, lidar_global_theta)
+    return lidar_global_xy + lidar_global_vecs
+
+def which_walls(pose, lidars):
+    c = p.maze_cell_size
+
+    lidar_global_end = lidar_end_points(pose, lidars)
+
+    # this is an array of distances to the nearest walls [Left, Down, Right, Up]
+    dists = np.hstack(np.mod(lidar_global_end, c), np.mod(-lidar_global_end, c))
+
+    # convert coordinates to x,y indices of the walls
+    h_wall_hit_indices = np.floor(lidar_global_end/c).astype(int)
+
+
+    # TODO(izzy): decide how to award probability to walls based on the dists
+
+    # TODO(izzy): figure out how to subtract probability from all the walls that the lidar
+    # does not hit
 
 
 # return true of the points A,B,C are aranged in a counterclockwise orientation
