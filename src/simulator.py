@@ -139,33 +139,11 @@ class DrivingSimulator:
 
         decrement_amount = 0.12
         increment_amount = 0.1
-
-
-
-        is_h_walls, h_walls, v_walls = which_walls(self.estimator.state[:3], self.lidars)
-        maze_changed = True
-        for i, is_h_wall in enumerate(is_h_walls):
-            if is_h_wall:
-                x,y = h_walls[i]
-                if 0 <= x < self.estimated_maze.width and\
-                   0 <= y <= self.estimated_maze.height and\
-                   self.estimated_maze.h_walls[x,y] < 1:
-                    self.estimated_maze.h_walls[x,y] += increment_amount
-                    maze_changed |= True
-            else:
-                x,y = v_walls[i]
-                if 0 <= x <= self.estimated_maze.width and\
-                   0 <= y < self.estimated_maze.height and\
-                   self.estimated_maze.v_walls[x,y] < 1:
-                    self.estimated_maze.v_walls[x,y] += increment_amount
-                    maze_changed |=True
-
-        decrement_walls(pose, self.lidars, self.estimated_maze, decrement_amount)
+        update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount)
 
         self.estimated_maze.build_segment_list()
 
     def update(self):
-
         # run the simulator to update the "real" robot
         Z = self.simulate(self.cmd)
         self.lidars, self.encoders = Z

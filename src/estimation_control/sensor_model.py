@@ -144,7 +144,9 @@ def estimate_lidar_returns(pose, maze, plot=False):
 
     return returns
 
-def decrement_walls(pose, lidars, maze, decrement_amount=0.05):
+ 
+
+def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.05):
     assert isinstance(maze, Maze2)
 
     c = p.maze_cell_size
@@ -158,6 +160,7 @@ def decrement_walls(pose, lidars, maze, decrement_amount=0.05):
     lidar_lowers = np.min([lidar_starts, lidar_ends], axis=0)
     lidar_uppers = np.max([lidar_starts, lidar_ends], axis=0)
 
+    ########################## DECREMENT WALLS THAT WE PASS THRU ##########################
     # handle vertical walls first
     x_indices = np.tile(np.arange(maze.width+1), [p.num_lidars, 1])
     x_coords = x_indices * c
@@ -175,9 +178,6 @@ def decrement_walls(pose, lidars, maze, decrement_amount=0.05):
     # and subtract from all the corresponding walls
     maze.v_walls[x_indices[on_vecs_mask], y_indices[on_vecs_mask]] -= decrement_amount
 
-
-    # return x_coords[on_vecs_mask], y_coords[on_vecs_mask]
-
     # handle horizontal walls second
     y_indices = np.tile(np.arange(maze.height+1), [p.num_lidars, 1])
     y_coords = y_indices * c
@@ -194,6 +194,28 @@ def decrement_walls(pose, lidars, maze, decrement_amount=0.05):
     # and subtract from all the corresponding walls
     maze.h_walls[x_indices[on_vecs_mask], y_indices[on_vecs_mask]] -= decrement_amount
 
+    ########################## INCREMENT WALLS THAT WE HIT ##########################
+    # this is an array of distances to the nearest walls [Left, Down, Right, Up]
+    dists = np.hstack([np.mod(lidar_ends, c), np.mod(-lidar_ends, c)])
+    dists = dists[:,[3,1,0,2]] # reorder the dists to [Up, Down, Left, Right]
+
+    # find which walls are closest. this will be a list with 1s if the h walls are closer. 0s for v walls
+    closest_walls = np.argmin(dists, axis=1) < 2
+
+    # divide by the cell size
+    normalized_ends = lidar_ends/c
+
+    # convert coordinates to x,y indices of the walls
+    h_indices = np.array([np.floor(normalized_ends[:,0]), np.round(normalized_ends[:,1])], dtype=int).T
+    v_indices = np.array([np.round(normalized_ends[:,0]), np.floor(normalized_ends[:,1])], dtype=int).T
+
+    h_indices = h_indices[closest_walls]
+    v_indices = v_indices[1-closest_walls]
+
+    maze.h_walls[h_indices[:,0], h_indices[:,1]] += increment_amount
+    maze.v_walls[v_indices[:,0], v_indices[:,1]] += increment_amount
+
+
     # make sure the wall probabilities stay between 0 and 1
     maze.h_walls = np.clip(maze.h_walls, 0, 1)
     maze.v_walls = np.clip(maze.v_walls, 0, 1)
@@ -205,27 +227,6 @@ def lidar_end_points(pose, lidars):
     lidar_global_theta = p.lidar_transforms[:,2] + pose[2]
     lidar_global_vecs = rotate_2d_multiple(np.array([lidars, np.zeros_like(lidars)]).T, lidar_global_theta)
     return lidar_global_start + lidar_global_vecs
-
-def which_walls(pose, lidars):
-    c = p.maze_cell_size
-
-    lidar_global_end = lidar_end_points(pose, lidars)
-
-    # this is an array of distances to the nearest walls [Left, Down, Right, Up]
-    dists = np.hstack([np.mod(lidar_global_end, c), np.mod(-lidar_global_end, c)])
-    dists = dists[:,[3,1,0,2]] # reorder the dists to [Up, Down, Left, Right]
-
-    # find which walls are closest. this will be a list with 1s if the h walls are closer. 0s for v walls
-    closest_walls = np.argmin(dists, axis=1) < 2
-
-    # divide by the cell size
-    normalized_ends = lidar_global_end/c
-
-    # convert coordinates to x,y indices of the walls
-    h_wall_indices = np.array([np.floor(normalized_ends[:,0]), np.round(normalized_ends[:,1])]).T
-    v_wall_indices = np.array([np.round(normalized_ends[:,0]), np.floor(normalized_ends[:,1])]).T
-
-    return closest_walls, h_wall_indices.astype(int), v_wall_indices.astype(int)
 
 
 # return true of the points A,B,C are aranged in a counterclockwise orientation
