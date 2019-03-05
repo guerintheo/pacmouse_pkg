@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 from scipy.sparse.csgraph import dijkstra
 import pacmouse_pkg.src.params as p
@@ -256,9 +257,6 @@ class Maze:
             for j in range(self.height):
                 self.v_walls[i,j] = self.get_v_wall(i,j)
 
-        self.h_walls = np.ravel(self.h_walls)
-        self.v_walls = np.ravel(self.v_walls)
-
     def __str__(self):
         cap = ''.join(['+---' for _ in range(self.width)]) + '+'
         output = cap + '\n'
@@ -276,18 +274,62 @@ class Maze:
         return output
 
 
-if __name__ == '__main__':
-    m = Maze(3,2)
-    # add some walls
-    # m.set_connected([1,1],[0,1], 0)
-    # m.set_connected([1,0],[1,1], 0)
-    # see what it looks like
-    print(m)
+class Maze2:
+    def __init__(self, width=16, height=16):
+        self.width = width
+        self.height = height
+        self.create_empty_maze()
+        self.add_perimeter()
 
-    # and get some of the resulting paths
-    start, end = [0,0], [2,1]
-    print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))
-    start, end = [2,1], [0,0]
-    print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))
-    start, end = [0,1], [1,1]
-    print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))
+    def create_empty_maze(self):
+        self.h_walls = np.zeros([self.width, self.height+1])
+        self.v_walls = np.zeros([self.width+1, self.height])
+
+    def add_perimeter(self):
+        self.v_walls[[0,-1],:] = 1
+        self.h_walls[:,[0,-1]] = 1
+
+    def build_segment_list(self):
+        # each segment is [x_start, y_start, x_end, y_end, adj]
+        self.segment_list = []
+        c = p.maze_cell_size
+        w = p.maze_wall_thickness/2.
+        for x in range(self.width+1):
+            for y in range(self.height+1):
+                if y < self.height:
+                    self.segment_list.append([(x)*c-w, y*c-w, (x)*c-w, (y+1)*c+w, self.v_walls[x,y]])
+                    self.segment_list.append([(x)*c+w, y*c-w, (x)*c+w, (y+1)*c+w, self.v_walls[x,y]])
+                if x < self.width:
+                    self.segment_list.append([x*c-w, (y)*c-w, (x+1)*c+w, (y)*c-w, self.h_walls[x,y]])
+                    self.segment_list.append([x*c-w, (y)*c+w, (x+1)*c+w, (y)*c+w, self.h_walls[x,y]])
+
+    def plot(self, plt, color='k'):
+        for seg in self.segment_list:
+            plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k', color=color, alpha=seg[4])
+
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1 and sys.argv[1] == '2':
+        m = Maze2(4,5)
+        print m.h_walls
+        print m.v_walls
+        m.build_segment_list()
+        from matplotlib import pyplot as plt
+        m.plot(plt)
+        plt.show()
+
+    else:
+        m = Maze(3,2)
+        # add some walls
+        # m.set_connected([1,1],[0,1], 0)
+        # m.set_connected([1,0],[1,1], 0)
+        # see what it looks like
+        print(m)
+
+        # and get some of the resulting paths
+        start, end = [0,0], [2,1]
+        print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))
+        start, end = [2,1], [0,0]
+        print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))
+        start, end = [0,1], [1,1]
+        print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))
