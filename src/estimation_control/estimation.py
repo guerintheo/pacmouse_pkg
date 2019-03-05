@@ -7,15 +7,15 @@ from pacmouse_pkg.src.estimation_control.sensor_model import lidar_observation_f
 
 class Estimator:
 
-    def __init__(self, state):
+    def __init__(self, state, num_particles=20):
         self.state = deepcopy(state[:])
 
         # NOTE(izzy): this sigma should be estimated by the dyanmics model somehow???
         # We might have to collect mocap data in order to get this
         self.u_sigma = np.array([.001,.001, 0.05, 1e-4, 1e-4, 1e-4])
 
-        num_particles = 20
-        particles = np.zeros([num_particles, 3])
+        self.num_particles = num_particles
+        particles = np.zeros([self.num_particles, 3])
         particles[:,:] = self.state[None,:3] # set the particles to be at the same position as the state
         self.pf = ParticleFilter(particles)
 
