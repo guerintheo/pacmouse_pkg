@@ -206,8 +206,6 @@ class Maze:
         for seg in self.segment_list:
             plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k', color=color, alpha=1-seg[4])
 
-
-
     def get_v_wall(self, x, y):
         """access the vertical walls of the maze as if they were in a width+1
         by height array (including the outer walls)

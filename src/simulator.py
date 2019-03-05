@@ -124,10 +124,23 @@ class DrivingSimulator:
         self.steer_increment = 40.
         self.dt = 0.2
 
+    def estimate_maze(self, hits):
+        is_h_walls, h_walls, v_walls = hits
+        for i, is_h_wall in enumerate(is_h_walls):
+            if is_h_wall:
+                print h_walls[i]
+            else:
+                print v_walls[i]
+
     def update(self):
 
         # run the simulator to update the "real" robot
         Z = self.simulate(self.cmd)
+        self.lidars, self.encoders = Z
+
+        hits = which_walls(self.estimator.state[:3], self.lidars)
+
+        self.estimate_maze(hits)
 
         # and update the estimator
         self.estimator.update(Z, self.dt)
@@ -138,10 +151,10 @@ class DrivingSimulator:
         self.real_bot_state += np.random.normal(u_mu, self.u_sigma)
 
         # get the sensor data (with noise)
-        self.lidars = estimate_lidar_returns(self.real_bot_state[:3], self.real_maze) + np.random.normal(0, self.lidar_sigma, 6)
+        lidars = estimate_lidar_returns(self.real_bot_state[:3], self.real_maze) + np.random.normal(0, self.lidar_sigma, 6)
         encoders = cmd + np.random.normal(0, self.encoder_sigma, size=2)
 
-        return self.lidars, encoders
+        return lidars, encoders
 
     def animate_plot(self, i):
         self.update()

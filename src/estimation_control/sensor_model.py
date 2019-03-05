@@ -148,16 +148,20 @@ def which_walls(pose, lidars):
     lidar_global_end = lidar_end_points(pose, lidars)
 
     # this is an array of distances to the nearest walls [Left, Down, Right, Up]
-    dists = np.hstack(np.mod(lidar_global_end, c), np.mod(-lidar_global_end, c))
+    dists = np.hstack([np.mod(lidar_global_end, c), np.mod(-lidar_global_end, c)])
+    dists = dists[:,[3,1,0,2]] # reorder the dists to [Up, Down, Left, Right]
+
+    # find which walls are closest. this will be a list with 1s if the h walls are closer. 0s for v walls
+    closest_walls = np.argmin(dists, axis=1) < 2
+
+    # divide by the cell size
+    normalized_ends = lidar_global_end/c
 
     # convert coordinates to x,y indices of the walls
-    h_wall_hit_indices = np.floor(lidar_global_end/c).astype(int)
+    h_wall_indices = np.array([np.floor(normalized_ends[:,0]), np.round(normalized_ends[:,1])]).T
+    v_wall_indices = np.array([np.round(normalized_ends[:,0]), np.floor(normalized_ends[:,1])]).T
 
-
-    # TODO(izzy): decide how to award probability to walls based on the dists
-
-    # TODO(izzy): figure out how to subtract probability from all the walls that the lidar
-    # does not hit
+    return closest_walls, h_wall_indices, v_wall_indices
 
 
 # return true of the points A,B,C are aranged in a counterclockwise orientation
