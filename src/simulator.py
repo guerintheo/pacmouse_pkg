@@ -33,7 +33,7 @@ class Simulator:
         self.lidar_sigma = 0.005
         self.encoder_sigma = 5
 
-        self.estimator = Estimator(self.real_bot_state) # initialize the state estimator
+        self.estimator = Estimator(self.real_bot_state, num_particles=100) # initialize the state estimator
         self.estimator.set_maze(self.maze)              # pass it the maze
         self.estimator.u_sigma = self.u_sigma           # and the noise model
 
@@ -64,8 +64,11 @@ class Simulator:
     def animate_plot(self, i):
         self.update()
         ax1.clear()
+        plt.xlim(0, self.maze.width * p.maze_cell_size)
+        plt.ylim(0, self.maze.height * p.maze_cell_size)
+        plt.gca().set_aspect('equal', adjustable='box')
         self.maze.plot(plt)
-        for p in self.estimator.pf.particles: self.draw_bot(ax1, p, 'r', 0.2)   # draw the particles
+        for particles in self.estimator.pf.particles: self.draw_bot(ax1, particles, 'r', 0.2)   # draw the particles
         self.draw_outer_chassis(ax1, self.estimator.state[:3], 'g', 0.5)        # draw the estimated bot
         self.draw_outer_chassis(ax1, self.real_bot_state[:3], 'b', 0.5)         # draw the real bot
 
@@ -96,8 +99,15 @@ class DrivingSimulator:
 
     def __init__(self):
         # build a maze and set the target sell
-        self.real_maze = Maze2(6,6)
-        self.real_maze.h_walls[3,3] = 1
+        self.maze_size = (8,8)
+        self.real_maze = Maze2(*self.maze_size)
+
+        temp_maze = Maze(*self.maze_size)
+        temp_maze.build_wall_matrices()
+        print temp_maze
+        self.real_maze.v_walls = 1 -temp_maze.v_walls
+        self.real_maze.h_walls = 1 -temp_maze.h_walls
+
 
         self.target_cell = [self.real_maze.width-1, self.real_maze.height-1]
 
@@ -116,23 +126,21 @@ class DrivingSimulator:
         self.estimator.set_maze(self.real_maze)              # pass it the maze
         self.estimator.u_sigma = self.u_sigma           # and the noise model
 
-        self.estimated_maze = Maze2(6,6)
+        self.estimated_maze = Maze2(*self.maze_size)
         self.estimated_maze.build_segment_list()
-        self.estimated_maze.v_walls[:,:] = 1
-        self.estimated_maze.h_walls[:,:] = 1
 
         self.cmd = np.zeros(2)
-        self.forward_increment = 20.
+        self.forward_increment = 40.
         self.steer_increment = 40.
         self.dt = 0.2
 
     def update_estimated_maze(self):
         pose = self.estimator.state[:3]
 
-        decrement_amount = 0.1
-        increment_amount = 0
+        decrement_amount = 0.12
+        increment_amount = 0.1
 
-        decrement_walls(pose, self.lidars, self.estimated_maze, decrement_amount)
+
 
         is_h_walls, h_walls, v_walls = which_walls(self.estimator.state[:3], self.lidars)
         maze_changed = True
@@ -152,8 +160,9 @@ class DrivingSimulator:
                     self.estimated_maze.v_walls[x,y] += increment_amount
                     maze_changed |=True
 
-        if maze_changed:
-            self.estimated_maze.build_segment_list()
+        decrement_walls(pose, self.lidars, self.estimated_maze, decrement_amount)
+
+        self.estimated_maze.build_segment_list()
 
     def update(self):
 
@@ -180,8 +189,11 @@ class DrivingSimulator:
     def animate_plot(self, i):
         self.update()
         ax1.clear()
+        plt.xlim(0, self.real_maze.width * p.maze_cell_size)
+        plt.ylim(0, self.real_maze.height * p.maze_cell_size)
+        plt.gca().set_aspect('equal', adjustable='box')
         self.estimated_maze.plot(plt)
-        for p in self.estimator.pf.particles: self.draw_bot(ax1, p, 'r', 0.2)   # draw the particles
+        for particle in self.estimator.pf.particles: self.draw_bot(ax1, particle, 'r', 0.2)   # draw the particles
         self.draw_outer_chassis(ax1, self.estimator.state[:3], 'g', 0.5)        # draw the estimated bot
         self.draw_outer_chassis(ax1, self.real_bot_state[:3], 'b', 0.5)         # draw the real bot
 

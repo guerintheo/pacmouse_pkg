@@ -155,6 +155,8 @@ def decrement_walls(pose, lidars, maze, decrement_amount=0.05):
     lidar_thetas = p.lidar_transforms[:,2] + pose[2]
     lidar_vecs = rotate_2d_multiple(np.array([lidars, np.zeros_like(lidars)]).T, lidar_thetas)
     lidar_ends = lidar_starts + lidar_vecs
+    lidar_lowers = np.min([lidar_starts, lidar_ends], axis=0)
+    lidar_uppers = np.max([lidar_starts, lidar_ends], axis=0)
 
     # handle vertical walls first
     x_indices = np.tile(np.arange(maze.width+1), [p.num_lidars, 1])
@@ -162,13 +164,19 @@ def decrement_walls(pose, lidars, maze, decrement_amount=0.05):
     # this is a matrix with one row for each of the lidars
     # y = (x - x0)/dx * dy + y0
     y_coords = (x_coords - lidar_starts[:,0, None])/lidar_vecs[:,0, None] * lidar_vecs[:,1, None] + lidar_starts[:, 1, None]
-    y_indices = np.floor(y_coords).astype(int)
+    y_indices = np.floor(y_coords/c).astype(int)
     y_indices = np.clip(y_indices, 0, maze.height-1)
+
+
     # create a mask of the intersection coordates that are actually on the rays of the lidars
-    on_vecs_mask = np.sum(np.stack([x_coords > lidar_starts[:,0, None], x_coords < lidar_ends[:,0, None],
-                                    y_coords > lidar_starts[:,1, None], y_coords < lidar_ends[:,1, None]]), axis=0)
+    on_vecs_mask = np.sum(np.stack([x_coords > lidar_lowers[:,0, None], x_coords < lidar_uppers[:,0, None],
+                                    y_coords > lidar_lowers[:,1, None], y_coords < lidar_uppers[:,1, None]]), axis=0)
+    on_vecs_mask = (on_vecs_mask==4)
     # and subtract from all the corresponding walls
-    maze.v_walls[x_indices, y_indices] -= decrement_amount * (on_vecs_mask == 4)
+    maze.v_walls[x_indices[on_vecs_mask], y_indices[on_vecs_mask]] -= decrement_amount
+
+
+    # return x_coords[on_vecs_mask], y_coords[on_vecs_mask]
 
     # handle horizontal walls second
     y_indices = np.tile(np.arange(maze.height+1), [p.num_lidars, 1])
@@ -176,13 +184,15 @@ def decrement_walls(pose, lidars, maze, decrement_amount=0.05):
     # this is a matrix with one row for each of the lidars
     # y = (x - x0)/dx * dy + y0
     x_coords = (y_coords - lidar_starts[:,1, None])/lidar_vecs[:,1, None] * lidar_vecs[:,0, None] + lidar_starts[:, 0, None]
-    x_indices = np.floor(x_coords).astype(int)
+    x_indices = np.floor(x_coords/c).astype(int)
     x_indices = np.clip(x_indices, 0, maze.width-1)
     # create a mask of the intersection coordates that are actually on the rays of the lidars
-    on_vecs_mask = np.sum(np.stack([x_coords > lidar_starts[:,0, None], x_coords < lidar_ends[:,0, None],
-                                    y_coords > lidar_starts[:,1, None], y_coords < lidar_ends[:,1, None]]), axis=0)
+    on_vecs_mask = np.sum(np.stack([x_coords > lidar_lowers[:,0, None], x_coords < lidar_uppers[:,0, None],
+                                    y_coords > lidar_lowers[:,1, None], y_coords < lidar_uppers[:,1, None]]), axis=0)
     # and subtract from all the corresponding walls
-    maze.h_walls[x_indices, y_indices] -= decrement_amount * (on_vecs_mask==4)
+    on_vecs_mask = (on_vecs_mask==4)
+    # and subtract from all the corresponding walls
+    maze.h_walls[x_indices[on_vecs_mask], y_indices[on_vecs_mask]] -= decrement_amount
 
     # make sure the wall probabilities stay between 0 and 1
     maze.h_walls = np.clip(maze.h_walls, 0, 1)
