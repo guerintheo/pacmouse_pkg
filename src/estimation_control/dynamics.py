@@ -16,7 +16,7 @@ def motion_model(x, u, dt):
     psi_dot = (p.wheel_radius*p.wheel_dist_y)/(2*(p.wheel_dist_x**2 + p.wheel_dist_y**2))*((u[1]-u[0])/p.gear_ratio)
     # TODO: Handle the psi_dot = 0 case perhaps a bit better, to avoid division by zero
     if psi_dot == 0:
-        psi_dot = 0.00001
+        psi_dot = 1e-8
 
     psi = x[2]
     a = x[4]
@@ -37,22 +37,41 @@ C_psi_dot = (p.wheel_radius*p.wheel_dist_y)/(p.wheel_dist_x**2 + p.wheel_dist_y*
 def motion_model2(x, u, dt):
 	'''
 	This is a simplified version of the above motion model using constant linear and angular velocities.
-	Ultimately, this corresponds to time-parametrized motion along a circle
+	Ultimately, this corresponds to time-parametrized motion along a circle or a straight line
 	'''
 	v 		= (u[0] + u[1])/2. * C_v 
 	psi_dot = (u[1] - u[0])/2. * C_psi_dot
 
-	dpsi = psi_dot*dt
-	dv = 0 # constant velocity assumed
+	if psi_dot == 0:
+		dx = v * dt * np.cos(x[2])
+		dy = v * dt * np.sin(x[2])
+		dpsi = 0
 
-	start_psi = x[2]
-	end_psi = start_psi + dpsi
+		# center = x[:2]
+		# angular_acceleration = 0
 
-	dx = v/psi_dot * (np.sin(end_psi) - np.sin(start_psi))
-	dy = v/psi_dot * (np.cos(start_psi) - np.cos(end_psi))
+	else:
+		dpsi = psi_dot*dt
+
+		start_psi = x[2]
+		end_psi = start_psi + dpsi
+
+		# 2*pi*r / v 		= time to go around circle
+		# 2*pi / psi_dot 	= time to go around circle
+		# r = v/psi_dot
+
+		# the radius of the turning circle
+		signed_radius = v/psi_dot
+		radius = np.abs(signed_radius)
+
+		# center = signed_radius * np.array([-np.sin(psi), np.cos(psi)]) /+ x[:2] # the center of the turning circle
+		# angular_acceleration = psi_dot**2 * radius
+
+		dx = signed_radius * (np.sin(end_psi) - np.sin(start_psi))
+		dy = signed_radius * (np.cos(start_psi) - np.cos(end_psi))
 
 	change_in_state = np.zeros_like(x) # output state should be the same size as the input state
-	change_in_state[:4] = [dx, dy, dpsi, dv]
+	change_in_state[:3] = [dx, dy, dpsi]
 	return change_in_state
 
 def inverse_motion_model(cmd):
