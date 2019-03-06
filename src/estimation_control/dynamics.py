@@ -30,6 +30,31 @@ def motion_model(x, u, dt):
     change_in_state = np.array([dx, dy, dpsi, dv, 0.0, 0.0])
     return change_in_state
 
+# constants used in the dynamics model for calculating velocities from wheel speeds
+C_v = p.wheel_radius/p.gear_ratio
+C_psi_dot = (p.wheel_radius*p.wheel_dist_y)/(p.wheel_dist_x**2 + p.wheel_dist_y**2)/p.gear_ratio
+
+def motion_model2(x, u, dt):
+	'''
+	This is a simplified version of the above motion model using constant linear and angular velocities.
+	Ultimately, this corresponds to time-parametrized motion along a circle
+	'''
+	v 		= (u[0] + u[1])/2. * C_v 
+	psi_dot = (u[1] - u[0])/2. * C_psi_dot
+
+	dpsi = psi_dot*dt
+	dv = 0 # constant velocity assumed
+
+	start_psi = x[2]
+	end_psi = start_psi + dpsi
+
+	dx = v/psi_dot * (np.sin(end_psi) - np.sin(start_psi))
+	dy = v/psi_dot * (np.cos(start_psi) - np.cos(end_psi))
+
+	change_in_state = np.zeros_like(x) # output state should be the same size as the input state
+	change_in_state[:4] = [dx, dy, dpsi, dv]
+	return change_in_state
+
 def inverse_motion_model(cmd):
     """ Given a desired forward velocity and turning rate, return the corresponding wheel speeds
 
