@@ -35,8 +35,8 @@ class Encoders:
             counts[k] = prev.size
             self.prevs[k] = list(prev)
 
-        return ((counts[p.enc_l_a] + counts[p.enc_l_b])/(2.*history*p.gear_ratio),
-                (counts[p.enc_r_a] + counts[p.enc_r_b])/(2.*history*p.gear_ratio))
+        return np.array(((counts[p.enc_l_a] + counts[p.enc_l_b])/(2.*history*p.gear_ratio),
+                (counts[p.enc_r_a] + counts[p.enc_r_b])/(2.*history*p.gear_ratio)))
 
     def stop(self):
         for pin in p.encoder_pins:

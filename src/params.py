@@ -46,3 +46,6 @@ enc_r_a = 15
 enc_r_b = 13
 
 encoder_pins = [enc_l_a, enc_l_b, enc_r_a, enc_r_b]
+
+motor_controller_pid = np.array([.1, 0.1, 0.001])
+motor_controller_freq = 50

@@ -39,7 +39,7 @@ sudo apt-get install python2.7-scipy
 
 Install other requirements
 ```
-pip install numpy
+pip install numpy multiprocess
 ```
 
 
