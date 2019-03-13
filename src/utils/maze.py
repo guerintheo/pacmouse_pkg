@@ -290,7 +290,7 @@ class Maze2:
         self.h_walls[:,[0,-1]] = 1
 
     def build_segment_list(self):
-        # each segment is [x_start, y_start, x_end, y_end, adj]
+        # each segment is [x_start, y_start, x_end, y_end, wall]
         self.segment_list = []
         c = p.maze_cell_size
         w = p.maze_wall_thickness/2.
@@ -303,20 +303,59 @@ class Maze2:
                     self.segment_list.append([x*c-w, (y)*c-w, (x+1)*c+w, (y)*c-w, self.h_walls[x,y]])
                     self.segment_list.append([x*c-w, (y)*c+w, (x+1)*c+w, (y)*c+w, self.h_walls[x,y]])
 
-    def plot(self, plt, color='k'):
+    def plot(self, plt, color='k', confidence=True):
         for seg in self.segment_list:
-            plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k', color=color, alpha=seg[4])
+            plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k',
+                     color=color, alpha=(seg[4] if confidence else 1))
+
+    def build_adjacency_matrix(self, threshold=None):
+        self.adj_matrix = np.zeros([self.width*self.height, self.width*self.height])
+        w = self.width
+        h = self.height
+        for x in range(w):
+            for y in range(h):
+                # check cell to the right
+                if x < w - 1:
+                    i = y*w + x
+                    j = i + 1
+                    connected = 1. - self.v_walls[x+1, y]
+                    if threshold is not None:
+                        connected = connected > threshold
+                    self.adj_matrix[i, j] = self.adj_matrix[j, i] = connected
+
+                # check cell above
+                if y < h - 1:
+                    i = y*w + x
+                    j = i + w
+                    connected = 1. - self.h_walls[x, y+1]
+                    if threshold is not None:
+                        connected = connected > threshold
+                    self.adj_matrix[i, j] = self.adj_matrix[j, i] = connected
+
+    def __str__(self):
+        output = ""
+        for y in range(self.height, -1, -1):
+            # build v_wall
+            if y < self.height:
+                walls = ['|' if self.v_walls[x,y] else ' ' for x in range(self.width+1)]
+                output += '   '.join(walls) + '\n'
+
+            # build h_wall
+            walls = ['---' if self.h_walls[x,y] else '   ' for x in range(self.width)]
+            output += '+' + '+'.join(walls) + '+\n'
+        return output
 
 
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == '2':
-        m = Maze2(4,5)
+        m = Maze2(2,3)
+        m.h_walls[0,1] = 1
+        m.h_walls[1,2] = 1
         print m.h_walls
         print m.v_walls
-        m.build_segment_list()
-        from matplotlib import pyplot as plt
-        m.plot(plt)
-        plt.show()
+        m.build_adjacency_matrix()
+        print m.adj_matrix
+        print m
 
     else:
         m = Maze(3,2)
