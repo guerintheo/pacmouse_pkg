@@ -6,7 +6,7 @@ from pacmouse_pkg.src.utils.maze import Maze, Maze2
 import pacmouse_pkg.src.params as p
 from pacmouse_pkg.src.utils.math_utils import *
 
-def lidar_observation_function(Z, x, maze):
+def lidar_observation_function_hyperbolic(Z, x, maze):
     """Computes a likelihood given sensor data and a particle position. A higher
     number means x is more likely to produce an observation similar to Z
 
@@ -20,6 +20,19 @@ def lidar_observation_function(Z, x, maze):
     """
     z_exp = estimate_lidar_returns(x, maze)
     return np.prod(1/(np.abs(z_exp - Z) + 1e-5))
+
+def lidar_observation_function_gaussian(Z, x, maze):
+    z_exp, z_conf = estimate_lidar_returns(x, maze)
+
+    # NOTE(izzy): we take 1-z_conf because z_conf represents how likely there is to be
+    # wall at the point where the lidar hits, and we want the variance to be lower if
+    # we are more certain that there is a wall at that position.
+
+    # NOTE(aaron): we may need to scale and offset z_conf to avoid zero variance
+    # NOTE(aaron): z_conf should never be smaller than the transparency_threshold arg
+    # to the estimate_lidar_returns model
+    base_variance = 0.01
+    return np.prod(gaussian(z_exp, Z, base_variance + (1.-z_conf)/100.))
 
 def estimate_lidar_returns_old(pose, maze):
     plot = False
@@ -60,15 +73,14 @@ def estimate_lidar_returns_old(pose, maze):
 # It's about 6 times faster, and from my testing, the two implementations seem to agree.
 # there's certainly some performance left to be extracted, but I'll leave that for later if
 # we need to
-def estimate_lidar_returns(pose, maze, plot=False):
+def estimate_lidar_returns(pose, maze, plot=False, transparency_threshold=0.5):
     # Only use this when debugging. If this is true when you
     # run ParticleFilterTests it will break due to matplotlib.
-
-    use_maze2 = isinstance(maze, Maze2)
 
     c = p.maze_cell_size
     w = p.maze_wall_thickness/2.
     returns = np.zeros(p.lidar_transforms.shape[0])
+    confidences = np.zeros(p.lidar_transforms.shape[0])
 
     h_walls_list = np.ravel(maze.h_walls)
     v_walls_list = np.ravel(maze.v_walls)
@@ -103,21 +115,23 @@ def estimate_lidar_returns(pose, maze, plot=False):
         h_wall_hit_indices = np.floor(h_wall_hit_coords/c).astype(int)
         v_wall_hit_indices = np.floor(v_wall_hit_coords/c).astype(int)
 
-        # conver x,y indices to global array indices
+        # convert x,y indices to global array indices
         h_wall_hit_indices = (maze.height+1) * h_wall_hit_indices[:,0] + h_wall_hit_indices[:,1]
         v_wall_hit_indices = maze.height * v_wall_hit_indices[:,0] + v_wall_hit_indices[:,1]
 
         # only consider indices inside the array
         h_wall_hit_indices = np.clip(h_wall_hit_indices, 0, h_walls_list.size-1)
         v_wall_hit_indices = np.clip(v_wall_hit_indices, 0, v_walls_list.size-1)
+        
+        # pull up the wall confidences corresponding to the intersection corrdinates
+        h_wall_confidences = h_walls_list[h_wall_hit_indices]
+        v_wall_confidences = v_walls_list[v_wall_hit_indices]
 
-        # look up on the maze by index where the walls are, and then only take those intersection coordinates
-        if use_maze2:
-            h_wall_hit_coords = h_wall_hit_coords[h_walls_list[h_wall_hit_indices] == 1,:]
-            v_wall_hit_coords = v_wall_hit_coords[v_walls_list[v_wall_hit_indices] == 1,:]
-        else:
-            h_wall_hit_coords = h_wall_hit_coords[h_walls_list[h_wall_hit_indices] < 1,:]
-            v_wall_hit_coords = v_wall_hit_coords[v_walls_list[v_wall_hit_indices] < 1,:]
+        # and only take the walls and confidences which are not transparent
+        h_wall_hit_coords = h_wall_hit_coords[h_wall_confidences > transparency_threshold,:]
+        v_wall_hit_coords = v_wall_hit_coords[v_wall_confidences > transparency_threshold,:]
+        h_wall_confidences = h_wall_confidences[h_wall_confidences > transparency_threshold]
+        v_wall_confidences = v_wall_confidences[v_wall_confidences > transparency_threshold]
 
         # retract by the wall thickness
         # NOTE(izzy): for very oblique hits, it's possible that when retracting from the middle of the wall
@@ -130,6 +144,8 @@ def estimate_lidar_returns(pose, maze, plot=False):
                            np.linalg.norm(v_wall_hit_coords - lidar_global_xy, axis=1)])
 
         returns[lidar] = np.min(dists) if dists.size else -1
+        confidences[lidar] = np.hstack([h_wall_confidences, v_wall_confidences])[np.argmin(dists)] if dists.size else -1
+
 
         if plot:
             lidar_end = lidar_global_xy + lidar_global_vec*5
@@ -142,7 +158,7 @@ def estimate_lidar_returns(pose, maze, plot=False):
         plot_segment_list(plt, maze_to_segment_list(maze))
         plt.show()
 
-    return returns
+    return returns, confidences
 
  
 
@@ -169,7 +185,6 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     y_coords = (x_coords - lidar_starts[:,0, None])/lidar_vecs[:,0, None] * lidar_vecs[:,1, None] + lidar_starts[:, 1, None]
     y_indices = np.floor(y_coords/c).astype(int)
     y_indices = np.clip(y_indices, 0, maze.height-1)
-
 
     # create a mask of the intersection coordates that are actually on the rays of the lidars
     on_vecs_mask = np.sum(np.stack([x_coords > lidar_lowers[:,0, None], x_coords < lidar_uppers[:,0, None],

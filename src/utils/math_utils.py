@@ -21,3 +21,6 @@ def rotate_2d(coord, theta):
 def rotate_2d_multiple(coords, thetas):
 	Rs = np.moveaxis(rotation_matrix_2d(thetas), 2, 0)
 	return np.einsum('ij,ikj->ik',coords,Rs)
+
+def gaussian(x, mu, sig):
+    return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
