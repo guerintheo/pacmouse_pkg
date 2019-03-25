@@ -105,23 +105,24 @@ class MotorController:
 
 
 if __name__ == '__main__':
-	m = MotorController()
+	m = Motors()
 
 	print 'ramp speed'
 
-	# for i in np.linspace(0, 5., 100):
-	# 	# print i, -i
-	# 	m.set(i, -i)
-	# 	print m.get()
-	# 	time.sleep(0.1)
-
-	m.set(1,1)
-	print 'fixed speed'
-
-	for i in range(100):
-		print m.get()
+	for i in np.linspace(-1, 1., 100):
+		# print i, -i
+		m.set(i, i)
+		# print m.get()
 		time.sleep(0.1)
 	m.stop()
+
+	# m.set(1,1)
+	# print 'fixed speed'
+
+	# for i in range(100):
+	# 	print m.get()
+	# 	time.sleep(0.1)
+	# m.stop()
 	# m = MotorController()
 	# time.sleep(1)
 	# # m.set([-1,-1])

@@ -7,6 +7,7 @@ maze_inner_size = 0.168 # m (not including the thickness of the walls)
 maze_cell_size = maze_inner_size + maze_wall_thickness
 
 # ROBOT
+lidar_pins = [7, 11, 19, 23, 21, 29]
 lidar_transforms = np.array([[0.047535,	-0.038236,	-np.pi/2.0], # x, y, theta (body frame)
 							 [0.051362,	-0.024628,	0.0],
 							 [0.059890,	-0.009768,	-np.pi/4.0],
