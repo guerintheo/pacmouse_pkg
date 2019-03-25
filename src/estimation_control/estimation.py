@@ -3,7 +3,7 @@ from copy import deepcopy
 import pacmouse_pkg.src.params as p
 from pacmouse_pkg.src.estimation_control.dynamics import motion_model
 from pacmouse_pkg.src.estimation_control.particle_filter import ParticleFilter
-from pacmouse_pkg.src.estimation_control.sensor_model import lidar_observation_function
+from pacmouse_pkg.src.estimation_control.sensor_model import *
 
 class Estimator:
 
@@ -19,8 +19,8 @@ class Estimator:
         particles[:,:] = self.state[None,:3] # set the particles to be at the same position as the state
         self.pf = ParticleFilter(particles)
 
-    def set_maze(self, maze):
-        self.lidar_obs_func = lambda Z, x: lidar_observation_function(Z, x, maze)
+    def set_maze(self, maze, obs_func=lidar_observation_function_hyperbolic):
+        self.lidar_obs_func = lambda Z, x: obs_func(Z, x, maze)
 
     def update(self, Z, dt):
         # NOTE(izzy): this is not the right way to do this, I'm just filling in the class so

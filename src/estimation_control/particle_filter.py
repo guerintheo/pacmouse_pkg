@@ -47,9 +47,10 @@ class ParticleFilter:
         self.particles = particles
         self.n, self.d = self.particles.shape
         self.likelihoods = np.ones(self.n)/self.n
+        self.pmf = self.likelihoods
 
     def resample(self):
-        new_ix = np.random.choice(self.n, size=self.n, replace=True, p=self.likelihoods)
+        new_ix = np.random.choice(self.n, size=self.n, replace=True, p=self.pmf)
         self.particles = self.particles[new_ix, :]
 
     def perturb(self, u_mu, u_sigma):
@@ -57,8 +58,8 @@ class ParticleFilter:
 
     def calc_likelihoods(self, Z, obs_func):
         self.likelihoods = np.array([obs_func(Z, x) for x in self.particles])
-        self.likelihoods += np.min(self.likelihoods)
-        self.likelihoods /= np.sum(self.likelihoods)
+        self.pmf = self.likelihoods + np.min(self.likelihoods)
+        self.pmf /= np.sum(self.pmf)
 
     def update(self, u_mu, u_sigma, Z, obs_func):
         self.perturb(u_mu, u_sigma)

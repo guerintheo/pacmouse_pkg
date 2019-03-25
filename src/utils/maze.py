@@ -257,6 +257,12 @@ class Maze:
             for j in range(self.height):
                 self.v_walls[i,j] = self.get_v_wall(i,j)
 
+        # add the perimeter walls
+        self.v_walls[0, :] = 1
+        self.v_walls[-1, :] = 1
+        self.h_walls[:, 0] = 1
+        self.h_walls[:, -1] = 1
+
     def __str__(self):
         cap = ''.join(['+---' for _ in range(self.width)]) + '+'
         output = cap + '\n'
@@ -346,15 +352,64 @@ class Maze2:
         return output
 
 
+    def get_wall_between(self, i1, i2):
+        w = self.width
+        c1 = [i1%w, np.floor(i1/w).astype(int)]
+        c2 = [i2%w, np.floor(i2/w).astype(int)]
+        if c1[0] == c2[0]: return self.h_walls[c1[0], max(c1[1], c2[1])]
+        elif c1[1] == c2[1]: return self.v_walls[max(c1[0], c2[0]), c1[1]]
+        else: 
+            # print 'We fucked up. {} and {} are not adjacent'.format(c1, c2)
+            return -1
+
+    def is_adjacent(self, i1, i2):
+        w = self.width
+        c1 = np.array([i1%w, np.floor(i1/w).astype(int)])
+        c2 = np.array([i2%w, np.floor(i2/w).astype(int)])
+        return np.any(c1 == c2)
+
+    def set_wall_between(self, i1, i2, is_wall):
+        w = self.width
+        c1 = [i1%w, np.floor(i1/w).astype(int)]
+        c2 = [i2%w, np.floor(i2/w).astype(int)]
+        if c1[0] == c2[0]: self.h_walls[c1[0], max(c1[1], c2[1])] = is_wall
+        elif c1[1] == c2[1]: self.v_walls[max(c1[0], c2[0]), c1[1]] = is_wall
+        else: print 'We fucked up. {} and {} are not adjacent'.format(c1, c2)
+
+    def generate_random_maze(self, prune_walls=0.1):
+        self.v_walls[:,:] = 1
+        self.h_walls[:,:] = 1
+        visited = set()
+
+        def generate_random_maze_sub(self, cell):
+            visited.add(cell) 
+            next_cells = cell + np.array([-1, 1, -self.width, self.width])
+            np.random.shuffle(next_cells)
+            for next_cell in next_cells:
+                if 0 <= next_cell < (self.width * self.height) and\
+                        self.is_adjacent(cell, next_cell) and\
+                        next_cell not in visited:
+                    self.set_wall_between(cell, next_cell, 0)
+                    generate_random_maze_sub(self, next_cell)
+
+        generate_random_maze_sub(self, 0)
+
+        self.h_walls *= (np.random.rand(*self.h_walls.shape) > prune_walls)
+        self.v_walls *= (np.random.rand(*self.v_walls.shape) > prune_walls)
+        self.add_perimeter()
+
+
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == '2':
-        m = Maze2(2,3)
-        m.h_walls[0,1] = 1
-        m.h_walls[1,2] = 1
-        print m.h_walls
-        print m.v_walls
-        m.build_adjacency_matrix()
-        print m.adj_matrix
+        m = Maze2(16,16)
+        # m.h_walls[0,1] = 1
+        # m.h_walls[1,2] = 1
+        # print m.h_walls
+        # print m.v_walls
+        # m.build_adjacency_matrix()
+        # print m.adj_matrix
+        # print m
+        m.generate_random_maze()
         print m
 
     else:
