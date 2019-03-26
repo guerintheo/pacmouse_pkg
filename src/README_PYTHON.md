@@ -32,6 +32,12 @@ as
 import pacmouse_pkg.src.ros.estimation_node as estimation_node
 ```
 
+Note that there may be name collisions with the package that ROS generates for messages. For example, the $PYTHONPATH environment variable may include `/home/<user>/<ros_ws_path>/devel/lib/python2.7/dist-packages`, which contains a `pacmouse_pkg` directory. If this is the case, then one option is to symlink the individual folders from the `pacmouse_pkg` package that you wish to be able to import, such as `pacmouse_pkg/src`:
+
+```
+sudo ln -s /home/<user>/<ros_ws_path>/src/pacmouse_pkg/src /home/<user>/<ros_ws_path>/devel/lib/python2.7/dist-packages/pacmouse_pkg/src
+```
+
 To install scipy on the raspberry pi run (you can use pip on most other computers)
 ```
 sudo apt-get install python2.7-scipy
