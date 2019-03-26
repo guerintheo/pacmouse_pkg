@@ -11,9 +11,9 @@ def motion_model(x, u, dt):
        angular_velocity_right_motor]
     dt: time step
     """
-    # From robot kinematics. See LaTeX document for this math
-    v = p.wheel_radius/2.0*((u[0]+u[1])/p.gear_ratio)
-    psi_dot = (p.wheel_radius*p.wheel_dist_y)/(2*(p.wheel_dist_x**2 + p.wheel_dist_y**2))*((u[1]-u[0])/p.gear_ratio)
+    controlled_vel_and_psi_dot = vel_and_psi_dot_from_wheel_vels(u)
+    v = controlled_vel_and_psi_dot[0]
+    psi_dot = controlled_vel_and_psi_dot[1]
     # TODO: Handle the psi_dot = 0 case perhaps a bit better, to avoid division by zero
     if psi_dot == 0:
         psi_dot = 1e-8
@@ -33,6 +33,16 @@ def motion_model(x, u, dt):
 # constants used in the dynamics model for calculating velocities from wheel speeds
 C_v = p.wheel_radius/p.gear_ratio
 C_psi_dot = (p.wheel_radius*p.wheel_dist_y)/(p.wheel_dist_x**2 + p.wheel_dist_y**2)/p.gear_ratio
+
+def vel_and_psi_dot_from_wheel_vels(u):
+    """
+    Use the robot kinematics model to compute the forward velocity and angular
+    velocity of the robot given left and right motor angular velocities. See
+    LaTeX document for the math.
+    """
+    v = p.wheel_radius/2.0*((u[0]+u[1])/p.gear_ratio)
+    psi_dot = (p.wheel_radius*p.wheel_dist_y)/(2*(p.wheel_dist_x**2 + p.wheel_dist_y**2))*((u[1]-u[0])/p.gear_ratio)
+    return np.array([v, psi_dot])
 
 def motion_model2(x, u, dt):
 	'''

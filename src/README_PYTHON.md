@@ -42,6 +42,12 @@ Install other requirements
 pip install numpy multiprocess
 ```
 
+You may want to add the following line to the Pi's `~/.bashrc` file, as it will
+allow you to call `rosrun pacmouse_pkg <executable>` to run nodes, for example.
+
+```
+source /home/<user>/<ros_ws_path>/devel/setup.bash
+```
 
 # Getting the feeback control stack working
 
