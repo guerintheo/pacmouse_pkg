@@ -32,14 +32,21 @@ motor_pwm_freq = 100
 # these pin numbers are GPIO.BOARD
 button_pins = [12,35,38,40]
 
+######################### MOTOR PINS ###########################################
+# NOTE: These pin numbers are BCM (Broadcom), not GPIO.BOARD / physical pin
+# numbers. pigpio uses these BCM pin numbers. Refer to https://pinout.xyz/ to
+# see the pinout laid out.
+
 # motor one is left (ml). motor two is right (mr)
-ml_dir = 36
-ml_pwm = 32
-mr_dir = 26
-mr_pwm = 33
-motor_mode_pin = 22
+ml_dir = 7  # corresponds to physical pin 26
+ml_pwm = 13  # corresponds to physical pin 33
+mr_dir = 16  # bcm pin 16 corresponds to physical pin 36
+mr_pwm = 12  # bcm pin 12 corresponds to physical pin 32
+motor_mode_pin = 25  # corresponds to physical pin 22
 
 motor_pins = [ml_dir, ml_pwm, mr_dir, mr_pwm, motor_mode_pin]
+
+######################### MOTOR PINS ###########################################
 
 enc_l_a = 16
 enc_l_b = 18

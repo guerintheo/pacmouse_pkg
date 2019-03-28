@@ -14,7 +14,7 @@ class KeyboardMotorController:
         self.cmd_pub = rospy.Publisher('/pacmouse/cmd_motors', Vector3, queue_size=1)
         self.cmd = [0, 0]  # [left, right]
         self.turn_increment = 0.015
-        self.forward_increment = 0.04
+        self.forward_increment = 0.08
         
     def read_input_loop(self):
         # rate = rospy.Rate(30)  # 30 Hz
@@ -33,12 +33,12 @@ class KeyboardMotorController:
                 self.cmd[1] -= self.turn_increment
             elif cmd == 'w':
                 # Forward
-                self.cmd[0] -= self.forward_increment
-                self.cmd[1] -= self.forward_increment
-            elif cmd == 's':
-                # Backward
                 self.cmd[0] += self.forward_increment
                 self.cmd[1] += self.forward_increment
+            elif cmd == 's':
+                # Backward
+                self.cmd[0] -= self.forward_increment
+                self.cmd[1] -= self.forward_increment
             elif cmd == 'q':
                 # q is stop
                 self.cmd = [0, 0]
