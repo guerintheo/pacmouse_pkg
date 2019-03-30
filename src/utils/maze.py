@@ -359,7 +359,6 @@ class Maze2:
         if c1[0] == c2[0]: return self.h_walls[c1[0], max(c1[1], c2[1])]
         elif c1[1] == c2[1]: return self.v_walls[max(c1[0], c2[0]), c1[1]]
         else: 
-            # print 'We fucked up. {} and {} are not adjacent'.format(c1, c2)
             return -1
 
     def is_adjacent(self, i1, i2):
@@ -374,7 +373,7 @@ class Maze2:
         c2 = [i2%w, np.floor(i2/w).astype(int)]
         if c1[0] == c2[0]: self.h_walls[c1[0], max(c1[1], c2[1])] = is_wall
         elif c1[1] == c2[1]: self.v_walls[max(c1[0], c2[0]), c1[1]] = is_wall
-        else: print 'We fucked up. {} and {} are not adjacent'.format(c1, c2)
+        else: print 'ERROR: {} and {} are not adjacent'.format(c1, c2)
 
     def generate_random_maze(self, prune_walls=0.1):
         self.v_walls[:,:] = 1
