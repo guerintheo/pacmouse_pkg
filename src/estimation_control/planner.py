@@ -37,6 +37,8 @@ class Planner:
 
     def __init__(self, maze):
         self.maze = maze
+        self.curr_plan = None
+        self.cells_in_plan = None
 
     def make_plan(self, state, list_of_maze_indices):
         maze = self.maze
@@ -139,7 +141,194 @@ class Planner:
             return PathType.RIGHT
         else:
             return PathType.LEFT
+    
+    def update_plan(self, cells):
+        self.curr_plan = self.get_next_plan(cells)
+        self.cells_in_plan = cells
         
+    def get_reference_pose_from_plan(self, actual_pose):
+        """
+        Find the reference pose that the robot should be at according to the
+        plan, based on the robot's actual pose. If in a straight path section,
+        then the reference pose is simply the actual pose but centered in the
+        maze corridor. For macaroni turns, we extend the pose radially toward
+        the arc (a quarter-circle) that passes through the cell. Essentially, we
+        are projecting the robot's actual pose onto the planned path.
+        
+        Args:
+            actual_pose: a list consisting of [x, y, yaw]. x and y are
+            global-frame coordinates given in meters. [0,0] is at the bottom
+            left corner of the maze (the bottom left corner of cell 0), and
+            positive x increases as you move to the right along a row, while
+            positive y increases as you move up along a column. Yaw angle is
+            given in radians as the rotation of the body frame relative to the
+            global frame. The robot's body-frame x-axis points forward, and its
+            body-frame y-axis points to the left; as such, yaw angle is 0 when
+            the robot is pointing to the right (i.e., along the global-frame
+            x-axis) and is pi/2 when the robot is pointing up along a column
+            (i.e., along the global-frame y-axis).
+        """
+        curr_cell = self.maze.get_cell_from_global_xy(actual_pose[0], actual_pose[1])
+        if curr_cell is None:
+            print('ERROR: Actual pose not in the maze.')
+            return None
+        assert (curr_cell is not None)
+        try:
+            curr_cell_path_type = self.curr_plan[self.cells_in_plan.index(curr_cell)]
+        except ValueError:
+            print('ERROR: Current cell not in the planned path.')
+            return None
+        
+        # Project onto straight segments if applicable
+        if curr_cell_path_type == PathType.UP or curr_cell_path_type == PathType.DOWN:
+            return self._project_pose_on_vertical_segment(actual_pose[0],
+                                                          actual_pose[1],
+                                                          curr_cell,
+                                                          curr_cell_path_type)
+        if curr_cell_path_type == PathType.LEFT or curr_cell_path_type == PathType.RIGHT:
+            return self._project_pose_on_horizontal_segment(actual_pose[0],
+                                                            actual_pose[1],
+                                                            curr_cell,
+                                                            curr_cell_path_type)
+            
+        # Project onto macaroni segments if applicable
+        if (curr_cell_path_type == PathType.TURN_BOTTOM_TO_LEFT
+                or curr_cell_path_type == PathType.TURN_LEFT_TO_BOTTOM):
+            # Macaroni is first quadrant of a circle
+            return self._project_pose_on_first_quadrant_macaroni(actual_pose[0],
+                                                                 actual_pose[1],
+                                                                 curr_cell,
+                                                                 curr_cell_path_type)
+        if (curr_cell_path_type == PathType.TURN_BOTTOM_TO_RIGHT
+                or curr_cell_path_type == PathType.TURN_RIGHT_TO_BOTTOM):
+            # Macaroni is second quadrant of a circle
+            return self._project_pose_on_second_quadrant_macaroni(actual_pose[0],
+                                                                  actual_pose[1],
+                                                                  curr_cell,
+                                                                  curr_cell_path_type)
+        if (curr_cell_path_type == PathType.TURN_TOP_TO_RIGHT
+                or curr_cell_path_type == PathType.TURN_RIGHT_TO_TOP):
+            # Macaroni is third quadrant of a circle
+            return self._project_pose_on_third_quadrant_macaroni(actual_pose[0],
+                                                                 actual_pose[1],
+                                                                 curr_cell,
+                                                                 curr_cell_path_type)
+        else:
+            # Macaroni is fourth quadrant of a circle
+            return self._project_pose_on_fourth_quadrant_macaroni(actual_pose[0],
+                                                                  actual_pose[1],
+                                                                  curr_cell,
+                                                                  curr_cell_path_type)
+            
+    def _project_pose_on_vertical_segment(self, x, y, cell, cell_path_type):
+        """
+        Args:
+            x: the global-frame x coordinate of the pose we are projecting
+            y: the global-frame y coordinate of the pose we are projecting
+            cell: the current cell, in [r, c] format, of the position x,y
+            cell_path_type: the PathType of cell
+            
+        Returns:
+            The projected pose: a list consisting of [x_proj, y_proj, yaw_proj]
+        """
+        x_proj = cell[1]*p.maze_cell_size + p.maze_inner_size/2.0
+        y_proj = y  # y coordinate does not change
+        if cell_path_type == PathType.UP:
+            # Point pose upward
+            yaw_proj = np.pi/2
+        else:
+            # Point pose downward
+            yaw_proj = -np.pi/2
+        return [x_proj, y_proj, yaw_proj]
+        
+    def _project_pose_on_horizontal_segment(self, x, y, cell, cell_path_type):
+        """
+        Args:
+            x: the global-frame x coordinate of the pose we are projecting
+            y: the global-frame y coordinate of the pose we are projecting
+            cell: the current cell, in [r, c] format, of the position x,y
+            cell_path_type: the PathType of cell
+            
+        Returns:
+            The projected pose: a list consisting of [x_proj, y_proj, yaw_proj]
+        """
+        x_proj = x  # x coordinate does not change
+        y_proj = cell[0]*p.maze_cell_size + p.maze_inner_size/2.0
+        if cell_path_type == PathType.RIGHT:
+            # Point pose to the right
+            yaw_proj = 0
+        else:
+            # Point pose to the left
+            yaw_proj = np.pi
+        return [x_proj, y_proj, yaw_proj]
+    
+    def _project_pose_on_first_quadrant_macaroni(self, x, y, cell, cell_path_type):
+        """
+        Args:
+            x: the global-frame x coordinate of the pose we are projecting
+            y: the global-frame y coordinate of the pose we are projecting
+            cell: the current cell, in [r, c] format, of the position x,y
+            cell_path_type: the PathType of cell
+            
+        Returns:
+            The projected pose: a list consisting of [x_proj, y_proj, yaw_proj]
+        """
+        x_extra = cell[1]*p.maze_cell_size
+        y_extra = cell[0]*p.maze_cell_size
+        # Treating the bottom-left corner of the current cell as the origin
+        x_in_cell = x - x_extra
+        y_in_cell = y - y_extra
+        theta_in_cell = np.arctan(y_in_cell/x_in_cell)
+        radius = p.maze_inner_size
+        x_proj = radius*np.cos(theta_in_cell) + x_extra
+        y_proj = radius*np.sin(theta_in_cell) + y_extra
+        yaw_proj = theta_in_cell + np.pi/2.0
+        if cell_path_type == PathType.TURN_LEFT_TO_BOTTOM:
+            # Going CW around the quarter circle
+            yaw_proj += np.pi
+        return [x_proj, y_proj, yaw_proj]
+        
+    def _project_pose_on_second_quadrant_macaroni(self, x, y, cell, cell_path_type):
+        """
+        Args:
+            x: the global-frame x coordinate of the pose we are projecting
+            y: the global-frame y coordinate of the pose we are projecting
+            cell: the current cell, in [r, c] format, of the position x,y
+            cell_path_type: the PathType of cell
+            
+        Returns:
+            The projected pose: a list consisting of [x_proj, y_proj, yaw_proj]
+        """
+        # TODO
+        pass
+        
+    def _project_pose_on_third_quadrant_macaroni(self, x, y, cell, cell_path_type):
+        """
+        Args:
+            x: the global-frame x coordinate of the pose we are projecting
+            y: the global-frame y coordinate of the pose we are projecting
+            cell: the current cell, in [r, c] format, of the position x,y
+            cell_path_type: the PathType of cell
+            
+        Returns:
+            The projected pose: a list consisting of [x_proj, y_proj, yaw_proj]
+        """
+        # TODO
+        pass
+        
+    def _project_pose_on_fourth_quadrant_macaroni(self, x, y, cell, cell_path_type):
+        """
+        Args:
+            x: the global-frame x coordinate of the pose we are projecting
+            y: the global-frame y coordinate of the pose we are projecting
+            cell: the current cell, in [r, c] format, of the position x,y
+            cell_path_type: the PathType of cell
+            
+        Returns:
+            The projected pose: a list consisting of [x_proj, y_proj, yaw_proj]
+        """
+        # TODO
+        pass
 
 
 if __name__ == '__main__':
