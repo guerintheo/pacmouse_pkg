@@ -273,13 +273,14 @@ class Planner:
         Returns:
             The projected pose: a list consisting of [x_proj, y_proj, yaw_proj]
         """
-        x_extra = cell[1]*p.maze_cell_size
-        y_extra = cell[0]*p.maze_cell_size
-        # Treating the bottom-left corner of the current cell as the origin
+        x_extra = cell[1]*p.maze_cell_size - p.maze_wall_thickness/2.0
+        y_extra = cell[0]*p.maze_cell_size - p.maze_wall_thickness/2.0
+        # Treating the center of the dividing post at the bottom-left corner of
+        # the current cell as the origin
         x_in_cell = x - x_extra
         y_in_cell = y - y_extra
         theta_in_cell = np.arctan(y_in_cell/x_in_cell)
-        radius = p.maze_inner_size
+        radius = p.maze_cell_size/2.0
         x_proj = radius*np.cos(theta_in_cell) + x_extra
         y_proj = radius*np.sin(theta_in_cell) + y_extra
         yaw_proj = theta_in_cell + np.pi/2.0
@@ -299,8 +300,21 @@ class Planner:
         Returns:
             The projected pose: a list consisting of [x_proj, y_proj, yaw_proj]
         """
-        # TODO
-        pass
+        x_extra = (cell[1] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.0
+        y_extra = cell[0]*p.maze_cell_size - p.maze_wall_thickness/2.0
+        # Treating the center of the dividing post at the bottom-right corner of
+        # the current cell as the origin
+        x_in_cell = x - x_extra
+        y_in_cell = y - y_extra
+        theta_in_cell = np.arctan2(y_in_cell, x_in_cell)
+        radius = p.maze_cell_size/2.0
+        x_proj = radius*np.cos(theta_in_cell) + x_extra
+        y_proj = radius*np.sin(theta_in_cell) + y_extra
+        yaw_proj = theta_in_cell + np.pi/2.0
+        if cell_path_type == PathType.TURN_BOTTOM_TO_RIGHT:
+            # Going CW around the quarter circle
+            yaw_proj -= np.pi
+        return [x_proj, y_proj, yaw_proj]
         
     def _project_pose_on_third_quadrant_macaroni(self, x, y, cell, cell_path_type):
         """
@@ -313,8 +327,21 @@ class Planner:
         Returns:
             The projected pose: a list consisting of [x_proj, y_proj, yaw_proj]
         """
-        # TODO
-        pass
+        x_extra = (cell[1] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.0
+        y_extra = (cell[0] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.0
+        # Treating the center of the dividing post at the top-right corner of
+        # the current cell as the origin
+        x_in_cell = x - x_extra
+        y_in_cell = y - y_extra
+        theta_in_cell = np.arctan2(y_in_cell, x_in_cell)
+        radius = p.maze_cell_size/2.0
+        x_proj = radius*np.cos(theta_in_cell) + x_extra
+        y_proj = radius*np.sin(theta_in_cell) + y_extra
+        yaw_proj = theta_in_cell + np.pi/2.0
+        if cell_path_type == PathType.TURN_RIGHT_TO_TOP:
+            # Going CW around the quarter circle
+            yaw_proj += np.pi
+        return [x_proj, y_proj, yaw_proj]
         
     def _project_pose_on_fourth_quadrant_macaroni(self, x, y, cell, cell_path_type):
         """
@@ -327,23 +354,22 @@ class Planner:
         Returns:
             The projected pose: a list consisting of [x_proj, y_proj, yaw_proj]
         """
-        # TODO
-        pass
+        x_extra = cell[1]*p.maze_cell_size - p.maze_wall_thickness/2.0
+        y_extra = (cell[0] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.0
+        # Treating the center of the dividing post at the top-left corner of the
+        # current cell as the origin
+        x_in_cell = x - x_extra
+        y_in_cell = y - y_extra
+        theta_in_cell = np.arctan2(y_in_cell, x_in_cell)
+        radius = p.maze_cell_size/2.0
+        x_proj = radius*np.cos(theta_in_cell) + x_extra
+        y_proj = radius*np.sin(theta_in_cell) + y_extra
+        yaw_proj = theta_in_cell + np.pi/2.0
+        if cell_path_type == PathType.TURN_TOP_TO_LEFT:
+            # Going CW around the quarter circle
+            yaw_proj -= np.pi
+        return [x_proj, y_proj, yaw_proj]
 
 
 if __name__ == '__main__':
-    m = Maze2(4,4)
-    #m.generate_random_maze()
-    m.set_wall_between(0, 1, 1)
-    m.set_wall_between(4, 5, 1)
-    m.set_wall_between(8, 12, 1)
-    m.set_wall_between(9, 13, 1)
-    m.set_wall_between(5, 6, 1)
-    m.set_wall_between(6, 10, 1)
-    m.set_wall_between(11, 15, 1)
-    print(m)
-
-    p = Planner(m)
-    plan = p.get_next_plan([[0, 0], [1, 0], [2, 0], [2, 1]])
-    print plan
-
+    pass
