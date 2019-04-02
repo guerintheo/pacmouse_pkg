@@ -22,12 +22,6 @@ class PathType(Enum):
     TURN_LEFT_TO_TOP = 9
     TURN_LEFT_TO_BOTTOM = 10
     TURN_BOTTOM_TO_LEFT = 11
-    
-    # # Only plan from the incoming edge to the middle of the cell (i.e., don't commit
-    # # to planning a straight path all of the way through the cell). This designation
-    # # is useful for planning the path of the last cell in a plan, as we don't know
-    # # where to go next.
-    # STRAIGHT_TO_MIDDLE = 3 
 
 class Planner:
     """
@@ -39,6 +33,15 @@ class Planner:
         self.maze = maze
         self.curr_plan = None
         self.cells_in_plan = None
+        
+        self.calculate_traversal_times()
+        
+    def calculate_traversal_times(self):
+        straight_velocity = 0.5  # meters/sec
+        curve_velocity = 0.25  # meters/sec
+        self.straight_time = p.maze_cell_size/straight_velocity
+        self.curve_time = ((p.maze_cell_size * np.pi)/4.0)/curve_velocity
+        self.angular_velocity = (np.pi/2)/self.curve_time
 
     def make_plan(self, state, list_of_maze_indices):
         maze = self.maze
@@ -145,6 +148,7 @@ class Planner:
     def update_plan(self, cells):
         self.curr_plan = self.get_next_plan(cells)
         self.cells_in_plan = cells
+        self.generate_entry_times()
         
     def get_reference_pose_from_plan(self, actual_pose):
         """
@@ -369,6 +373,100 @@ class Planner:
             # Going CW around the quarter circle
             yaw_proj -= np.pi
         return [x_proj, y_proj, yaw_proj]
+        
+        
+    def _get_dt_in_cell(self, x, y, cell, cell_path_type):
+        """
+        Get the amount of time taken to reach the reference pose in the cell,
+        relative to the entry time.
+        """
+        if cell_path_type == PathType.UP:
+            # Vertical segment, so consider the y coordinate
+            return abs(y - (cell[1]) * p.maze_cell_size)/self.straight_velocity
+        elif cell_path_type == PathType.DOWN:
+            # Vertical segment, so consider the y coordinate
+            return abs(y - (cell[1] + 1) * p.maze_cell_size)/self.straight_velocity
+        elif cell_path_type == PathType.LEFT:
+            # Horizontal segment, so consider the x coordinate
+            return abs(x - (cell[0] + 1) * p.maze_cell_size)/self.straight_velocity
+        elif cell_path_type == PathType.RIGHT:
+            # Horizontal segment, so consider the x coordinate
+            return abs(x - (cell[0]) * p.maze_cell_size)/self.straight_velocity
+        else:
+        
+            clockwise_turns = [PathType.TURN_BOTTOM_TO_RIGHT,
+                               PathType.TURN_RIGHT_TO_TOP,
+                               PathType.TURN_TOP_TO_LEFT,
+                               PathType.TURN_LEFT_TO_BOTTOM]
+            open_right_turns = [PathType.TURN_BOTTOM_TO_RIGHT,
+                                PathType.TURN_RIGHT_TO_BOTTOM,
+                                PathType.TURN_TOP_TO_RIGHT,
+                                PathType.TURN_RIGHT_TO_TOP]
+            open_up_turns = [PathType.TURN_TOP_TO_LEFT,
+                             PathType.TURN_LEFT_TO_TOP,
+                             PathType.TURN_TOP_TO_RIGHT,
+                             PathType.TURN_RIGHT_TO_TOP]
+            direction_of_rotation = cell_path_type in clockwise_turns
+            direction_of_rotation = direction_of_rotation * 2 - 1
+            center_post = cell
+            center_post[0] += cell_path_type in open_right_turns
+            center_post[1] += cell_path_type in open_up_turns
+            center_post = center_post * p.maze_cell_size - p.maze_wall_thickness/2.0
+            
+            x_in_cell = x - center_post[0]
+            y_in_cell = y - center_post[1]
+            theta_in_cell = direction_of_rotation * p.arctan2(y_in_cell, x_in_cell)
+            theta_in_cell = (theta_in_cell + np.pi) % (np.pi/2)
+            return theta_in_cell/self.angular_velocity
+        
+    def get_t_on_path(self, pose):
+        """
+        Get the time at which this pose should occur on the path. Start time is
+        at the start of the path.
+        """
+        curr_cell = self.maze.get_cell_from_global_xy(pose[0], pose[1])
+        if curr_cell is None:
+            print('ERROR: Actual pose not in the maze.')
+            return None
+        assert (curr_cell is not None)
+        try:
+            curr_cell_path_index = self.cells_in_plan.index(curr_cell)
+            curr_cell_path_type = self.curr_plan[curr_cell_path_index]
+        except ValueError:
+            print('ERROR: Current cell not in the planned path.')
+            return None
+            
+        curr_cell_entry_time = self.entry_times[curr_cell_path_index] +
+                               self._get_dt_in_cell(pose[0], pose[1], curr_cell,
+                                                    curr_cell_path_type)
+                                                    
+    def get_xy_from_t(self, t):
+        """
+        Given a time, which must be between the plan start time (t=0) and the
+        plan end time, find the reference pose (x, y) corresponding to that
+        time.
+        
+        This function is useful for getting the setpoint at some amount of time
+        ahead of our current pose. Can call get_t_on_path() with the current
+        pose, and then call this function with t=(get_t_on_path() + dt), where
+        dt is the amount of time into the future that we want to set our
+        setpoint.
+        """
+        pass
+        
+        
+    def generate_entry_times(self):
+        """
+        Assuming constant velocities, generate the times at which we enter each
+        cell. Also, the exit time of the last cell.
+        """
+        self.entry_times = []
+        self.entry_times.append(0)
+        for path_type in self.curr_plan:
+            prev_entry_time = self.entry_times[-1]
+            curr_entry_time = prev_entry_time + self.straight_time if path_type < 4 else self.curve_time
+            self.entry_times.append(curr_entry_time)
+            
 
 
 if __name__ == '__main__':
