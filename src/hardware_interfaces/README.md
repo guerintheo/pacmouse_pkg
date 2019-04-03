@@ -8,3 +8,12 @@ gpio=0-27=op,dl
 ```
 
 **NOTE**: Due to a goof on the PCB, the GPIOs for Lidar 1 and 2 were swapped. The GPIOs for Lidar 3 and 4 were also swapped. We changed this in `paramys.py` but I'm just mentioning it here so that we remember. 
+
+## LEDs
+
+In order to install the LED package, it is necessary to run the following commands: 
+```
+pip install Adafruit_GPIO
+curl https://raw.githubusercontent.com/tinue/apa102-pi/master/driver/apa102.py > /usr/lib/python2.7/dist-packages/apa102_led/apa102.py
+touch /usr/lib/python2.7/dist-packages/apa102_led/__init__.py
+```
