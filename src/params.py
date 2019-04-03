@@ -48,12 +48,14 @@ motor_pins = [ml_dir, ml_pwm, mr_dir, mr_pwm, motor_mode_pin]
 
 ######################### MOTOR PINS ###########################################
 
-enc_l_a = 16
-enc_l_b = 18
-enc_r_a = 15
-enc_r_b = 13
+enc_r_a = 16
+enc_r_b = 18
+enc_l_a = 15
+enc_l_b = 13
 
 encoder_pins = [enc_l_a, enc_l_b, enc_r_a, enc_r_b]
 
-motor_controller_pid = np.array([.1, 0.1, 0.001])
-motor_controller_freq = 50
+encoder_freq = 10
+
+motor_controller_pid = np.array([0.0, 0., 0.])
+motor_control_freq = 100

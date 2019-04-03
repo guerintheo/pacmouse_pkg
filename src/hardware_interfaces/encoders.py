@@ -22,6 +22,7 @@ class Encoders:
         self.right_direction_count = 0
         self.alpha = 0.5
         
+        # TODO: try changing this to pigpio
         for i, pin in enumerate(p.encoder_pins):
             GPIO.setup(pin, GPIO.IN)
             GPIO.add_event_detect(pin, GPIO.BOTH, lambda p: self._callback(p))
@@ -53,7 +54,7 @@ class Encoders:
                 self.right_direction_count += (t2 > t1) * 2 - 1
 
             self.most_recent_rising[pin] = t
-            
+
         else:
             if pin == p.enc_l_a:
                 t1 = self.most_recent_falling[p.enc_l_b] - self.most_recent_falling[p.enc_l_a]
@@ -84,8 +85,8 @@ class Encoders:
         right_count = 0
         encoder_msg = Vector3()
         while not rospy.is_shutdown():
-            left_count_new = (self.counts[p.enc_l_a] + self.counts[p.enc_l_b]) / 2. * np.sign(self.left_direction_count)
-            right_count_new = (self.counts[p.enc_r_a] + self.counts[p.enc_r_b]) / 2. * np.sign(self.right_direction_count)
+            left_count_new = (self.counts[p.enc_l_a] + self.counts[p.enc_l_b]) / 6. * np.sign(self.left_direction_count) * p.encoder_freq / p.gear_ratio
+            right_count_new = (self.counts[p.enc_r_a] + self.counts[p.enc_r_b]) / 6. * np.sign(self.right_direction_count) * p.encoder_freq / p.gear_ratio
 
             left_count = self.alpha * left_count_new + (1 - self.alpha) * left_count
             right_count = self.alpha * right_count_new + (1 - self.alpha) * right_count
