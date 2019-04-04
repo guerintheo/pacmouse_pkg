@@ -72,9 +72,6 @@ class LEDs:
 		self.strip.show()
 		time.sleep(0.2)
 
-		if msg == "Pacman AI paused by button":
-			self.strip.set_pixel_rgb(1,ORANGE)
-
 	def master_status_callback(self, msg):
 		# During normal operation, we should always have at least one LED on
 		# so that we can distinguish that we have not freshly rebooted.
