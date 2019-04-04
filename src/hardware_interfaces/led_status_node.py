@@ -25,6 +25,8 @@ class LEDs:
 
 		rospy.on_shutdown(self.shutdown) # TODO: Ask ros geniuses if this is the right way to shut down.
 
+		rospy.spin()
+
 	def setall(self, color):
 		for i in range(p.num_leds):
 			self.strip.set_pixel_rgb(i,color)	
