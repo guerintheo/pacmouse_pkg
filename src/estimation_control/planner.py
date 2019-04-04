@@ -33,8 +33,16 @@ class Planner:
         self.maze = maze
         self.curr_plan = None
         self.cells_in_plan = None
-        
         self.calculate_traversal_times()
+        
+        self.first_quadrant_turns = set([PathType.TURN_BOTTOM_TO_LEFT,
+                                         PathType.TURN_LEFT_TO_BOTTOM])
+        self.second_quadrant_turns = set([PathType.TURN_RIGHT_TO_BOTTOM,
+                                          PathType.TURN_BOTTOM_TO_RIGHT])
+        self.third_quadrant_turns = set([PathType.TURN_TOP_TO_RIGHT,
+                                         PathType.TURN_RIGHT_TO_TOP])
+        self.fourth_quadrant_turns = set([PathType.TURN_LEFT_TO_TOP,
+                                          PathType.TURN_TOP_TO_LEFT])
         
     def calculate_traversal_times(self):
         straight_velocity = 0.5  # meters/sec
@@ -42,15 +50,6 @@ class Planner:
         self.straight_time = p.maze_cell_size/straight_velocity
         self.curve_time = ((p.maze_cell_size * np.pi)/4.0)/curve_velocity
         self.angular_velocity = (np.pi/2)/self.curve_time
-
-    def make_plan(self, state, list_of_maze_indices):
-        maze = self.maze
-        
-    # def get_next_poses(self, curr_pose, num_poses):
-    #     """
-    #     Return a list of set points / reference poses for the robot to try to
-    #     track.
-    #     """
     
     def get_next_plan(self, cells):
         """
@@ -374,7 +373,6 @@ class Planner:
             yaw_proj -= np.pi
         return [x_proj, y_proj, yaw_proj]
         
-        
     def _get_dt_in_cell(self, x, y, cell, cell_path_type):
         """
         Get the amount of time taken to reach the reference pose in the cell,
@@ -382,16 +380,16 @@ class Planner:
         """
         if cell_path_type == PathType.UP:
             # Vertical segment, so consider the y coordinate
-            return abs(y - (cell[1]) * p.maze_cell_size)/self.straight_velocity
+            return abs(y - (cell[0]) * p.maze_cell_size)/self.straight_velocity
         elif cell_path_type == PathType.DOWN:
             # Vertical segment, so consider the y coordinate
-            return abs(y - (cell[1] + 1) * p.maze_cell_size)/self.straight_velocity
+            return abs(y - (cell[0] + 1) * p.maze_cell_size)/self.straight_velocity
         elif cell_path_type == PathType.LEFT:
             # Horizontal segment, so consider the x coordinate
-            return abs(x - (cell[0] + 1) * p.maze_cell_size)/self.straight_velocity
+            return abs(x - (cell[1] + 1) * p.maze_cell_size)/self.straight_velocity
         elif cell_path_type == PathType.RIGHT:
             # Horizontal segment, so consider the x coordinate
-            return abs(x - (cell[0]) * p.maze_cell_size)/self.straight_velocity
+            return abs(x - (cell[1]) * p.maze_cell_size)/self.straight_velocity
         else:
         
             clockwise_turns = [PathType.TURN_BOTTOM_TO_RIGHT,
@@ -440,10 +438,10 @@ class Planner:
                                self._get_dt_in_cell(pose[0], pose[1], curr_cell,
                                                     curr_cell_path_type)
                                                     
-    def get_xy_from_t(self, t):
+    def get_reference_pose_from_plan_by_time(self, t):
         """
         Given a time, which must be between the plan start time (t=0) and the
-        plan end time, find the reference pose (x, y) corresponding to that
+        plan end time, find the reference pose (x, y, yaw) corresponding to that
         time.
         
         This function is useful for getting the setpoint at some amount of time
@@ -451,9 +449,106 @@ class Planner:
         pose, and then call this function with t=(get_t_on_path() + dt), where
         dt is the amount of time into the future that we want to set our
         setpoint.
-        """
-        pass
         
+        Return:
+            a reference pose in [x, y, yaw] format
+        """
+        if t < 0:
+            raise ValueError('Input time must be a non-negative number.')
+        # Assuming constant velocity through a cell with straight path type
+        # (Note that the last cell in a plan is always a straight path type)
+        last_cell_duration = self.entry_times[-1] - self.entry_times[-2]
+        if t >= self.entry_times[-1] - last_cell_duration/2.:
+            # Return last reference pose in plan (have this pose be in the
+            # center of the cell)
+            print('WARNING: We do not have a plan far enough into the future '+
+                  'for the input time. Returning a reference pose that is the '+
+                  'center of the last cell of the plan.')
+            cell = self.cells_in_plan[-1]
+            cell_path_type = self.curr_plan[-1]
+            x_proj = cell[1]*p.maze_cell_size + p.maze_inner_size/2.0
+            y_proj = cell[0]*p.maze_cell_size + p.maze_inner_size/2.0
+            if cell_path_type == PathType.RIGHT:
+                # Point pose to the right
+                yaw_proj = 0
+            elif cell_path_type == PathType.LEFT:
+                # Point pose to the left
+                yaw_proj = np.pi
+            elif cell_path_type == PathType.UP:
+                # Point pose upward
+                yaw_proj = np.pi/2.
+            else:
+                # Point pose downward
+                yaw_proj = -np.pi/2.
+            return [x_proj, y_proj, yaw_proj]
+        
+        for entry_time_index in range(len(self.entry_times)-1):
+            if (t >= self.entry_times[entry_time_index] and
+                    t < self.entry_times[entry_time_index + 1]):
+                # We have found the cell in which the time falls. This condition
+                # must occur at some point.
+                cell_in_plan_index = entry_time_index
+                cell = self.cells_in_plan[cell_in_plan_index]
+                cell_path_type = self.curr_plan[cell_in_plan_index]
+                break
+                
+        total_cell_duration = (self.entry_times[cell_in_plan_index + 1] -
+                               self.entry_times[cell_in_plan_index])
+        # Ratio of time spent in cell to total cell duration
+        ratio = (t-self.entry_times[cell_in_plan_index]) / total_cell_duration
+        
+        if cell_path_type == PathType.UP:
+            # Vertical segment, so determine the y coordinate by the time ratio
+            x_proj = cell[1]*p.maze_cell_size + p.maze_inner_size/2.0
+            y_proj = cell[0]*p.maze_cell_size + (ratio * p.maze_cell_size)
+            yaw_proj = np.pi/2.
+        elif cell_path_type == PathType.DOWN:
+            # Vertical segment, so determine the y coordinate by the time ratio
+            x_proj = cell[1]*p.maze_cell_size + p.maze_inner_size/2.0
+            y_proj = (cell[0] + 1)*p.maze_cell_size - (ratio * p.maze_cell_size)
+            yaw_proj = -np.pi/2.
+        elif cell_path_type == PathType.LEFT:
+            # Horizontal segment, so determine the x coordinate by the time ratio
+            y_proj = cell[0]*p.maze_cell_size + p.maze_inner_size/2.0
+            x_proj = (cell[1] + 1)*p.maze_cell_size - (ratio * p.maze_cell_size)
+            yaw_proj = np.pi
+        elif cell_path_type == PathType.RIGHT:
+            # Horizontal segment, so determine the x coordinate by the time ratio
+            y_proj = cell[0]*p.maze_cell_size + p.maze_inner_size/2.0
+            x_proj = cell[1]*p.maze_cell_size + (ratio * p.maze_cell_size)
+            yaw_proj = 0
+        else:
+            # Handle macaroni turns
+            radius = p.maze_cell_size/2.0
+            if cell_path_type in self.first_quadrant_turns:
+                theta_in_cell = ratio*np.pi/2.
+                # Treating the center of the dividing post at the bottom-left corner of
+                # the current cell as the origin
+                x_post = cell[1]*p.maze_cell_size - p.maze_wall_thickness/2.0
+                y_post = cell[0]*p.maze_cell_size - p.maze_wall_thickness/2.0
+            elif cell_path_type in self.second_quadrant_turns:
+                theta_in_cell = ratio*np.pi/2. + np.pi/2.
+                # Treating the center of the dividing post at the bottom-right corner of
+                # the current cell as the origin
+                x_post = (cell[1] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.0
+                y_post = cell[0]*p.maze_cell_size - p.maze_wall_thickness/2.0
+            elif cell_path_type in self.third_quadrant_turns:
+                theta_in_cell = ratio*np.pi/2. + np.pi
+                # Treating the center of the dividing post at the top-right corner of
+                # the current cell as the origin
+                x_post = (cell[1])*p.maze_cell_size - p.maze_wall_thickness/2.0
+                y_post = (cell[0] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.0
+            else:
+                theta_in_cell = ratio*np.pi/2. + 3.*np.pi/2.
+                # Treating the center of the dividing post at the top-left corner of
+                # the current cell as the origin
+                x_post = (cell[1] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.0
+                y_post = (cell[0] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.0
+            x_proj = radius*np.cos(theta_in_cell) + x_post
+            y_proj = radius*np.sin(theta_in_cell) + y_post
+            yaw_proj = theta_in_cell + np.pi/2.0
+        
+        return [x_proj, y_proj, yaw_proj]
         
     def generate_entry_times(self):
         """

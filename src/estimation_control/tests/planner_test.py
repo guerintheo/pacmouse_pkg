@@ -25,7 +25,7 @@ class PlannerTest:
         fig = plt.figure()
         self.ax1 = fig.add_subplot(1,1,1)
     
-    def test_with_plot(self):
+    def test_pose_projection_with_plot(self):
         planner = Planner(self.m)
         plan = planner.update_plan([[0, 0], [1, 0], [2, 0], [2, 1]])
         print(planner.curr_plan)
@@ -52,6 +52,18 @@ class PlannerTest:
         
         plt.show()
         
+    def test_time_parametrized_plan_with_plot(self):
+        planner = Planner(self.m)
+        plan = planner.update_plan([[0, 0], [1, 0], [2, 0], [2, 1]])
+        print(planner.curr_plan)
+        
+        plt.gca().set_aspect('equal', adjustable='box')
+        self.m.plot(plt)
+        
+        # TODO
+        
+        plt.show()
+        
     def draw_pose(self, pose, color='k', alpha=1.0, size=0.02):
         arrow = mpatches.Arrow(pose[0], pose[1], size*np.cos(pose[2]), size*np.sin(pose[2]),
                                color=color, width=size/2, alpha=alpha)
@@ -60,4 +72,5 @@ class PlannerTest:
         
 if __name__ == '__main__':
     planner_test = PlannerTest()
-    planner_test.test_with_plot()
+    #planner_test.test_pose_projection_with_plot()
+    planner_test.test_time_parametrized_plan_with_plot()
