@@ -66,6 +66,12 @@ class PlannerTest:
         # Some straight-line poses
         robot_poses = [start_pose,
                        [0.043, 0.22, np.pi/2 - 0.2]]
+                       
+        reference_poses_from_projection = []
+        for pose in robot_poses:
+            reference_poses_from_projection.append(
+                planner.get_reference_pose_from_plan(pose))
+                       
         pose_times_on_path = []
         for pose in robot_poses:
             pose_times_on_path.append(planner.get_t_on_path(pose))
@@ -75,28 +81,11 @@ class PlannerTest:
             reference_poses_from_time_parametrization.append(
                 planner.get_reference_pose_from_plan_by_time(pose_time))
                 
-        reference_poses_from_projection = []
-        for pose in robot_poses:
-            reference_poses_from_projection.append(
-                planner.get_reference_pose_from_plan(pose))
-                
-        #############################
         # Compare poses with tolerance in the floating-point arithmetic
-        
-        # Note: Previously, we were off by p.maze_wall_thickness/2. for an UP cell in the first row, for example
-        print(reference_poses_from_time_parametrization)
-        print(reference_poses_from_projection)
-        #assert reference_poses_from_time_parametrization == reference_poses_from_projection
-        
-        for i in range(len(reference_poses_from_projection)):
-            x_diff = reference_poses_from_projection[i][0] - reference_poses_from_time_parametrization[i][0]
-            y_diff = reference_poses_from_projection[i][1] - reference_poses_from_time_parametrization[i][1]
-            yaw_diff = reference_poses_from_projection[i][2] - reference_poses_from_time_parametrization[i][2]
-
-            allowed_error = 0.00001
-            assert abs(x_diff) <= allowed_error
-            assert abs(y_diff) <= allowed_error
-            assert abs(yaw_diff) <= allowed_error
+        #print(reference_poses_from_projection)
+        #print(reference_poses_from_time_parametrization)
+        self.compare_poses_with_tol(reference_poses_from_projection,
+                                    reference_poses_from_time_parametrization)
             
         ###########################
         
@@ -104,14 +93,44 @@ class PlannerTest:
         robot_poses += [[0.045, 0.367, np.pi/2 - 0.102],
                         [0.036, 0.43, np.pi/2 - 0.3],
                         [0.132, 0.412, np.pi/2 - 1.2],
-                        [0.169, 0.440, 0.5],
-                        [0.149, 0.459, 0.8]]
+                        [0.149, 0.459, 0.8],
+                        [0.169, 0.440, 0.5]]
+                        
+        reference_poses_from_projection = []
+        for pose in robot_poses:
+            reference_poses_from_projection.append(
+                planner.get_reference_pose_from_plan(pose))
+                       
+        pose_times_on_path = []
+        for pose in robot_poses:
+            pose_times_on_path.append(planner.get_t_on_path(pose))
+            
+        reference_poses_from_time_parametrization = []
+        for pose_time in pose_times_on_path:
+            reference_poses_from_time_parametrization.append(
+                planner.get_reference_pose_from_plan_by_time(pose_time))
+                
+        # Compare poses with tolerance in the floating-point arithmetic
+        print('')
+        print(reference_poses_from_projection)
+        print(reference_poses_from_time_parametrization)
+        self.compare_poses_with_tol(reference_poses_from_projection,
+                                    reference_poses_from_time_parametrization)
         
         
         
         
         ##########
         plt.show()
+        
+    def compare_poses_with_tol(self, pose_list_1, pose_list_2, tolerance=0.00001):
+        for i in range(len(pose_list_1)):
+            x_diff = pose_list_1[i][0] - pose_list_2[i][0]
+            y_diff = pose_list_1[i][1] - pose_list_2[i][1]
+            yaw_diff = pose_list_1[i][2] - pose_list_2[i][2]
+            assert abs(x_diff) <= tolerance, 'x of pose {} failed: {}, {}'.format(i, pose_list_1[i][0], pose_list_2[i][0])
+            assert abs(y_diff) <= tolerance, 'y of pose {} failed: {}, {}'.format(i, pose_list_1[i][1], pose_list_2[i][1])
+            assert abs(yaw_diff) <= tolerance, 'yaw of pose {} failed: {}, {}'.format(i, pose_list_1[i][2], pose_list_2[i][2])
         
     def draw_pose(self, pose, color='k', alpha=1.0, size=0.02):
         arrow = mpatches.Arrow(pose[0], pose[1], size*np.cos(pose[2]), size*np.sin(pose[2]),
@@ -121,5 +140,5 @@ class PlannerTest:
         
 if __name__ == '__main__':
     planner_test = PlannerTest()
-    #planner_test.test_pose_projection_with_plot()
+    planner_test.test_pose_projection_with_plot()
     planner_test.test_time_parametrized_plan_with_plot()
