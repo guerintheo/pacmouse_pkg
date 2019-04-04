@@ -161,10 +161,11 @@ class Planner:
             # Start pose must be in the first cell in the cells list
             if cells[0] != self.maze.get_cell_from_global_xy(start_pose[0], start_pose[1]):
                 raise ValueError('Start pose must be in the first cell in the cells list.')
+            # Note: for row 0 and column 0, don't add maze wall thickness
             if self.curr_plan[0] == PathType.RIGHT or self.curr_plan[0] == PathType.LEFT:
-                dist_offset = abs(start_pose[0] - (cells[0][1]*p.maze_cell_size - p.maze_wall_thickness/2.))
+                dist_offset = abs(start_pose[0] - (cells[0][1]*p.maze_cell_size - (p.maze_wall_thickness/2. if cells[0][1] != 0 else 0)))
             else:
-                dist_offset = abs(start_pose[1] - (cells[0][0]*p.maze_cell_size - p.maze_wall_thickness/2.))
+                dist_offset = abs(start_pose[1] - (cells[0][0]*p.maze_cell_size - (p.maze_wall_thickness/2. if cells[0][0] != 0 else 0)))
             self.time_offset = dist_offset/self.straight_velocity
         
         self._generate_exit_times()
