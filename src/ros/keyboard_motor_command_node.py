@@ -11,7 +11,7 @@ class KeyboardMotorController:
     
     def __init__(self):
         rospy.init_node('keyboard_motor_command')
-        self.cmd_pub = rospy.Publisher('/pacmouse/cmd_motors', Vector3, queue_size=1)
+        self.cmd_pub = rospy.Publisher('/pacmouse/motors/cmd', Vector3, queue_size=1)
         self.cmd = [0, 0]  # [left, right]
         self.turn_increment = 0.015
         self.forward_increment = 0.08
