@@ -19,9 +19,13 @@ class LEDs:
 		self.strip = apa102.APA102(num_led=p.num_leds, global_brightness=p.led_default_brightness, mosi=p.mosi, sclk=p.sclk, order='rgb')
 		
 		self.rainbow()
-
+		
 		self.strip.set_pixel_rgb(0,GREEN)
+		self.strip.show()
+
 		rospy.on_shutdown(self.shutdown) # TODO: Ask ros geniuses if this is the right way to shut down.
+
+		rospy.spin()
 
 	def setall(self, color):
 		for i in range(p.num_leds):
@@ -69,9 +73,6 @@ class LEDs:
 		self.strip.set_pixel_rgb(2,OFF)
 		self.strip.show()
 		time.sleep(0.2)
-
-		if msg == "Pacman AI paused by button":
-			self.strip.set_pixel_rgb(1,ORANGE)
 
 	def master_status_callback(self, msg):
 		# During normal operation, we should always have at least one LED on
