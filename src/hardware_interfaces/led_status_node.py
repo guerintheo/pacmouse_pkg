@@ -9,7 +9,7 @@ ORANGE = 0xFF7F00 #Orange
 YELLOW = 0xFFFF00 #Yellow
 GREEN = 0x00FF00 #Green
 BLUE = 0x0000FF #Blue
-INDIGO = 0x4B0082 #Indigo
+PURPLE = 0x4B0082 #Indigo
 VIOLET = 0x9400D3 #Violet
 
 class LEDs: 
