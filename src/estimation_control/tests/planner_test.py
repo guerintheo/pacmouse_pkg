@@ -53,14 +53,34 @@ class PlannerTest:
         plt.show()
         
     def test_time_parametrized_plan_with_plot(self):
+        start_pose = [0.1, 0.103, np.pi/2 + 0.1]
         planner = Planner(self.m)
-        plan = planner.update_plan([[0, 0], [1, 0], [2, 0], [2, 1]])
+        plan = planner.update_plan([[0, 0], [1, 0], [2, 0], [2, 1]], start_pose=start_pose)
         print(planner.curr_plan)
         
         plt.gca().set_aspect('equal', adjustable='box')
         self.m.plot(plt)
         
-        # TODO
+        # Some straight-line poses
+        robot_poses = [start_pose,
+                       [0.043, 0.22, np.pi/2 - 0.2]]
+        pose_times_on_path = []
+        for pose in robot_poses:
+            pose_times_on_path.append(planner.get_t_on_path(pose))
+            
+        reference_poses_from_time_parametrization = []
+        for pose_time in pose_times_on_path:
+            reference_poses_from_time_parametrization.append(
+                planner.get_reference_pose_from_plan_by_time(pose_time))
+                
+        reference_poses_from_projection = []
+        for pose in robot_poses:
+            reference_poses_from_projection.append(
+                planner.get_reference_pose_from_plan(pose))
+                
+        print(reference_poses_from_time_parametrization)
+        print(reference_poses_from_projection)
+        assert reference_poses_from_time_parametrization == reference_poses_from_projection
         
         plt.show()
         
