@@ -1,4 +1,4 @@
-import RPi.GPIO as GPIO
+import pigpio
 import time
 import rospy
 from geometry_msgs.msg import Vector3  # TODO: Use a better message type
@@ -7,14 +7,13 @@ import numpy as np
 from multiprocessing import Process, Array
 from collections import deque
 
-GPIO.setmode(GPIO.BOARD)
-GPIO.setwarnings(False)
 
 class Encoders:
     def __init__(self):
         rospy.init_node('encoder_node')
         self.publisher = rospy.Publisher('/pacmouse/encoders', Vector3, queue_size=1)
 
+        self.pi = pigpio.pi()
         self.counts = dict()
         self.most_recent_rising = dict()
         self.most_recent_falling = dict()
@@ -24,18 +23,32 @@ class Encoders:
         
         # TODO: try changing this to pigpio
         for i, pin in enumerate(p.encoder_pins):
-            GPIO.setup(pin, GPIO.IN)
-            GPIO.add_event_detect(pin, GPIO.BOTH, lambda p: self._callback(p))
+            self.pi.set_mode(pin, pigpio.INPUT)
+            self.pi.callback(pin, pigpio.EITHER_EDGE, self._callback)
             self.counts[pin] = 0
             self.most_recent_rising[pin] = time.time()
             self.most_recent_falling[pin] = time.time()
 
         self.spin()
 
-    def _callback(self, pin):
+    def _callback(self, pin, level, tick):
+        """
+        Callback that is called when a GPIO is toggled. For documentation on the
+        usage of this callback by pigpio, refer to:
+        http://abyz.me.uk/rpi/pigpio/python.html#callback
+        
+        Args:
+            pin: the GPIO pin number (BCM)
+            level: number that is either:
+                        - 0 (falling edge),
+                        - 1 (rising edge), or
+                        - 2 (no change in level)
+            tick: number of microseconds since boot
+        """
+        # NOTE: Consider using "tick" parameter for timing?
         t = time.time()
 
-        if GPIO.input(pin): # if this is a rising edge
+        if level == 1: # if this is a rising edge
             if pin == p.enc_l_a:
                 t1 = self.most_recent_rising[p.enc_l_b] - self.most_recent_rising[p.enc_l_a]
                 t2 = t - self.most_recent_rising[p.enc_l_b]
