@@ -63,5 +63,5 @@ motor_control_freq = 100
 # LEDS
 num_leds = 3
 led_default_brightness = 2 # Range from 0 to 31 (31 is really bright)
-mosi = 8 # GPIO8 (hw pin 24) is hooked up to the MOSI pin
-sclk = 26 # GPIO26 (hw pin 37) is hooked up to the SCLK pin
+sclk = 8 # GPIO8 (hw pin 24) is hooked up to the SCLK pin
+mosi = 26 # GPIO26 (hw pin 37) is hooked up to the MOSI pin
