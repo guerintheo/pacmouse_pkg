@@ -24,14 +24,11 @@ class LEDs:
 		self.strip.clear_strip()
 		self.strip.cleanup()
 
-<<<<<<< HEAD
 	def setall(self, color):
 		for i in range(num_led):
 			self.strip.set_pixel_rgb(i,color)	
 		self.strip.show()
 
-=======
->>>>>>> 978db6fbf12b53252afa81027631633524c9fbab
 	def rainbow(self):
 		self.strip.set_pixel_rgb(0,RED)
 		self.strip.show()
