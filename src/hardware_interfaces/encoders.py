@@ -1,11 +1,8 @@
 import pigpio
-import time
 import rospy
 from geometry_msgs.msg import Vector3  # TODO: Use a better message type
 import pacmouse_pkg.src.params as p
 import numpy as np
-from multiprocessing import Process, Array
-from collections import deque
 
 
 class Encoders:
@@ -19,17 +16,16 @@ class Encoders:
         self.most_recent_falling = dict()
         self.left_direction_count = 0
         self.right_direction_count = 0
-        self.alpha = 0.5
+        self.alpha = 0.6
+        #self.alpha = 1  # to not use EMA
         
         # TODO: try changing this to pigpio
         for i, pin in enumerate(p.encoder_pins):
             self.pi.set_mode(pin, pigpio.INPUT)
             self.pi.callback(pin, pigpio.EITHER_EDGE, self._callback)
             self.counts[pin] = 0
-            self.most_recent_rising[pin] = time.time()
-            self.most_recent_falling[pin] = time.time()
-
-        self.spin()
+            self.most_recent_rising[pin] = self.pi.get_current_tick()
+            self.most_recent_falling[pin] = self.pi.get_current_tick()
 
     def _callback(self, pin, level, tick):
         """
@@ -43,10 +39,13 @@ class Encoders:
                         - 0 (falling edge),
                         - 1 (rising edge), or
                         - 2 (no change in level)
-            tick: number of microseconds since boot
+            tick: number of microseconds since system boot. Wraps from
+                  4294967295 to 0 (this occurs approximately every 72 minutes)
         """
-        # NOTE: Consider using "tick" parameter for timing?
-        t = time.time()
+        # NOTE: Using the tick parameter likely means we'll receive one
+        # erroneous direction approximately every 72 minutes, which shouldn't be
+        # a big deal
+        t = tick
 
         if level == 1: # if this is a rising edge
             if pin == p.enc_l_a:
@@ -65,9 +64,9 @@ class Encoders:
                 t1 = self.most_recent_rising[p.enc_r_a] - self.most_recent_rising[p.enc_r_b]
                 t2 = t - self.most_recent_rising[p.enc_r_a]
                 self.right_direction_count += (t2 > t1) * 2 - 1
-
+        
             self.most_recent_rising[pin] = t
-
+        
         else:
             if pin == p.enc_l_a:
                 t1 = self.most_recent_falling[p.enc_l_b] - self.most_recent_falling[p.enc_l_a]
@@ -85,7 +84,7 @@ class Encoders:
                 t1 = self.most_recent_falling[p.enc_r_a] - self.most_recent_falling[p.enc_r_b]
                 t2 = t - self.most_recent_falling[p.enc_r_a]
                 self.right_direction_count += (t2 > t1) * 2 - 1
-                
+        
             self.most_recent_falling[pin] = t
 
 
@@ -122,6 +121,12 @@ class Encoders:
 
 if __name__ == '__main__':
     e = Encoders()
+    try:
+        e.spin()
+    finally:
+        # e.g., if Ctrl-C is used to terminate the script, we want to ensure
+        # that we stop the pigpio.pi() handler
+        e.pi.stop()
 
 
 
