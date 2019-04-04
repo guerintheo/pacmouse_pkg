@@ -14,6 +14,7 @@ gpio=0-27=op,dl
 In order to install the LED package, it is necessary to run the following commands: 
 ```
 pip install Adafruit_GPIO
-curl https://raw.githubusercontent.com/tinue/apa102-pi/master/driver/apa102.py > /usr/lib/python2.7/dist-packages/apa102_led/apa102.py
-touch /usr/lib/python2.7/dist-packages/apa102_led/__init__.py
+sudo mkdir /usr/lib/python2.7/dist-packages/apa102_led
+sudo curl https://raw.githubusercontent.com/tinue/apa102-pi/master/driver/apa102.py -o /usr/lib/python2.7/dist-packages/apa102_led/apa102.py
+sudo touch /usr/lib/python2.7/dist-packages/apa102_led/__init__.py
 ```
