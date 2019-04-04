@@ -29,8 +29,10 @@ gear_ratio = wheel_gear_ratio * motor_gear_ratio
 
 motor_pwm_freq = 100
 
-# these pin numbers are GPIO.BOARD
-button_pins = [12,35,38,40]
+# These pin numbers are GPIO.BOARD
+#button_pins = [12,35,38,40]
+# These pin numbers are BCM
+button_pins = [18, 19, 20, 21]
 
 ######################### MOTOR PINS ###########################################
 # NOTE: These pin numbers are BCM (Broadcom), not GPIO.BOARD / physical pin

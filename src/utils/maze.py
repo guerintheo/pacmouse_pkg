@@ -349,8 +349,31 @@ class Maze2:
             # build h_wall
             walls = ['---' if self.h_walls[x,y] else '   ' for x in range(self.width)]
             output += '+' + '+'.join(walls) + '+\n'
-        return output
+        return output[:-1]
 
+    def load(self, filename):
+        with open(filename, 'r') as f:
+            self.parse(f.read())
+
+    def save(self, filename):
+        with open(filename, 'w') as f:
+            f.write(self.__str__())
+
+    def parse(self, s):
+        lines = s.split('\n')
+        assert len(lines)%2 == 1 # the number of lines should be odd
+        assert len(lines[0])%4 ==1 # each cell is 3 characters wide
+
+        self.height = h = (len(lines)-1)/2
+        self.width = w = (len(lines[0])-1)/4
+        self.v_walls = np.zeros([w+1, h])
+        self.h_walls = np.zeros([w, h+1])
+
+        for i, l in enumerate(lines):
+            if i%2 == 0: # we are dealing with a horizontal wall row
+                self.h_walls[:, h-i/2] = [l[j] == '-' for j in np.arange(w)*4+2]
+            else: # we are handling a vertical wall row
+                self.v_walls[:, h - (i+1)/2] =  [l[j] == '|' for j in np.arange(w+1)*4]
 
     def get_wall_between(self, i1, i2):
         w = self.width
@@ -419,30 +442,40 @@ class Maze2:
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1 and sys.argv[1] == '2':
-        m = Maze2(16,16)
-        # m.h_walls[0,1] = 1
-        # m.h_walls[1,2] = 1
-        # print m.h_walls
-        # print m.v_walls
-        # m.build_adjacency_matrix()
-        # print m.adj_matrix
-        # print m
-        m.generate_random_maze()
-        print m
+    m = Maze2(4,3)
+    m.generate_random_maze()
+    print m
+    m.save('test.maze')
+    print 'saved'
+    n = Maze2(1,1)
+    n.load('test.maze')
+    print 'loaded'
+    print n
 
-    else:
-        m = Maze(3,2)
-        # add some walls
-        # m.set_connected([1,1],[0,1], 0)
-        # m.set_connected([1,0],[1,1], 0)
-        # see what it looks like
-        print(m)
+    # if len(sys.argv) > 1 and sys.argv[1] == '2':
+    #     m = Maze2(16,16)
+    #     # m.h_walls[0,1] = 1
+    #     # m.h_walls[1,2] = 1
+    #     # print m.h_walls
+    #     # print m.v_walls
+    #     # m.build_adjacency_matrix()
+    #     # print m.adj_matrix
+    #     # print m
+    #     m.generate_random_maze()
+    #     print m
 
-        # and get some of the resulting paths
-        start, end = [0,0], [2,1]
-        print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))
-        start, end = [2,1], [0,0]
-        print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))
-        start, end = [0,1], [1,1]
-        print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))
+    # else:
+    #     m = Maze(3,2)
+    #     # add some walls
+    #     # m.set_connected([1,1],[0,1], 0)
+    #     # m.set_connected([1,0],[1,1], 0)
+    #     # see what it looks like
+    #     print(m)
+
+    #     # and get some of the resulting paths
+    #     start, end = [0,0], [2,1]
+    #     print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))
+    #     start, end = [2,1], [0,0]
+    #     print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))
+    #     start, end = [0,1], [1,1]
+    #     print('The path from {} to {} is {}'.format(start, end, m.get_path(start, end)))

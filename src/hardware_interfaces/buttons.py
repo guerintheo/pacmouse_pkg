@@ -1,13 +1,14 @@
-import RPi.GPIO as GPIO
+import pigpio
 import time
 import pacmouse_pkg.src.params as p
 
-GPIO.setmode(GPIO.BOARD)
+pi = pigpio.pi()  # handler for Pi's GPIO pins
 
 for pin in p.button_pins:
-	GPIO.setup(pin, GPIO.IN, GPIO.PUD_UP)
+    pi.set_mode(pin, pigpio.INPUT)
+    pi.set_pull_up_down(pin, pigpio.PUD_UP)
 
 while True:
-	vals = [GPIO.input(pin) for pin in p.button_pins]
+    vals = [pi.read(pin) for pin in p.button_pins]
 	print vals
 	time.sleep(0.1)
