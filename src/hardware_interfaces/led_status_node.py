@@ -17,12 +17,11 @@ class LEDs:
 		rospy.init_node('led_status_node')
 		# master_status_sub = rospy.Subscriber('/master_status', MasterStatusMsg, master_status_callback)
 		self.strip = apa102.APA102(num_led=p.num_leds, global_brightness=p.led_default_brightness, mosi=p.mosi, sclk=p.sclk, order='rgb')
+		
 		self.rainbow()
-		rospy.on_shutdown(self.shutdown) # TODO: Ask ros geniuses if this is the right way to shut down.
 
-	def shutdown(self):  
-		self.strip.clear_strip()
-		self.strip.cleanup()
+		self.strip.set_pixel_rgb(0,GREEN)
+		rospy.on_shutdown(self.shutdown) # TODO: Ask ros geniuses if this is the right way to shut down.
 
 	def setall(self, color):
 		for i in range(p.num_leds):
@@ -30,33 +29,83 @@ class LEDs:
 		self.strip.show()
 
 	def rainbow(self):
+		self.setall(RED)
+		time.sleep(0.3)
+		self.setall(ORANGE)
+		time.sleep(0.3)
+		self.setall(YELLOW)
+		time.sleep(0.3)
+		self.setall(GREEN)
+		time.sleep(0.3)
+		self.setall(BLUE)
+		time.sleep(0.3)
+		self.setall(PURPLE)
+		time.sleep(0.3)
+
 		self.strip.set_pixel_rgb(0,RED)
 		self.strip.show()
 		time.sleep(0.2)
-		self.strip.set_pixel_rgb(0,ORANGE)
+		self.strip.set_pixel_rgb(1,RED)
 		self.strip.show()
 		time.sleep(0.2)
-		self.strip.set_pixel_rgb(0,YELLOW)
+		self.strip.set_pixel_rgb(2,RED)
 		self.strip.show()
 		time.sleep(0.2)
 		self.strip.set_pixel_rgb(0,GREEN)
 		self.strip.show()
 		time.sleep(0.2)
-		self.strip.set_pixel_rgb(0,BLUE)
+		self.strip.set_pixel_rgb(1,GREEN)
 		self.strip.show()
 		time.sleep(0.2)
-		self.strip.set_pixel_rgb(0,PURPLE)
+		self.strip.set_pixel_rgb(2,GREEN)
 		self.strip.show()
 		time.sleep(0.2)
 		self.strip.set_pixel_rgb(0,OFF)
 		self.strip.show()
 		time.sleep(0.2)
+		self.strip.set_pixel_rgb(1,OFF)
+		self.strip.show()
+		time.sleep(0.2)
+		self.strip.set_pixel_rgb(2,OFF)
+		self.strip.show()
+		time.sleep(0.2)
+
+		if msg == "Pacman AI paused by button":
+			self.strip.set_pixel_rgb(1,ORANGE)
 
 	def master_status_callback(self, msg):
+		# During normal operation, we should always have at least one LED on
+		# so that we can distinguish that we have not freshly rebooted.
 		if msg == "ok":
 			self.strip.set_pixel_rgb(0,GREEN)
+		elif msg == "not ok":
+			self.strip.set_pixel_rgb(0,RED)
+
+		if msg == "Ready to start":
+			self.strip.set_pixel_rgb(1,GREEN)
+		elif msg == "Running Pacman AI in defensive mode":
+			self.strip.set_pixel_rgb(1,YELLOW)
+		elif msg == "Running Pacman AI in attach ghosts mode":
+			self.strip.set_pixel_rgb(1,BLUE)
+		elif msg == "Pacman AI paused by wifi command":
+			self.strip.set_pixel_rgb(1,PURPLE)
+		elif msg == "Pacman AI paused by button":
+			self.strip.set_pixel_rgb(1,ORANGE)
+		
+		if msg == "Micromouse AI running mazefinding":
+			self.strip.set_pixel_rgb(1,YELLOW)
+		elif msg == "Micromouse AI running fast mode":
+			self.strip.set_pixel_rgb(1,BLUE)
+
+
+		if msg == "I have terminated my program":
+			self.strip.set_pixel_rgb(2,GREEN)
 
 		self.strip.show()
+
+	def shutdown(self):  
+		self.strip.clear_strip()
+		self.strip.cleanup()
 
 				
 
