@@ -43,13 +43,19 @@ class Planner:
                                          PathType.TURN_RIGHT_TO_TOP])
         self.fourth_quadrant_turns = set([PathType.TURN_LEFT_TO_TOP,
                                           PathType.TURN_TOP_TO_LEFT])
+                                          
+        self.clockwise_turns = [PathType.TURN_BOTTOM_TO_RIGHT,
+                           PathType.TURN_RIGHT_TO_TOP,
+                           PathType.TURN_TOP_TO_LEFT,
+                           PathType.TURN_LEFT_TO_BOTTOM]
         
     def calculate_traversal_times(self):
         self.straight_velocity = 0.5  # meters/sec
-        curve_velocity = 0.25  # meters/sec
+        #curve_velocity = 0.25  # meters/sec
+        curve_velocity = self.straight_velocity
         self.straight_time = p.maze_cell_size/self.straight_velocity
         self.curve_time = ((p.maze_cell_size * np.pi)/4.0)/curve_velocity
-        self.angular_velocity = (np.pi/2)/self.curve_time
+        self.angular_velocity = (np.pi/2.)/self.curve_time
     
     def get_next_plan(self, cells):
         """
@@ -422,11 +428,6 @@ class Planner:
             # Horizontal segment, so consider the x coordinate
             return abs(x - (cell[1]) * p.maze_cell_size)/self.straight_velocity
         else:
-        
-            clockwise_turns = [PathType.TURN_BOTTOM_TO_RIGHT,
-                               PathType.TURN_RIGHT_TO_TOP,
-                               PathType.TURN_TOP_TO_LEFT,
-                               PathType.TURN_LEFT_TO_BOTTOM]
             open_right_turns = [PathType.TURN_BOTTOM_TO_RIGHT,
                                 PathType.TURN_RIGHT_TO_BOTTOM,
                                 PathType.TURN_TOP_TO_RIGHT,
@@ -435,17 +436,17 @@ class Planner:
                              PathType.TURN_LEFT_TO_TOP,
                              PathType.TURN_TOP_TO_RIGHT,
                              PathType.TURN_RIGHT_TO_TOP]
-            direction_of_rotation = cell_path_type in clockwise_turns
+            direction_of_rotation = cell_path_type not in self.clockwise_turns
             direction_of_rotation = direction_of_rotation * 2 - 1
             center_post = cell
-            center_post[0] += cell_path_type in open_right_turns
-            center_post[1] += cell_path_type in open_up_turns
-            center_post = center_post * p.maze_cell_size - p.maze_wall_thickness/2.0
+            center_post[0] += cell_path_type in open_up_turns
+            center_post[1] += cell_path_type in open_right_turns
+            center_post = [c * p.maze_cell_size - p.maze_wall_thickness/2.0 for c in center_post]
             
-            x_in_cell = x - center_post[0]
-            y_in_cell = y - center_post[1]
-            theta_in_cell = direction_of_rotation * p.arctan2(y_in_cell, x_in_cell)
-            theta_in_cell = (theta_in_cell + np.pi) % (np.pi/2)
+            x_in_cell = x - center_post[1]
+            y_in_cell = y - center_post[0]
+            theta_in_cell = direction_of_rotation * np.arctan2(y_in_cell, x_in_cell)
+            theta_in_cell = (theta_in_cell + np.pi) % (np.pi/2.)
             return theta_in_cell/self.angular_velocity
         
     def get_t_on_path(self, pose):
@@ -503,7 +504,7 @@ class Planner:
                     return y_traveled_from_start/self.straight_velocity
         
         # Otherwise, we are not in the first cell
-        # TODO: Account for midpoint time of last cell in path somehow, perhaps?
+        # TODO: Account for midpoint time of last cell in path somehow, perhaps? [I think this may already be done in another method?]
         entry_time = self.exit_times[curr_cell_path_index-1]
         dt_in_cell = self._get_dt_in_cell(pose[0], pose[1], curr_cell, curr_cell_path_type)
         return entry_time + dt_in_cell
@@ -596,34 +597,50 @@ class Planner:
             yaw_proj = 0
         else:
             # Handle macaroni turns
-            radius = p.maze_cell_size/2.0
+            radius = p.maze_cell_size/2.
             if cell_path_type in self.first_quadrant_turns:
-                theta_in_cell = ratio*np.pi/2.
+                if cell_path_type in self.clockwise_turns:
+                    theta_in_cell = (1 - ratio)*np.pi/2.
+                else:
+                    theta_in_cell = ratio*np.pi/2.
+                
                 # Treating the center of the dividing post at the bottom-left corner of
                 # the current cell as the origin
-                x_post = cell[1]*p.maze_cell_size - p.maze_wall_thickness/2.0
-                y_post = cell[0]*p.maze_cell_size - p.maze_wall_thickness/2.0
+                x_post = cell[1]*p.maze_cell_size - p.maze_wall_thickness/2.
+                y_post = cell[0]*p.maze_cell_size - p.maze_wall_thickness/2.
             elif cell_path_type in self.second_quadrant_turns:
-                theta_in_cell = ratio*np.pi/2. + np.pi/2.
+                if cell_path_type in self.clockwise_turns:
+                    theta_in_cell = (1 - ratio)*np.pi/2. + np.pi/2.
+                else:
+                    theta_in_cell = ratio*np.pi/2. + np.pi/2.
                 # Treating the center of the dividing post at the bottom-right corner of
                 # the current cell as the origin
-                x_post = (cell[1] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.0
-                y_post = cell[0]*p.maze_cell_size - p.maze_wall_thickness/2.0
+                x_post = (cell[1] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.
+                y_post = (cell[0])*p.maze_cell_size - p.maze_wall_thickness/2.
             elif cell_path_type in self.third_quadrant_turns:
-                theta_in_cell = ratio*np.pi/2. + np.pi
+                if cell_path_type in self.clockwise_turns:
+                    theta_in_cell = (1 - ratio)*np.pi/2. - np.pi
+                else:
+                    theta_in_cell = ratio*np.pi/2. - np.pi
                 # Treating the center of the dividing post at the top-right corner of
                 # the current cell as the origin
-                x_post = (cell[1])*p.maze_cell_size - p.maze_wall_thickness/2.0
-                y_post = (cell[0] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.0
+                x_post = (cell[1])*p.maze_cell_size - p.maze_wall_thickness/2.
+                y_post = (cell[0] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.
             else:
-                theta_in_cell = ratio*np.pi/2. - np.pi/2.
+                if cell_path_type in self.clockwise_turns:
+                    theta_in_cell = (1 - ratio)*np.pi/2. - np.pi/2.
+                else:
+                    theta_in_cell = ratio*np.pi/2. - np.pi/2.
                 # Treating the center of the dividing post at the top-left corner of
                 # the current cell as the origin
-                x_post = (cell[1] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.0
-                y_post = (cell[0] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.0
+                x_post = (cell[1] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.
+                y_post = (cell[0] + 1)*p.maze_cell_size - p.maze_wall_thickness/2.
             x_proj = radius*np.cos(theta_in_cell) + x_post
             y_proj = radius*np.sin(theta_in_cell) + y_post
-            yaw_proj = theta_in_cell + np.pi/2.0
+            if cell_path_type in self.clockwise_turns:
+                yaw_proj = theta_in_cell - np.pi/2.
+            else:
+                yaw_proj = theta_in_cell + np.pi/2.
         
         return [x_proj, y_proj, yaw_proj]
         
@@ -635,7 +652,8 @@ class Planner:
         self.exit_times = []
         prev_exit_time = -self.time_offset
         for path_type in self.curr_plan:
-            curr_exit_time = prev_exit_time + self.straight_time if self._path_type_is_straight(path_type) else self.curve_time
+            curr_exit_time = prev_exit_time + (self.straight_time if
+                self._path_type_is_straight(path_type) else self.curve_time)
             self.exit_times.append(curr_exit_time)
             prev_exit_time = curr_exit_time
             
