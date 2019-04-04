@@ -18,9 +18,9 @@ class LEDs:
 		# master_status_sub = rospy.Subscriber('/master_status', MasterStatusMsg, master_status_callback)
 		self.strip = apa102.APA102(num_led=p.num_leds, global_brightness=p.led_default_brightness, mosi=p.mosi, sclk=p.sclk, order='rgb')
 		
-		self.rainbow()
 
 		self.strip.set_pixel_rgb(0,GREEN)
+		self.rainbow()
 		rospy.on_shutdown(self.shutdown) # TODO: Ask ros geniuses if this is the right way to shut down.
 
 	def setall(self, color):
