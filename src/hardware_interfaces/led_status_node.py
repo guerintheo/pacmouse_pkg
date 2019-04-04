@@ -16,7 +16,7 @@ class LEDs:
 	def __init__(self):
 		rospy.init_node('led_status_node')
 		# master_status_sub = rospy.Subscriber('/master_status', MasterStatusMsg, master_status_callback)
-		self.strip = apa102.APA102(num_led=p.num_led, global_brightness=p.led_default_brightness, mosi=p.mosi, sclk=p.sclk, order='rgb')
+		self.strip = apa102.APA102(num_led=p.num_leds, global_brightness=p.led_default_brightness, mosi=p.mosi, sclk=p.sclk, order='rgb')
 		self.rainbow()
 		rospy.on_shutdown(self.shutdown) # TODO: Ask ros geniuses if this is the right way to shut down.
 
@@ -24,14 +24,11 @@ class LEDs:
 		self.strip.clear_strip()
 		self.strip.cleanup()
 
-<<<<<<< HEAD
 	def setall(self, color):
-		for i in range(num_led):
+		for i in range(p.num_leds):
 			self.strip.set_pixel_rgb(i,color)	
 		self.strip.show()
 
-=======
->>>>>>> 978db6fbf12b53252afa81027631633524c9fbab
 	def rainbow(self):
 		self.strip.set_pixel_rgb(0,RED)
 		self.strip.show()
