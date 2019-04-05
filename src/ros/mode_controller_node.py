@@ -2,7 +2,9 @@
 import rospy
 import signal
 import numpy as np
-from pidrone_pkg.msg import Mode, Battery, State
+import enums
+from msg import AgentState, LightState
+from std_msgs.msg import Bool
 
 
 class ModeController(object):
@@ -10,31 +12,48 @@ class ModeController(object):
 
     def __init__(self):
 
-        # Desired, current, and previous modes of the drone
-        self.desired_mode = 'IDLE'
-        self.curr_mode = 'IDLE'
-        self.prev_mode = 'IDLE'
+        # current, and previous modes of the game
+        self.curr_mode = enums.PAUSED
+        self.prev_mode = enums.PAUSED
 
         # Publisher to send the commanded mode to
-        self.cmd_mode_pub = None
+        self.mode_pub = None
 
     # ROS Callback Methods
     ######################
-    def mode_callback(self, msg):
-        """Update the current mode of the drone"""
-        self.prev_mode = self.curr_mode
+    def light_state_callback(self, msg):
+        """ store the game mode """
+        self.prev_mode = self.mode
         self.curr_mode = msg.mode
+        # notify user of mode change
         if self.prev_mode != self.curr_mode:
             print self.curr_mode
 
-    def desired_mode_callback(self, msg):
-        """Update the current mode of the drone"""
-        self.desired_mode = msg.mode
+    def button1_callback(self, msg):
+        if msg.data:
+            # do something when button is pressed
+            pass
+
+    def button2_callback(self, msg):
+        if msg.data:
+            # do something when button is pressed
+            pass
+
+    def button3_callback(self, msg):
+        if msg.data:
+            # do something when button is pressed
+            pass
+
+    def button4_callback(self, msg):
+        if msg.data:
+            # do something when button is pressed
+            pass
+
 
     def ctrl_c_handler(self, signal, frame):
-        """Disarms and exits the program if ctrl-c is pressed"""
-        print "\nCaught ctrl-c! About to Disarm!"
-        self.cmd_mode_pub.publish('DISARMED')
+        """sets mode to PAUSED and exits the program if ctrl-c is pressed"""
+        print "\nCaught ctrl-c. Pausing and Exiting"
+        self.mode_pub.publish(enums.PAUSED)
         sys.exit()
 
 
@@ -48,70 +67,33 @@ def main():
 
     # Publishers
     ############
-    mc.mode_pub = rospy.Publisher('/pacmouse/mode', Mode, queue_size=1)
+    mc.mode_pub = rospy.Publisher('/pacmouse/mode', int8, queue_size=1, latch=True)
 
     # Subscribers
     #############
-    rospy.Subscriber("/pacmouse/maze_status", Mode, mc.mode_callback)
-    
+
+    rospy.Subscriber("/pacmouse/light_state", LightState, mc.light_state_callback)
+    #Button Subscribers:
+    rospy.Subscriber("/pacmouse/buttons/1", Bool, mc.button1_callback)
+    rospy.Subscriber("/pacmouse/buttons/2", Bool, mc.button2_callback)
+    rospy.Subscriber("/pacmouse/buttons/3", Bool, mc.button3_callback)
+    rospy.Subscriber("/pacmouse/buttons/4", Bool, mc.button4_callback)
+
 
     # Non-ROS Setup
     ###############
     signal.signal(signal.SIGINT, mc.ctrl_c_handler)
 
     print 'Controlling Mode'
+    # TODO: choose publishing rate
     r = rospy.Rate(100) # 100hz
     while not rospy.is_shutdown():
-        try:
-            # if the current or desired mode is anything other than disarmed
-            # preform as safety check
-            if mc.curr_mode != 'DISARMED' or mc.desired_mode != 'DISARMED':
-                # Break the loop if a safety check has failed
-                if mc.shouldIDisarm():
-                    break
-
-            # Finite State Machine
-            ######################
-            if mc.curr_mode == 'DISARMED':
-                if mc.desired_mode == 'DISARMED':
-                    mc.cmd_mode_pub.publish('DISARMED')
-                elif mc.desired_mode == 'ARMED':
-                    print 'sending arm command'
-                    mc.cmd_mode_pub.publish('ARMED')
-                    rospy.sleep(1)
-                else:
-                    print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
-
-            elif mc.curr_mode == 'ARMED':
-                if mc.desired_mode == 'ARMED':
-                    mc.cmd_mode_pub.publish('ARMED')
-                elif mc.desired_mode == 'FLYING':
-                    print 'sending fly command'
-                    mc.cmd_mode_pub.publish('FLYING')
-                elif mc.desired_mode == 'DISARMED':
-                    print 'sending disarm command'
-                    mc.cmd_mode_pub.publish('DISARMED')
-                else:
-                    print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
-
-            elif mc.curr_mode == 'FLYING':
-                if mc.desired_mode == 'FLYING':
-                    mc.cmd_mode_pub.publish('FLYING')
-                elif mc.desired_mode == 'DISARMED':
-                    print 'sending disarm command'
-                    mc.cmd_mode_pub.publish('DISARMED')
-                else:
-                    print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
-
-        except:
-                print 'there was an internal error'
-                print 'cannot transition to', mc.desired_mode
-                sys.exit()
+        # TODO: any looping needed?
         r.sleep()
 
-    mc.cmd_mode_pub.publish('DISARMED')
+    mc.mode_pub.publish(enums.PAUSED)
     print 'Shutdown Received'
-    print 'Sending DISARM command'
+    print 'PAUSED'
 
 
 if __name__ == '__main__':
