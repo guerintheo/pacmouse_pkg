@@ -38,8 +38,13 @@ class MotorControlNode:
         self.encoders = np.array([left, right])
         
     def spin(self):
-        pid_L = PID(*p.motor_controller_pid, control_range=[-1,1])
-        pid_R = PID(*p.motor_controller_pid, control_range=[-1,1])
+        # pid_L = PID(*p.motor_controller_pid, control_range=[-1,1])
+        # pid_R = PID(*p.motor_controller_pid, control_range=[-1,1])
+        
+        # Limit our control range in order to avoid saturating the callback
+        # stack of the encoders:
+        pid_L = PID(*p.motor_controller_pid, control_range=[-.5,.5])
+        pid_R = PID(*p.motor_controller_pid, control_range=[-.5,.5])
 
         r = rospy.Rate(p.motor_control_freq)
         pwm_msg = Vector3()

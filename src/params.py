@@ -7,7 +7,7 @@ maze_inner_size = 0.168 # m (not including the thickness of the walls)
 maze_cell_size = maze_inner_size + maze_wall_thickness
 
 # ROBOT
-lidar_pins = [7, 11, 19, 23, 21, 29]
+lidar_pins = [4, 17, 10, 11, 9, 5]  # These pin numbers are BCM
 lidar_transforms = np.array([[0.047535,	-0.038236,	-np.pi/2.0], # x, y, theta (body frame)
 							 [0.051362,	-0.024628,	0.0],
 							 [0.059890,	-0.009768,	-np.pi/4.0],
@@ -29,8 +29,10 @@ gear_ratio = wheel_gear_ratio * motor_gear_ratio
 
 motor_pwm_freq = 100
 
-# these pin numbers are GPIO.BOARD
-button_pins = [12,35,38,40]
+# These pin numbers are GPIO.BOARD
+#button_pins = [12,35,38,40]
+# These pin numbers are BCM
+button_pins = [18, 19, 20, 21]
 
 ######################### MOTOR PINS ###########################################
 # NOTE: These pin numbers are BCM (Broadcom), not GPIO.BOARD / physical pin
@@ -46,12 +48,13 @@ motor_mode_pin = 25  # corresponds to physical pin 22
 
 motor_pins = [ml_dir, ml_pwm, mr_dir, mr_pwm, motor_mode_pin]
 
-######################### MOTOR PINS ###########################################
+######################### ENCODER PINS ###########################################
 
-enc_r_a = 16
-enc_r_b = 18
-enc_l_a = 15
-enc_l_b = 13
+# These pin numbers are BCM
+enc_r_a = 23
+enc_r_b = 24
+enc_l_a = 22
+enc_l_b = 27
 
 encoder_pins = [enc_l_a, enc_l_b, enc_r_a, enc_r_b]
 
