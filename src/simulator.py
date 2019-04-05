@@ -1,4 +1,5 @@
 import sys
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -11,16 +12,18 @@ from pacmouse_pkg.src.estimation_control.control import step, get_sp
 from pacmouse_pkg.src.utils.maze import Maze, Maze2
 from pacmouse_pkg.src.utils.math_utils import rotate_2d, rotation_matrix_2d
 import pacmouse_pkg.src.params as p
+from pacmouse_pkg.src.estimation_control.planner import Planner
 
 
 class Simulator:
 
-    def __init__(self):
+    def __init__(self, use_macaroni=False):
         # build a maze and set the target sell
         self.maze = Maze(6,6)
         self.maze.build_wall_matrices()
         self.maze.build_segment_list()
         self.target_cell = [self.maze.width-1, self.maze.height-1]
+        self.use_macaroni = use_macaroni
 
         # specify the initial state
         self.real_bot_state = np.array([0.5*p.maze_cell_size, 0.5*p.maze_cell_size, np.pi/2,0,0,0])
@@ -38,10 +41,30 @@ class Simulator:
         self.estimator.u_sigma = self.u_sigma           # and the noise model
 
         self.dt = 0.2
-
+        
+        if self.use_macaroni:
+            # Create a macaroni plan once
+            self.planner = Planner(self.maze)
+            # Find path from bottom left corner to top right corner of maze
+            target_cell_indices = self.maze.get_path([0, 0], [self.maze.width - 1, self.maze.height - 1])
+            target_cells = []
+            for i in target_cell_indices:
+                col_row = list(self.maze.index_to_xy(i))
+                target_cells.append([col_row[1], col_row[0]])  # [row, col]
+            start_pose = [self.estimator.state[0] - 0.01, self.estimator.state[1] - 0.01, self.estimator.state[2]]
+            self.planner.update_plan(target_cells, start_pose=start_pose)
+            #self.planner.update_plan(target_cells)
+        
     def update(self):
         # run the planner and controller to get commands (using the estimated state)
-        self.set_point = get_sp(self.estimator.state, self.maze, self.target_cell)
+        if self.use_macaroni:
+            curr_pose_estimate = [self.estimator.state[0], self.estimator.state[1], self.estimator.state[2]]
+            plan_time_of_curr_pose = self.planner.get_t_on_path(curr_pose_estimate)
+            set_point_lookahead_time = 0.3
+            plan_time_of_set_point = plan_time_of_curr_pose + set_point_lookahead_time
+            self.set_point = self.planner.get_reference_pose_from_plan_by_time(plan_time_of_set_point)
+        else:
+            self.set_point = get_sp(self.estimator.state, self.maze, self.target_cell)
         cmd = inverse_motion_model(step(self.estimator.state, self.set_point))
 
         # run the simulator to update the "real" robot
@@ -93,6 +116,9 @@ class Simulator:
         # R = rotation_matrix_2d(pose[2])
         # lidar_global_xy = pose[None, :2] + np.dot(R, p.lidar_transforms[:, :2].T).T
         # plt.scatter(lidar_global_xy[:,0], lidar_global_xy[:,1], color=color, alpha=alpha)
+        
+    def on_key_press(self, event):
+        pass
 
 
 class DrivingSimulator:
@@ -331,6 +357,8 @@ if __name__ == "__main__":
         sim = DrivingSimulator()
     elif drive and sys.argv[1] == 'full':
         sim = FullSimulator()
+    elif drive and sys.argv[1] == 'macaroni':
+        sim = Simulator(use_macaroni=True)
 
     fig = plt.figure()
     ax1 = fig.add_subplot(1,1,1)
