@@ -32,7 +32,9 @@ motor_pwm_freq = 100
 # These pin numbers are GPIO.BOARD
 #button_pins = [12,35,38,40]
 # These pin numbers are BCM
-button_pins = [18, 19, 20, 21]
+button_pins = [21, 20, 19, 18]
+button_debounce_time = 1.0
+button_node_freq = 10
 
 ######################### MOTOR PINS ###########################################
 # NOTE: These pin numbers are BCM (Broadcom), not GPIO.BOARD / physical pin

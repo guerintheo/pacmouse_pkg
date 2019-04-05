@@ -10,7 +10,7 @@ for pin in p.button_pins:
 
 while True:
     vals = [pi.read(pin) for pin in p.button_pins]
-	print vals
-	time.sleep(0.1)
+    print vals
+    time.sleep(0.1)
     
 pi.stop()
