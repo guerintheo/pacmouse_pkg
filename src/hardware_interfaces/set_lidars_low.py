@@ -1,9 +1,10 @@
-import RPi.GPIO as GPIO
+import pigpio
 import pacmouse_pkg.src.params as p
 
-GPIO.setmode(GPIO.BOARD)
+pi = pigpio.pi()  # handler for the Pi's GPIO pins
 
 for pin in p.lidar_pins:
-    GPIO.setup(pin, GPIO.OUT)
-    GPIO.output(pin, GPIO.LOW)
-    # GPIO.cleanup(PIN)
+    pi.set_mode(pin,pigpio.OUTPUT)
+    pi.write(pin, 0)  # 0 = low
+    
+pi.stop()
