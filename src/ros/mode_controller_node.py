@@ -1,111 +1,78 @@
 #!/usr/bin/python
 import rospy
 import signal
-import numpy as np
-from pidrone_pkg.msg import Mode, Battery, State
+import sys
+
+from std_msgs.msg import Bool, Empty, String
+from pacmouse_pkg.msg import LED  # TODO: Create this custom message
+
+
+class Mode(Enum):
+    IDLE = 0
+    EXPLORING = 1
+    SHORTEST_PATH_SOLVING = 2
+    RETURNING = 3  # returning to start cell of maze
 
 
 class ModeController(object):
-    ''' An object used to control the mode '''
+    """
+    Class that controls the mode
+    """
 
     def __init__(self):
+        # Previous, current, and desired modes
+        self.prev_mode = None
+        self.curr_mode = Mode.IDLE
+        self.desired_mode = None
+        
+        signal.signal(signal.SIGINT, self.sigint_handler)
+        
+        self.init_publishers()
+        self.init_subscribers()
+        
+    def init_publishers(self):
+        """Initialize ROS publishers."""
+        self.set_motor_arm_pub = rospy.Publisher('/pacmouse/mode/set_motor_arm',
+                                                 Bool,
+                                                 queue_size=1)
+        self.set_leds_pub = rospy.Publisher('/pacmouse/mode/set_leds', LED,
+                                            queue_size=1)
+        self.zero_pose_pub = rospy.Publisher('/pacmouse/mode/zero_pose', Empty,
+                                             queue_size=1)
+        self.zero_heading_pub = rospy.Publisher('/pacmouse/mode/zero_heading',
+                                                Empty,
+                                                queue_size=1)
+        self.load_maze_pub = rospy.Publisher('/pacmouse/mode/load_maze', String,
+                                             queue_size=1)
+        self.set_plan_mode_pub = rospy.Publisher('/pacmouse/mode/set_plan_mode',
+                                                 String,
+                                                 queue_size=1)
+        self.set_plan_speed_pub = rospy.Publisher(
+                                    '/pacmouse/mode/set_plan_speed', String,
+                                    queue_size=1)
+    
+    def init_subscribers(self):
+        """Initialize ROS subscribers."""
+        rospy.Subscriber('/pacmouse/buttons/1', Bool, self.cb_button1)
+        rospy.Subscriber('/pacmouse/buttons/2', Bool, self.cb_button2)
+        rospy.Subscriber('/pacmouse/buttons/3', Bool, self.cb_button3)
+        rospy.Subscriber('/pacmouse/buttons/4', Bool, self.cb_button4)
 
-        # Desired, current, and previous modes
-        self.desired_mode = 'IDLE'
-        self.curr_mode = 'IDLE'
-        self.prev_mode = 'IDLE'
-
-    # ROS Callback Methods
-    ######################
-    def force_mode_callback(self, msg):
-        """FORCE Update the mode """
-        self.prev_mode = self.curr_mode
-        self.curr_mode = msg.mode
-        if self.prev_mode != self.curr_mode:
-            print self.curr_mode
-
-    def desired_mode_callback(self, msg):
-        """Update the current mode of the drone"""
-        self.desired_mode = msg.mode
-
-    def ctrl_c_handler(self, signal, frame):
-        """Disarms and exits the program if ctrl-c is pressed"""
-        print "\nCaught ctrl-c! About to Disarm!"
-        self.cmd_mode_pub.publish('DISARMED')
+    def sigint_handler(self, signal, frame):
+        """
+        Exit cleanly upon receiving a SIGINT signal (e.g., from Ctrl-C keyboard
+        interrupt).
+        """
+        # TODO
+        # E.g., send message to disarm motors
         sys.exit()
 
 
 def main():
-    # ROS Setup
-    ###########
-    rospy.init_node("mode_controller")
-
-    # Instantiate a ModeController object
+    rospy.init_node('mode_controller')
     mc = ModeController()
-
-    # Publishers
-    ############
-    mc.mode_pub = rospy.Publisher('/pacmouse/mode', Mode, queue_size=1)
-
-    # Subscribers
-    #############
-    rospy.Subscriber("/pacmouse/buttons/mode", Mode, mc.mode_callback)
-    
-    # Non-ROS Setup
-    ###############
-    signal.signal(signal.SIGINT, mc.ctrl_c_handler)
-
-    print 'Controlling Mode'
-    r = rospy.Rate(30) # 100hz
-    while not rospy.is_shutdown():
-        try:
-
-            # Finite State Machine
-            ######################
-            if mc.curr_mode == 'RUNNING':
-                if mc.desired_mode == 'PAUSED':
-                    mc.cmd_mode_pub.publish('PAUSED')
-                elif mc.desired_mode == 'RUNNING':
-                    print 'sending run command'
-                    mc.cmd_mode_pub.publish('RUNNING')
-                    rospy.sleep(1)
-                else:
-                    print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
-
-            elif mc.curr_mode == 'PAUSED':
-                if mc.desired_mode == 'PAUSED':
-                    mc.cmd_mode_pub.publish('PAUSED')
-                elif mc.desired_mode == 'RUNNING':
-                    print 'sending run command'
-                    mc.cmd_mode_pub.publish('RUNNING')
-                elif mc.desired_mode == 'IDLE':
-                    print 'sending idle command'
-                    mc.cmd_mode_pub.publish('IDLE')
-                else:
-                    print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
-
-            elif mc.curr_mode == 'IDLE':
-                if mc.desired_mode == 'IDLE':
-                    mc.cmd_mode_pub.publish('IDLE')
-                elif mc.desired_mode == 'PAUSED':
-                    print 'sending pause command'
-                    mc.cmd_mode_pub.publish('PAUSED')
-                elif mc.desired_mode == 'RUNNING':
-                    print 'sending run command'
-                    mc.cmd_mode_pub.publish('RUNNING')
-                else:
-                    print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
-
-        except:
-                print 'there was an internal error'
-                print 'cannot transition to', mc.desired_mode
-                sys.exit()
-        r.sleep()
-
-    mc.cmd_mode_pub.publish('IDLE')
-    print 'Shutdown Received'
-    print 'Sending DISARM command'
-
+    print('Mode controller node started.')
+    rospy.spin()
 
 if __name__ == '__main__':
     main()
