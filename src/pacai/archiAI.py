@@ -52,8 +52,7 @@ def opposite_dir(dir):
 
 def advance_state(state):
     state.pacbot.update()
-    for i in range(ticks_per_update):
-        state.next_step()
+    state.next_step()
 
 def child_nodes(node):
     children = [ None ] * 4
@@ -142,8 +141,7 @@ def main():
         state.pacbot.direction = best_path[0]
 
         state.pacbot.update()
-        for i in range(ticks_per_update):
-            state.next_step()
+        state.next_step()
 
         print_state(state)
         strs = ['r', 'l', 'u', 'd']
