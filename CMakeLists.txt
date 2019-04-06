@@ -200,3 +200,12 @@ install(DIRECTORY launch rviz urdf
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+
+add_executable(talker src/testing/ros_cpp/talker.cpp)
+target_link_libraries(talker ${catkin_LIBRARIES})
+add_dependencies(talker pacmouse_pkg_generate_messages_cpp)
+
+add_executable(listener src/testing/ros_cpp/listener.cpp)
+target_link_libraries(listener ${catkin_LIBRARIES})
+add_dependencies(listener pacmouse_pkg_generate_messages_cpp)
