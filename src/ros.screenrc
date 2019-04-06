@@ -1,0 +1,31 @@
+escape ``
+
+startup_message off
+
+# this hard status was stolen from the net, all credit goes to its originator
+hardstatus             alwayslastline
+#hardstatus string '%{= mK}%-Lw%{= KW}%50>%n%f* %t%{= mK}%+Lw%< %{= kG}%-=%D %d %M %Y %c:%s%{-}'
+hardstatus string '%{= kG}[ %{G}%H %{g}][%= %{= kw}%?%-Lw%?%{r}(%{W}%n*%f%t%?(%u)%?%{r})%{w}%?%+Lw%?%?%= %{g}][%{B} %d/%m %{W}%c %{g}]'
+
+# turn multiuser mode on so others can connect.
+multiuser on
+
+screen -t " roscore"
+stuff "roscore\n"
+
+screen -t " estimation"
+stuff "cd /home/pi/ros_catkin_ws/src/pacmouse_pkg/src/estimation_control\n"
+
+screen -t " control"
+stuff "cd /home/pi/ros_catkin_ws/src/pacmouse_pkg/src/hardware_interfaces\n"
+
+screen -t " imu"
+stuff "cd /home/pi/ros_catkin_ws/src/pacmouse_pkg/src/hardware_interfaces\n"
+stuff "python imu_node.py\n"
+
+screen -t " lidars"
+stuff "cd /home/pi/ros_catkin_ws/src/pacmouse_pkg/src/hardware_interfaces\n"
+stuff "python lidar_node.py\n"
+
+screen -t " open"
+stuff "cd /home/pi/ros_catkin_ws/src/pacmouse_pkg/src\n"
