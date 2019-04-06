@@ -2,31 +2,36 @@
 # Source: http://abyz.me.uk/rpi/pigpio/examples.html?fbclid=IwAR3dzUcJ7EnKl-fQYHDjSFBEhx0RKRhMffyPk5a1bUA_ADz3aU_TRz0d8G0#Python_rotary_encoder_py
 
 import pigpio
+import rospy
+from geometry_msgs.msg import Vector3  # TODO: Use a better message type
+import pacmouse_pkg.src.params as p
 
-class decoder:
 
-   """Class to decode mechanical rotary encoder pulses."""
+class Decoder:
+    """
+    Class to decode mechanical rotary encoder pulses.
+    """
 
-   def __init__(self, pi, gpioA, gpioB, callback):
+    def __init__(self, pi, gpioA, gpioB, callback):
 
-      """
-      Instantiate the class with the pi and gpios connected to
-      rotary encoder contacts A and B.  The common contact
-      should be connected to ground.  The callback is
-      called when the rotary encoder is turned.  It takes
-      one parameter which is +1 for clockwise and -1 for
-      counterclockwise.
+        """
+        Instantiate the class with the pi and gpios connected to
+        rotary encoder contacts A and B.  The common contact
+        should be connected to ground.  The callback is
+        called when the rotary encoder is turned.  It takes
+        one parameter which is +1 for clockwise and -1 for
+        counterclockwise.
 
-      EXAMPLE
+        EXAMPLE
 
-      import time
-      import pigpio
+        import time
+        import pigpio
 
-      import rotary_encoder
+        import rotary_encoder
 
-      pos = 0
+        pos = 0
 
-      def callback(way):
+        def callback(way):
 
          global pos
 
@@ -34,41 +39,41 @@ class decoder:
 
          print("pos={}".format(pos))
 
-      pi = pigpio.pi()
+        pi = pigpio.pi()
 
-      decoder = rotary_encoder.decoder(pi, 7, 8, callback)
+        decoder = rotary_encoder.Decoder(pi, 7, 8, callback)
 
-      time.sleep(300)
+        time.sleep(300)
 
-      decoder.cancel()
+        decoder.cancel()
 
-      pi.stop()
+        pi.stop()
 
-      """
+        """
 
-      self.pi = pi
-      self.gpioA = gpioA
-      self.gpioB = gpioB
-      self.callback = callback
+        self.pi = pi
+        self.gpioA = gpioA
+        self.gpioB = gpioB
+        self.callback = callback
 
-      self.levA = 0
-      self.levB = 0
+        self.levA = 0
+        self.levB = 0
 
-      self.lastGpio = None
+        self.lastGpio = None
 
-      self.pi.set_mode(gpioA, pigpio.INPUT)
-      self.pi.set_mode(gpioB, pigpio.INPUT)
+        self.pi.set_mode(gpioA, pigpio.INPUT)
+        self.pi.set_mode(gpioB, pigpio.INPUT)
 
-      self.pi.set_pull_up_down(gpioA, pigpio.PUD_UP)
-      self.pi.set_pull_up_down(gpioB, pigpio.PUD_UP)
+        self.pi.set_pull_up_down(gpioA, pigpio.PUD_UP)
+        self.pi.set_pull_up_down(gpioB, pigpio.PUD_UP)
 
-      self.cbA = self.pi.callback(gpioA, pigpio.EITHER_EDGE, self._pulse)
-      self.cbB = self.pi.callback(gpioB, pigpio.EITHER_EDGE, self._pulse)
+        self.cbA = self.pi.callback(gpioA, pigpio.EITHER_EDGE, self._pulse)
+        self.cbB = self.pi.callback(gpioB, pigpio.EITHER_EDGE, self._pulse)
 
-   def _pulse(self, gpio, level, tick):
+    def _pulse(self, gpio, level, tick):
 
-      """
-      Decode the rotary encoder pulse.
+        """
+        Decode the rotary encoder pulse.
 
                    +---------+         +---------+      0
                    |         |         |         |
@@ -81,56 +86,68 @@ class decoder:
          B   |         |         |         |
              |         |         |         |
          ----+         +---------+         +---------+  1
-      """
+        """
 
-      if gpio == self.gpioA:
-         self.levA = level
-      else:
-         self.levB = level;
+        if gpio == self.gpioA:
+            self.levA = level
+        else:
+            self.levB = level;
 
-      if gpio != self.lastGpio: # debounce
-         self.lastGpio = gpio
+        if gpio != self.lastGpio: # debounce
+            self.lastGpio = gpio
 
-         if   gpio == self.gpioA and level == 1:
-            if self.levB == 1:
-               self.callback(1)
-         elif gpio == self.gpioB and level == 1:
-            if self.levA == 1:
-               self.callback(-1)
+            if gpio == self.gpioA and level == 1:
+                if self.levB == 1:
+                    self.callback(1)
+            elif gpio == self.gpioB and level == 1:
+                if self.levA == 1:
+                    self.callback(-1)
 
-   def cancel(self):
+    def cancel(self):
 
-      """
-      Cancel the rotary encoder decoder.
-      """
+        """
+        Cancel the rotary encoder decoder.
+        """
 
-      self.cbA.cancel()
-      self.cbB.cancel()
+        self.cbA.cancel()
+        self.cbB.cancel()
 
 if __name__ == "__main__":
 
-   import time
-   import pigpio
+    import time
+    import pigpio
 
-   import rotary_encoder
+    import rotary_encoder
+    
+    rospy.init_node('rotary_encoder_node')
+    pub = rospy.Publisher('/pacmouse/rotary_encoder', Vector3, queue_size=1)
 
-   pos = 0
+    pos = 0
 
-   def callback(way):
+    def callback(way):
 
-      global pos
+        global pos
 
-      pos += way
+        pos += way
 
-      print("pos={}".format(pos))
+        if pos % 100 == 0:
+            print("pos={}".format(pos))
 
-   pi = pigpio.pi()
+    pi = pigpio.pi()
 
-   decoder = rotary_encoder.decoder(pi, 7, 8, callback)
+    decoder = rotary_encoder.Decoder(pi, p.enc_l_a, p.enc_l_b, callback)
 
-   time.sleep(300)
+    rate = rospy.Rate(p.encoder_freq)
+    encoder_msg = Vector3()
+    last_pos = pos
+    while not rospy.is_shutdown():
+        encoder_msg.x = (pos - last_pos)
+        #encoder_msg.y = 
+        pub.publish(encoder_msg)
+        last_pos = pos
+        rate.sleep()
 
-   decoder.cancel()
+    decoder.cancel()
 
-   pi.stop()
+    pi.stop()
 
