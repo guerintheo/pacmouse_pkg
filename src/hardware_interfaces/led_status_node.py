@@ -1,4 +1,4 @@
-import rospy
+from rospy import init_node, on_shutdown, spin
 import pacmouse_pkg.src.params as p
 from apa102_led import apa102
 import time
@@ -14,18 +14,22 @@ VIOLET = 0x9400D3 #Violet
 
 class LEDs: 
 	def __init__(self):
-		rospy.init_node('led_status_node')
+		init_node('led_status_node')
+		
+		# TODO: Subscibe to the mode_controller to change LEDs when the status changes
 		# master_status_sub = rospy.Subscriber('/master_status', MasterStatusMsg, master_status_callback)
+		
 		self.strip = apa102.APA102(num_led=p.num_leds, global_brightness=p.led_default_brightness, mosi=p.mosi, sclk=p.sclk, order='rgb')
 		
 		self.rainbow()
-		
 		self.strip.set_pixel_rgb(0,GREEN)
 		self.strip.show()
 
-		rospy.on_shutdown(self.shutdown) # TODO: Ask ros geniuses if this is the right way to shut down.
+		# rospy.on_shutdown(self.shutdown) # TODO: Ask ros geniuses if this is the right way to shut down.
+		on_shutdown(self.shutdown)
 
-		rospy.spin()
+		# rospy.spin()
+		spin()
 
 	def setall(self, color):
 		for i in range(p.num_leds):
