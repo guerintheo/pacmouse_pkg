@@ -3,7 +3,7 @@
 ## High priority
 
  * ~~develop concrete software architecture (Block diagram. where are the nodes. who publishes what)~~
- * order a new BNO055
+ * ~~order a new BNO055~~
  * create infrastructure for restarting all the scripts. decide how to use the buttons (state machine?)
  * test encoders in C++ (using example script from pigpio)
  * merge all pigpio interfacing into a single c++ ROS node (buttons, encoders, motors, leds)
