@@ -55,6 +55,15 @@ allow you to call `rosrun pacmouse_pkg <executable>` to run nodes, for example.
 source /home/<user>/<ros_ws_path>/devel/setup.bash
 ```
 
+# Install the IMU Library
+
+```
+cd ~
+git clone https://github.com/adafruit/Adafruit_Python_BNO055.git
+cd Adafruit_Python_BNO055
+sudo -H python setup.py install
+```
+
 # Getting the feeback control stack working
 
 ```
