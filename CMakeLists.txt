@@ -106,9 +106,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES pacmouse_pkg
-#  CATKIN_DEPENDS roscpp rospy std_msgs
-  DEPENDS pigpio
-  CATKIN_DEPENDS message_runtime
+  CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
 )
 
 ###########
@@ -202,18 +200,21 @@ install(DIRECTORY launch rviz urdf
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
+add_executable(pigpio_cpp_test src/testing/ros_cpp/pigpio_cpp_test.cpp)
 
-add_executable(talker src/testing/ros_cpp/talker.cpp)
-target_link_libraries(talker ${catkin_LIBRARIES})
-add_dependencies(talker pacmouse_pkg_generate_messages_cpp)
+target_link_libraries(pigpio_cpp_test ${catkin_LIBRARIES} pigpio) # link pigpio library
 
-add_executable(listener src/testing/ros_cpp/listener.cpp)
-target_link_libraries(listener ${catkin_LIBRARIES})
-add_dependencies(listener pacmouse_pkg_generate_messages_cpp)
+add_dependencies(pigpio_cpp_test pacmouse_pkg_generate_messages_cpp )
 
-## ADDED 
-add_executable(cpp_test src/testing/ros_cpp/cpp_test.cpp)
-# add_library(pigpio )
-find_package(pigpio)
-target_link_libraries(cpp_test ${catkin_LIBRARIES})
-add_dependencies(cpp_test pacmouse_pkg_generate_messages_cpp)
+#############
+## Example ##
+#############
+
+# add_executable(talker src/testing/ros_cpp/talker.cpp)
+# target_link_libraries(talker ${catkin_LIBRARIES})
+# add_dependencies(talker pacmouse_pkg_generate_messages_cpp)
+
+# add_executable(listener src/testing/ros_cpp/listener.cpp)
+# target_link_libraries(listener ${catkin_LIBRARIES})
+# add_dependencies(listener pacmouse_pkg_generate_messages_cpp)
+
