@@ -1,6 +1,8 @@
 #include <iostream>
 
 #include <pigpio.h>
+#include <unistd.h>
+
 
 #include "rotary_encoder.hpp"
 
@@ -21,6 +23,13 @@ sudo ./rot_enc_cpp
 
 */
 
+// These are all GPIO numbers
+#define ENCODER_A 23
+#define ENCODER_B 24
+
+#define MOT_GPIO 12
+#define PWM_DUTY 255
+
 void callback(int way)
 {
    static int pos = 0;
@@ -34,9 +43,15 @@ int main(int argc, char *argv[])
 {
    if (gpioInitialise() < 0) return 1;
 
-   re_decoder dec(7, 8, callback);
+   re_decoder dec(ENCODER_A, ENCODER_B, callback);
+   // red_ecoder dec = red_decoder()
+   	usleep(2000000);
 
-   sleep(3000);
+	gpioPWM(MOT_GPIO, PWM_DUTY);
+	usleep(2000000);
+ 	gpioPWM(MOT_GPIO, 0);
+
+   usleep(100000000);
 
    dec.re_cancel();
 

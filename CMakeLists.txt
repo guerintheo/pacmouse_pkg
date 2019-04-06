@@ -106,7 +106,7 @@ catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES pacmouse_pkg
 #  CATKIN_DEPENDS roscpp rospy std_msgs
-#  DEPENDS system_lib
+  DEPENDS pigpio
   CATKIN_DEPENDS message_runtime
 )
 
@@ -209,3 +209,10 @@ add_dependencies(talker pacmouse_pkg_generate_messages_cpp)
 add_executable(listener src/testing/ros_cpp/listener.cpp)
 target_link_libraries(listener ${catkin_LIBRARIES})
 add_dependencies(listener pacmouse_pkg_generate_messages_cpp)
+
+## ADDED 
+add_executable(cpp_test src/testing/ros_cpp/cpp_test.cpp)
+# add_library(pigpio )
+find_package(pigpio)
+target_link_libraries(cpp_test ${catkin_LIBRARIES})
+add_dependencies(cpp_test pacmouse_pkg_generate_messages_cpp)
