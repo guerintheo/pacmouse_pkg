@@ -10,18 +10,15 @@ class ModeController(object):
 
     def __init__(self):
 
-        # Desired, current, and previous modes of the drone
+        # Desired, current, and previous modes
         self.desired_mode = 'IDLE'
         self.curr_mode = 'IDLE'
         self.prev_mode = 'IDLE'
 
-        # Publisher to send the commanded mode to
-        self.cmd_mode_pub = None
-
     # ROS Callback Methods
     ######################
-    def mode_callback(self, msg):
-        """Update the current mode of the drone"""
+    def force_mode_callback(self, msg):
+        """FORCE Update the mode """
         self.prev_mode = self.curr_mode
         self.curr_mode = msg.mode
         if self.prev_mode != self.curr_mode:
@@ -52,54 +49,50 @@ def main():
 
     # Subscribers
     #############
-    rospy.Subscriber("/pacmouse/maze_status", Mode, mc.mode_callback)
+    rospy.Subscriber("/pacmouse/buttons/mode", Mode, mc.mode_callback)
     
-
     # Non-ROS Setup
     ###############
     signal.signal(signal.SIGINT, mc.ctrl_c_handler)
 
     print 'Controlling Mode'
-    r = rospy.Rate(100) # 100hz
+    r = rospy.Rate(30) # 100hz
     while not rospy.is_shutdown():
         try:
-            # if the current or desired mode is anything other than disarmed
-            # preform as safety check
-            if mc.curr_mode != 'DISARMED' or mc.desired_mode != 'DISARMED':
-                # Break the loop if a safety check has failed
-                if mc.shouldIDisarm():
-                    break
 
             # Finite State Machine
             ######################
-            if mc.curr_mode == 'DISARMED':
-                if mc.desired_mode == 'DISARMED':
-                    mc.cmd_mode_pub.publish('DISARMED')
-                elif mc.desired_mode == 'ARMED':
-                    print 'sending arm command'
-                    mc.cmd_mode_pub.publish('ARMED')
+            if mc.curr_mode == 'RUNNING':
+                if mc.desired_mode == 'PAUSED':
+                    mc.cmd_mode_pub.publish('PAUSED')
+                elif mc.desired_mode == 'RUNNING':
+                    print 'sending run command'
+                    mc.cmd_mode_pub.publish('RUNNING')
                     rospy.sleep(1)
                 else:
                     print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
 
-            elif mc.curr_mode == 'ARMED':
-                if mc.desired_mode == 'ARMED':
-                    mc.cmd_mode_pub.publish('ARMED')
-                elif mc.desired_mode == 'FLYING':
-                    print 'sending fly command'
-                    mc.cmd_mode_pub.publish('FLYING')
-                elif mc.desired_mode == 'DISARMED':
-                    print 'sending disarm command'
-                    mc.cmd_mode_pub.publish('DISARMED')
+            elif mc.curr_mode == 'PAUSED':
+                if mc.desired_mode == 'PAUSED':
+                    mc.cmd_mode_pub.publish('PAUSED')
+                elif mc.desired_mode == 'RUNNING':
+                    print 'sending run command'
+                    mc.cmd_mode_pub.publish('RUNNING')
+                elif mc.desired_mode == 'IDLE':
+                    print 'sending idle command'
+                    mc.cmd_mode_pub.publish('IDLE')
                 else:
                     print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
 
-            elif mc.curr_mode == 'FLYING':
-                if mc.desired_mode == 'FLYING':
-                    mc.cmd_mode_pub.publish('FLYING')
-                elif mc.desired_mode == 'DISARMED':
-                    print 'sending disarm command'
-                    mc.cmd_mode_pub.publish('DISARMED')
+            elif mc.curr_mode == 'IDLE':
+                if mc.desired_mode == 'IDLE':
+                    mc.cmd_mode_pub.publish('IDLE')
+                elif mc.desired_mode == 'PAUSED':
+                    print 'sending pause command'
+                    mc.cmd_mode_pub.publish('PAUSED')
+                elif mc.desired_mode == 'RUNNING':
+                    print 'sending run command'
+                    mc.cmd_mode_pub.publish('RUNNING')
                 else:
                     print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
 
@@ -109,7 +102,7 @@ def main():
                 sys.exit()
         r.sleep()
 
-    mc.cmd_mode_pub.publish('DISARMED')
+    mc.cmd_mode_pub.publish('IDLE')
     print 'Shutdown Received'
     print 'Sending DISARM command'
 
