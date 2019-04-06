@@ -160,7 +160,144 @@ def estimate_lidar_returns(pose, maze, plot=False, transparency_threshold=0.5):
 
     return returns, confidences
 
- 
+def debug_plot_poses(poses):
+    plt.scatter(*poses[:,:2].T)
+
+def debug_plot_lidar_vecs(lidar_global_xys, lidar_global_vecs, lidar_length=2.0):
+    start_x, start_y = np.moveaxis(lidar_global_xys,2,0)
+    end_x, end_y = np.moveaxis(lidar_global_xys+lidar_global_vecs*lidar_length,2,0)
+    plt.plot((np.ravel(start_x), np.ravel(end_x)), (np.ravel(start_y), np.ravel(end_y)), c='r', alpha=0.2)
+
+def debug_plot_wall_intersect_coords(wall_intersect_coords, wall_mask=None):
+    xs = np.ravel(wall_intersect_coords[:,:,0,:])
+    ys = np.ravel(wall_intersect_coords[:,:,1,:])
+    if wall_mask is not None:
+        mask = np.ravel(wall_mask)
+        plt.scatter(xs[mask], ys[mask])
+    else:
+        plt.scatter(xs, ys)
+
+def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, debug_plot=False):
+    # each pose is a 3-vector [x, y, 3]
+    # there are n poses, so poses is an [n x 3] matrix
+    # there are m lidars
+    # the maze is w x h
+
+    t = time.time()
+
+    ################## FIND INFORMATION ABOUT LIDAR POSES ##################
+
+    # this is an [m] array
+    lidar_local_thetas = p.lidar_transforms[:, 2]
+
+    # this is an [n x m] array
+    lidar_global_thetas = poses[:, 2, None] + p.lidar_transforms[None, :, 2]
+
+    # this is an [n x m x 2 x 2] array
+    lidar_global_rotation_matrices = np.moveaxis(
+                                     np.array([[np.cos(lidar_global_thetas), -np.sin(lidar_global_thetas)],
+                                               [np.sin(lidar_global_thetas),  np.cos(lidar_global_thetas)]]),
+                                     [2,3], [0,1])
+
+    # this is an [m x 2] array
+    lidar_local_xys = p.lidar_transforms[:, :2]
+
+    # [n x m x 2] array
+    lidar_global_xys = poses[:, None, :2] + np.einsum('nmij,mi->nmj', lidar_global_rotation_matrices, lidar_local_xys)
+
+    # [n x m x 2] array
+    lidar_global_vecs = np.einsum('nmij,i->nmj', lidar_global_rotation_matrices, np.array([1,0]))
+    lidar_global_directions = np.sign(lidar_global_vecs)
+
+    if debug_plot: debug_plot_poses(poses)
+    if debug_plot: debug_plot_lidar_vecs(lidar_global_xys, lidar_global_vecs)
+    
+    ################## FIND VERTICAL WALL INTERSECTIONS ##################
+    # [w+1] the global x coordinates of all the sets vertical walls
+    v_wall_x_coords = np.arange(0,maze.width+1) * p.maze_cell_size
+
+    # [n x m x w+1] # calculate the x and y distances from each lidar to each set of vertical walls
+    x_dists_to_v_walls = v_wall_x_coords[None, None, :] - lidar_global_xys[:,:,0,None]
+    y_dists_to_v_walls = x_dists_to_v_walls/lidar_global_vecs[:,:,0,None]*lidar_global_vecs[:,:,1,None]
+
+    # [n x m x w+1] # create a mask of which wall-intersections are in front of the lidars
+    v_wall_in_front_mask = np.equal(np.sign(x_dists_to_v_walls), lidar_global_directions[:,:,0, None])
+
+    # [n x m x 2 x w+1] take the individual x and y distances from lidar to wall, and shift them by the lidar
+    # position to get the global vertical wall position for each lidar intersection. 
+    v_wall_intersect_coords_local = np.moveaxis(np.stack([x_dists_to_v_walls, y_dists_to_v_walls]),0,2)
+    v_wall_intersect_coords = v_wall_intersect_coords_local + lidar_global_xys[:,:,:,None]
+    
+    # [n x m x w+1] create a mask to remember which v wall intersections are within the maze
+    v_wall_in_maze_mask = np.logical_and(v_wall_intersect_coords[:,:,1,:] > 0,
+                                              v_wall_intersect_coords[:,:,1,:] < maze.height*p.maze_cell_size)
+
+    # [n x m x 2 x w+1] Then divide by the cell size to get the index of each wall in the maze.v_wall array
+    v_wall_intersect_indices = np.floor(v_wall_intersect_coords/p.maze_cell_size).astype(int)
+    # we need to mask the indices to make sure we are looking up on valid maze.v_wall indices (not outside the maze)
+    v_wall_intersect_indices = v_wall_intersect_indices * v_wall_in_maze_mask[:,:,None,:]
+
+    # [n x m x w+1] # do a lookup on the maze to see whether or not a wall exists at each of these x,y indices
+    v_wall_hit_confidences = maze.v_walls[v_wall_intersect_indices[:,:,0,:],
+                                          v_wall_intersect_indices[:,:,1,:]]
+
+    # [n x m x w+1] only consider the hits which occur on a sufficiently confident wall
+    v_wall_hit_mask = v_wall_hit_confidences > transparency_threshold
+
+    # [n x m x w+1] a mask of which potential wall intersections are valid
+    v_wall_mask = v_wall_hit_mask * v_wall_in_maze_mask * v_wall_in_front_mask
+
+    if debug_plot: debug_plot_wall_intersect_coords(v_wall_intersect_coords, v_wall_mask)
+
+    ################## FIND HORIZONTAL WALL INTERSECTIONS ##################
+    # [h+1] the global y coordinates of all the sets horizontal walls
+    h_wall_y_coords = np.arange(0,maze.width+1) * p.maze_cell_size
+
+    # [n x m x h+1] # calculate the x and y distances from each lidar to each set of horizontal walls
+    y_dists_to_h_walls = h_wall_y_coords[None, None, :] - lidar_global_xys[:,:,1,None]
+    x_dists_to_h_walls = y_dists_to_h_walls/lidar_global_vecs[:,:,1,None]*lidar_global_vecs[:,:,0,None]
+
+    # [n x m x h+1] # create a mask of which wall-intersections are in front of the lidars
+    h_wall_in_front_mask = np.equal(np.sign(x_dists_to_h_walls), lidar_global_directions[:,:,0, None])
+
+    # [n x m x 2 x h+1] take the individual x and y distances from lidar to wall, and shift them by the lidar
+    # position to get the global horizontal wall position for each lidar intersection. 
+    h_wall_intersect_coords_local = np.moveaxis(np.stack([x_dists_to_h_walls, y_dists_to_h_walls]),0,2)
+    h_wall_intersect_coords = h_wall_intersect_coords_local + lidar_global_xys[:,:,:,None]
+    
+    # [n x m x h+1] create a mask to remember which horizontal wall intersections are within the maze
+    h_wall_in_maze_mask = np.logical_and(h_wall_intersect_coords[:,:,0,:] > 0,
+                                         h_wall_intersect_coords[:,:,0,:] < maze.width*p.maze_cell_size)
+
+    # [n x m x 2 x h+1] Then divide by the cell size to get the index of each wall in the maze.h_wall array
+    h_wall_intersect_indices = np.floor(h_wall_intersect_coords/p.maze_cell_size).astype(int)
+    # we need to mask the indices to make sure we are looking up on valid maze.h_wall indices (not outside the maze)
+    h_wall_intersect_indices = h_wall_intersect_indices * h_wall_in_maze_mask[:,:,None,:]
+
+    # [n x m x h+1] # do a lookup on the maze to see whether or not a wall exists at each of these x,y indices
+    h_wall_hit_confidences = maze.h_walls[h_wall_intersect_indices[:,:,0,:],
+                                          h_wall_intersect_indices[:,:,1,:]]
+
+    # [n x m x h+1] only consider the hits which occur on a sufficiently confident wall
+    h_wall_hit_mask = h_wall_hit_confidences > transparency_threshold
+
+    # [n x m x h+1] a mask of which potential wall intersections are valid
+    h_wall_mask = h_wall_hit_mask * h_wall_in_maze_mask * h_wall_in_front_mask
+
+    if debug_plot: debug_plot_wall_intersect_coords(h_wall_intersect_coords, h_wall_mask)
+
+    ################## GET THE CLOSEST WALL INTERSECTION ##################
+
+    # [n x m w+1] and [n x m h+1] respectively. distances of zero correspond to invalid
+    v_wall_intersect_distances = np.linalg.norm(v_wall_intersect_coords_local, axis=2) * v_wall_mask
+    h_wall_intersect_distances = np.linalg.norm(h_wall_intersect_coords_local, axis=2) * h_wall_mask
+
+    # create masked arrays to block off the zeros and find the nonzero min
+    v_intersect_min_distance = np.ma.masked_equal(v_wall_intersect_distances, 0, copy=False).min(axis=2)
+    h_intersect_min_distance = np.ma.masked_equal(h_wall_intersect_distances, 0, copy=False).min(axis=2)
+
+    # return the shorter of the vertical and horizontal min distances (excluding nans)
+    return np.nanmin(np.array([v_intersect_min_distance, h_intersect_min_distance]), axis=0)
 
 def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.05):
     assert isinstance(maze, Maze2)
@@ -307,22 +444,44 @@ def plot_segment_list(plt, segment_list):
         plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k')
 
 if __name__ == '__main__':
-    m = Maze(16,16)
-    m.build_wall_matrices()
-    segment_list = maze_to_segment_list(m)
-    pose = [0.168 * 4.2, 0.168 * 3.2, np.random.rand() * np.pi/2]
 
-    start = time.time()
-    old_ans =  estimate_lidar_returns_old(pose, m)
-    duration = time.time() - start
-    print('OLD: {} seconds\t{}'.format(duration, old_ans))
+    maze = Maze2(16,16)
+    maze.generate_random_maze()
 
-    start = time.time()
-    new_ans =  estimate_lidar_returns(pose, m)
-    duration = time.time() - start
-    print('NEW: {} seconds\t{}'.format(duration, new_ans))
+    # # plot the maze
+    maze.build_segment_list()
+    maze.plot(plt)
+    border = p.maze_cell_size
+    plt.xlim(-border, maze.width * p.maze_cell_size+border)
+    plt.ylim(-border, maze.height * p.maze_cell_size+border)
 
-    total_error = np.sum(np.abs(old_ans - new_ans))
-    print 'Total Error:', total_error
-    if total_error > 1e-6:
-        estimate_lidar_returns(pose, m, True)
+    # generate poses
+    n = 5
+    poses = np.array([np.random.rand(n)*maze.width * p.maze_cell_size,
+                      np.random.rand(n)*maze.height * p.maze_cell_size,
+                      np.random.rand(n)*np.pi*2]).T
+
+    estimate_lidar_returns_multi(poses, maze, debug_plot=True)
+
+
+    plt.show()
+
+    # m = Maze(16,16)
+    # m.build_wall_matrices()
+    # segment_list = maze_to_segment_list(m)
+    # pose = [0.168 * 4.2, 0.168 * 3.2, np.random.rand() * np.pi/2]
+
+    # start = time.time()
+    # old_ans =  estimate_lidar_returns_old(pose, m)
+    # duration = time.time() - start
+    # print('OLD: {} seconds\t{}'.format(duration, old_ans))
+
+    # start = time.time()
+    # new_ans =  estimate_lidar_returns(pose, m)
+    # duration = time.time() - start
+    # print('NEW: {} seconds\t{}'.format(duration, new_ans))
+
+    # total_error = np.sum(np.abs(old_ans - new_ans))
+    # print 'Total Error:', total_error
+    # if total_error > 1e-6:
+    #     estimate_lidar_returns(pose, m, True)
