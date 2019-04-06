@@ -48,6 +48,7 @@ class ParticleFilter:
         self.n, self.d = self.particles.shape
         self.likelihoods = np.ones(self.n)/self.n
         self.pmf = self.likelihoods
+        self.parallelized = False
 
     def resample(self):
         new_ix = np.random.choice(self.n, size=self.n, replace=True, p=self.pmf)
@@ -57,7 +58,13 @@ class ParticleFilter:
         self.particles += np.random.normal(u_mu, u_sigma, size=[self.n, self.d])
 
     def calc_likelihoods(self, Z, obs_func):
-        self.likelihoods = np.array([obs_func(Z, x) for x in self.particles])
+        # we use the observation function differently depend on whether it's
+        # parallelized across all the particles
+        if self.parallelized:
+            self.likelihoods = obs_func(Z, self.particles)
+        else:
+            self.likelihoods = np.array([obs_func(Z, x) for x in self.particles])
+
         self.pmf = self.likelihoods + np.min(self.likelihoods)
         self.pmf /= np.sum(self.pmf)
 

@@ -36,11 +36,11 @@ class Simulator:
         self.lidar_sigma = 0.005
         self.encoder_sigma = 5
 
-        self.estimator = Estimator(self.real_bot_state, num_particles=20) # initialize the state estimator
+        self.estimator = Estimator(self.real_bot_state, num_particles=50) # initialize the state estimator
         self.estimator.set_maze(self.maze)              # pass it the maze
         self.estimator.u_sigma = self.u_sigma           # and the noise model
 
-        self.dt = 0.2
+        self.dt = 0.05
         
         if self.use_macaroni:
             # Create a macaroni plan once
@@ -79,7 +79,7 @@ class Simulator:
         self.real_bot_state += np.random.normal(u_mu, self.u_sigma)
 
         # get the sensor data (with noise)
-        lidars = estimate_lidar_returns(self.real_bot_state[:3], self.maze) + np.random.normal(0, self.lidar_sigma, 6)
+        lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.maze) + np.random.normal(0, self.lidar_sigma, 6)
         encoders = cmd + np.random.normal(0, self.encoder_sigma, size=2)
 
         return lidars, encoders
@@ -363,6 +363,6 @@ if __name__ == "__main__":
     fig = plt.figure()
     ax1 = fig.add_subplot(1,1,1)
     num_iterations = 10000
-    animation = animation.FuncAnimation(fig, sim.animate_plot, frames=num_iterations, repeat=False, interval=10)
+    animation = animation.FuncAnimation(fig, sim.animate_plot, frames=num_iterations, repeat=False, interval=sim.dt*1000)
     if drive: cid = fig.canvas.mpl_connect('key_press_event', sim.on_key_press)
     plt.show()

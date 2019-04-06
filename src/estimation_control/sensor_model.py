@@ -21,6 +21,21 @@ def lidar_observation_function_hyperbolic(Z, x, maze):
     z_exp = estimate_lidar_returns(x, maze)
     return np.prod(1/(np.abs(z_exp - Z) + 1e-5))
 
+def lidar_observation_function_hyperbolic_multi(Z, xs, maze):
+    """Computes a likelihood given sensor data and a particle position. A higher
+    number means x is more likely to produce an observation similar to Z
+
+    Args:
+        Z (1d numpy array): a 6-vector of lidar measurements
+        x (2d numpy array): an n by 6 of state (of a particle)
+        maze (Maze): the maze
+
+    Returns:
+        1d numpy array: how likely each particle is based on agreement the sensor data, Z
+    """
+    z_exp = estimate_lidar_returns_multi(xs, maze)
+    return np.prod(1/(np.abs(z_exp - Z) + 1e-5), axis=1)
+
 def lidar_observation_function_gaussian(Z, x, maze):
     z_exp, z_conf = estimate_lidar_returns(x, maze)
 
@@ -183,8 +198,6 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, debug_
     # there are m lidars
     # the maze is w x h
 
-    t = time.time()
-
     ################## FIND INFORMATION ABOUT LIDAR POSES ##################
 
     # this is an [m] array
@@ -298,6 +311,7 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, debug_
 
     # return the shorter of the vertical and horizontal min distances (excluding nans)
     return np.nanmin(np.array([v_intersect_min_distance, h_intersect_min_distance]), axis=0)
+
 
 def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.05):
     assert isinstance(maze, Maze2)
