@@ -218,3 +218,7 @@ add_dependencies(pigpio_cpp_test pacmouse_pkg_generate_messages_cpp )
 # target_link_libraries(listener ${catkin_LIBRARIES})
 # add_dependencies(listener pacmouse_pkg_generate_messages_cpp)
 
+# Our big cpp file will need to have pigpio linked to run properly
+add_executable(cpp_test src/testing/ros_cpp/cpp_test.cpp)
+target_link_libraries(cpp_test ${catkin_LIBRARIES} pigpio) 
+add_dependencies(cpp_test pacmouse_pkg_generate_messages_cpp)

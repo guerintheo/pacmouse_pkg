@@ -33,6 +33,7 @@
 // %Tag(FULLTEXT)%
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include "pacmouse_pkg/Drive.h"
 #include <iostream>
 
 #include <pigpio.h>
@@ -40,24 +41,32 @@
 #include <signal.h>
 
 #include "rotary_encoder.hpp"
+#include "rotary_encoder.cpp"
 
-#define ENCODER_A 23
-#define ENCODER_B 24
+#define ENCODER_A_1 23
+#define ENCODER_B_1 24
 
-#define MOT_GPIO 12
-#define PWM_DUTY 255
+#define ENCODER_A_2 22
+#define ENCODER_B_2 27
+
+#define L_MOT_GPIO 12
+#define R_MOT_GPIO 13
 
 int pos_1 = 0;
 int pos_2 = 0;
+
+re_decoder *decoder1 = NULL;
+re_decoder *decoder2 = NULL;
 
 /**
  * This tutorial demonstrates simple receipt of messages over the ROS system.
  */
 // %Tag(CALLBACK)%
-void motor_command_callback(const std_msgs::String::ConstPtr& msg)
+void motor_command_callback(const pacmouse_pkg::Drive::ConstPtr& msg)
 {
-  ROS_INFO("Setting PWM value to: [%s]", msg->data.c_str());
-  gpioPWM(MOT_GPIO, PWM_DUTY);
+  // ROS_INFO("Setting PWM value to: [%s]", msg->data.c_str());
+  gpioPWM(L_MOT_GPIO, msg->L * 255);
+  gpioPWM(R_MOT_GPIO, msg->R * 255);
 
 }
 // %EndTag(CALLBACK)%
@@ -80,7 +89,8 @@ void callback_2(int way)
 
 void shutdown(int s){
   // cleanup pigpio and callbacks
-  dec.re_cancel();
+  decoder1->re_cancel();
+  decoder2->re_cancel();
   gpioTerminate();
 
   printf("Caught signal %d\n",s);
@@ -108,7 +118,7 @@ void publish_encoders(ros::Publisher encoder_publisher) {
    * in the constructor above.
    */
 // %Tag(PUBLISH)%
-  chatter_pub.publish(msg);
+  encoder_publisher.publish(msg);
 }
 
 int main(int argc, char **argv)
@@ -167,8 +177,8 @@ int main(int argc, char **argv)
 
   if (gpioInitialise() < 0) return 1;
 
-  re_decoder dec(ENCODER_A_1, ENCODER_B_1, callback_1);
-  re_decoder dec(ENCODER_A_2, ENCODER_B_2, callback_2);
+  decoder1 = new re_decoder(ENCODER_A_1, ENCODER_B_1, callback_1);
+  decoder2 = new re_decoder(ENCODER_A_2, ENCODER_B_2, callback_2);
 
   // red_ecoder dec = red_decoder()
 
@@ -184,7 +194,6 @@ int main(int argc, char **argv)
 // %Tag(SPIN)%
   // ros::spin();
 // %EndTag(SPIN)%
-
 
 // %Tag(LOOP_RATE)%
   ros::Rate loop_rate(10);
@@ -204,7 +213,7 @@ int main(int argc, char **argv)
     loop_rate.sleep();
 // %EndTag(RATE_SLEEP)%
 
-
+  }
   return 0;
 }
 // %EndTag(FULLTEXT)%
