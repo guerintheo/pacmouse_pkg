@@ -18,7 +18,7 @@ class Mode(Enum):
     SET_MODE = 4
     SET_SPEED = 5
     SET_MAZE_REVERT = 6
-    RESTART = 7
+    SET_RESTART = 7
 
 
 class ModeController(object):
@@ -53,6 +53,8 @@ class ModeController(object):
         
         self.init_publishers()
         self.init_subscribers()
+        
+        self.led_modes = ModeLEDSignalFunctions(self.set_leds_pub)
         
     def init_publishers(self):
         """Initialize ROS publishers."""
@@ -91,7 +93,7 @@ class ModeController(object):
         
     def set_curr_mode_idle(self):
         self.curr_mode = Mode.IDLE
-        self.led_function = self.set_leds_for_idle
+        self.led_function = self.led_modes.set_leds_for_idle
     
     def cb_button1(self, data):
         """
@@ -112,7 +114,7 @@ class ModeController(object):
             # input or another toggle of button1.
             self.idle_submode = Mode.SET_MODE
             self.rotary_dial_value = 0
-            self.led_function = self.set_leds_for_set_mode
+            self.led_function = self.led_modes.set_leds_for_set_mode
             self.led_function()
             # Disarm the motors while in IDLE mode
             self.set_motor_arm_pub.publish(False)
@@ -121,7 +123,6 @@ class ModeController(object):
             # encoder callbacks in the mode controller when not IDLE (e.g., when
             # driving).
             self.set_encoder_dial_pub.publish(True)
-            # TODO
         elif not self.button1_state and self.idle_submode is Mode.SET_MODE:
             # Button toggled low while in SET_MODE mode: depending on the value
             # of the rotary option, either go back to top-level IDLE mode, go
@@ -142,7 +143,6 @@ class ModeController(object):
                 # Remain IDLE
                 self.set_curr_mode_idle()
                 
-        
     def cb_button2(self, data):
         """
         Callback for a button2 toggle event.
@@ -162,7 +162,7 @@ class ModeController(object):
             # encoder input or another toggle of button2.
             self.idle_submode = Mode.SET_SPEED
             self.rotary_dial_value = 0
-            self.led_function = self.set_leds_for_set_speed
+            self.led_function = self.led_modes.set_leds_for_set_speed
             self.led_function()
             # Disarm the motors while in IDLE mode
             self.set_motor_arm_pub.publish(False)
@@ -171,7 +171,6 @@ class ModeController(object):
             # encoder callbacks in the mode controller when not IDLE (e.g., when
             # driving).
             self.set_encoder_dial_pub.publish(True)
-            # TODO
         elif not self.button2_state and self.idle_submode is Mode.SET_SPEED:
             # Button toggled low while in SET_SPEED mode
             self.idle_submode = None  # we are exiting an IDLE sub-mode
@@ -183,14 +182,80 @@ class ModeController(object):
     def cb_button3(self, data):
         """
         Callback for a button3 toggle event.
+        
+        This button is used to enter or exit the SET_MAZE_REVERT sub-mode of
+        IDLE if we are currently in the IDLE mode.
         """
+        # Store the button state
         self.button3_state = data.data
+        # Only act on button toggle when in IDLE mode.
+        if self.curr_mode is not Mode.IDLE:
+            return
+        if self.button3_state and self.idle_submode is None:
+            # Button toggled high while not in a sub-mode of the IDLE mode
+            # (i.e., we are in the top-level IDLE mode): enter SET_MAZE_REVERT
+            # state in the IDLE state machine. In this mode, we now accept
+            # rotary encoder input or another toggle of button3.
+            self.idle_submode = Mode.SET_MAZE_REVERT
+            self.rotary_dial_value = 0
+            self.led_function = self.led_modes.set_leds_for_maze_revert
+            self.led_function()
+            # Disarm the motors while in IDLE mode
+            self.set_motor_arm_pub.publish(False)
+            # Signal to the encoders that we wish to receive encoder ticks now.
+            # We do this setting dynamically so as to avoid overhead of constant
+            # encoder callbacks in the mode controller when not IDLE (e.g., when
+            # driving).
+            self.set_encoder_dial_pub.publish(True)
+        elif not self.button3_state and self.idle_submode is Mode.SET_MAZE_REVERT:
+            # Button toggled low while in SET_MAZE_REVERT mode
+            self.idle_submode = None  # we are exiting an IDLE sub-mode
+            # Stop reading encoder ticks
+            self.set_encoder_dial_pub.publish(False)
+            # TODO: Pass in a file name of a maze to load into memory based on the rotary encoder value indicating how far back in time to revert back to. Coordinate this with the LED indicators.
+            # self.load_maze_pub.publish()
+            self.set_curr_mode_idle()
         
     def cb_button4(self, data):
         """
         Callback for a button4 toggle event.
+        
+        This button is used to enter or exit the SET_RESTART sub-mode of IDLE if
+        we are currently in the IDLE mode.
         """
+        # Store the button state
         self.button4_state = data.data
+        # Only act on button toggle when in IDLE mode.
+        if self.curr_mode is not Mode.IDLE:
+            return
+        if self.button4_state and self.idle_submode is None:
+            # Button toggled high while not in a sub-mode of the IDLE mode
+            # (i.e., we are in the top-level IDLE mode): enter the SET_RESTART
+            # state in the IDLE state machine. In this mode, we now accept
+            # rotary encoder input or another toggle of button4.
+            self.idle_submode = Mode.SET_RESTART
+            self.rotary_dial_value = 0
+            self.led_function = self.led_modes.set_leds_for_restart
+            self.led_function()
+            # Disarm the motors while in IDLE mode
+            self.set_motor_arm_pub.publish(False)
+            # Signal to the encoders that we wish to receive encoder ticks now.
+            # We do this setting dynamically so as to avoid overhead of constant
+            # encoder callbacks in the mode controller when not IDLE (e.g., when
+            # driving).
+            self.set_encoder_dial_pub.publish(True)
+        elif not self.button4_state and self.idle_submode is Mode.SET_RESTART:
+            # Button toggled low while in SET_RESTART mode
+            self.idle_submode = None  # we are exiting an IDLE sub-mode
+            # Stop reading encoder ticks
+            self.set_encoder_dial_pub.publish(False)
+            # Based on the rotary encoder ticks, determine whether or not to
+            # restart the software stack
+            if self.rotary_dial_value >= self.rotary_option_threshold:
+                self.restart_software_stack()
+            else:
+                # Remain IDLE
+                self.set_curr_mode_idle()
         
     def cb_encoder_dial(self, data):
         """
@@ -204,6 +269,17 @@ class ModeController(object):
         """
         self.rotary_dial_value += data.data
         self.led_function()
+        
+    def restart_software_stack(self):
+        """
+        Restart the software stack.
+        
+        This would typically only be called if there is an error that an
+        operator has deemed requires a hard restart of the software stack, such
+        as diverging pose or maze estimates.
+        """
+        # TODO
+        pass
         
     def start_shortest_path_solve(self, toggled_by_human=False):
         """
@@ -231,9 +307,8 @@ class ModeController(object):
         # Arm the motors
         self.set_motor_arm_pub.publish(True)
         self.set_plan_mode_pub.publish('SHORTEST_PATH_SOLVING')
-        self.led_function = self.set_leds_for_shortest_path
+        self.led_function = self.led_modes.set_leds_for_shortest_path
         self.led_function()  # TODO: Figure out if we want LEDs to change during a shortest path run
-            
         
     def start_exploring(self, toggled_by_human=False):
         """
@@ -258,7 +333,7 @@ class ModeController(object):
         # Arm the motors
         self.set_motor_arm_pub.publish(True)
         self.set_plan_mode_pub.publish('EXPLORING')
-        self.led_function = self.set_leds_for_exploring
+        self.led_function = self.led_modes.set_leds_for_exploring
         self.led_function()  # TODO: Figure out if we want LEDs to change during exploration, perhaps to indicate confidence in pose and/or maze estimate, potential estimate divergence, etc.
         
     def sigint_handler(self, signal, frame):
@@ -270,6 +345,31 @@ class ModeController(object):
         # E.g., send message to disarm motors
         sys.exit()
 
+class ModeLEDSignalFunctions(object):
+    
+    def __init__(self, set_leds_pub):
+        self.set_leds_pub = set_leds_pub
+        
+    def set_leds_for_idle(self):
+        pass
+        
+    def set_leds_for_set_mode(self):
+        pass
+        
+    def set_leds_for_set_speed(self):
+        pass
+        
+    def set_leds_for_maze_revert(self):
+        pass
+        
+    def set_leds_for_restart(self):
+        pass
+        
+    def set_leds_for_shortest_path(self):
+        pass
+        
+    def set_leds_for_exploring(self):
+        pass
 
 def main():
     rospy.init_node('mode_controller')
