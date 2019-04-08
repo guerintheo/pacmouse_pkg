@@ -45,11 +45,14 @@ int main(int argc, char *argv[])
 
    re_decoder dec(ENCODER_A, ENCODER_B, callback);
    // red_ecoder dec = red_decoder()
-   	usleep(2000000);
+   
+   usleep(1000000);
 
 	gpioPWM(MOT_GPIO, PWM_DUTY);
-	usleep(2000000);
+	usleep(1000000);
  	gpioPWM(MOT_GPIO, 0);
+	usleep(1000000);
+	gpioPWM(MOT_GPIO, -PWM_DUTY);
 
    usleep(100000000);
 

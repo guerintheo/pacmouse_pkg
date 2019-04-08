@@ -74,6 +74,8 @@ class LEDs:
 		self.strip.show()
 		time.sleep(0.2)
 
+		print "rainbow test complete"
+
 	def master_status_callback(self, msg):
 		# During normal operation, we should always have at least one LED on
 		# so that we can distinguish that we have not freshly rebooted.
@@ -105,6 +107,7 @@ class LEDs:
 		self.strip.show()
 
 	def shutdown(self):  
+		print "received shutdown command"
 		self.strip.clear_strip()
 		self.strip.cleanup()
 

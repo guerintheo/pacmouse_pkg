@@ -1,36 +1,3 @@
-/*
- * Copyright (C) 2008, Morgan Quigley and Willow Garage, Inc.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *   * Redistributions of source code must retain the above copyright notice,
- *     this list of conditions and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *   * Neither the names of Stanford University or Willow Garage, Inc. nor the names of its
- *     contributors may be used to endorse or promote products derived from
- *     this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
-
-// COMPILE WITH: 
-// g++ -o rot_enc_cpp test_rotary_encoder.cpp rotary_encoder.cpp -lpigpio -lrt
-// g++ -o cpp_test cpp_test.cpp rotary_encoder.cpp -lpigpio -lrt
-
-
-// %Tag(FULLTEXT)%
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include "pacmouse_pkg/Drive.h"
@@ -49,8 +16,14 @@
 #define ENCODER_A_2 22
 #define ENCODER_B_2 27
 
+#define MOTOR_MODE_PIN 25
 #define L_MOT_GPIO 12
 #define R_MOT_GPIO 13
+// mr_dir = 16
+// ml_dir = 7
+ 
+//TODO: Figure out a way to import these parameters rather than recompiling source when you want to change them. 
+float LOOP_RATE = 10;
 
 int pos_1 = 0;
 int pos_2 = 0;
@@ -58,78 +31,92 @@ int pos_2 = 0;
 re_decoder *decoder1 = NULL;
 re_decoder *decoder2 = NULL;
 
-/**
- * This tutorial demonstrates simple receipt of messages over the ROS system.
- */
-// %Tag(CALLBACK)%
 void motor_command_callback(const pacmouse_pkg::Drive::ConstPtr& msg)
 {
-  // ROS_INFO("Setting PWM value to: [%s]", msg->data.c_str());
-  gpioPWM(L_MOT_GPIO, msg->L * 255);
-  gpioPWM(R_MOT_GPIO, msg->R * 255);
+  ROS_INFO("Setting PWM value to: [%f, %f]", msg->L, msg->R);
+  // TODO: Add support for negative values by setting the direction pin to 1 if backwards is desired.
+
+        // # set the directions of the motors. 0 is forward, 1 is backward
+        // self.pi.write(p.ml_dir, int(self.l < 0))
+        // self.pi.write(p.mr_dir, int(self.r < 0))
+  gpioPWM(L_MOT_GPIO, (int)(msg->L * 255));
+  gpioPWM(R_MOT_GPIO, (int)(msg->R * 255));
 
 }
-// %EndTag(CALLBACK)%
 
 void callback_1(int way)
 {
 
-   pos_1 += way;
+  pos_1 += way;
+  std::cout << "pos1=" << pos_1 << std::endl;
 
-   // std::cout << "pos_1=" << pos_1 << std::endl;
 }
 
 void callback_2(int way)
 {
 
-   pos_2 += way;
+  pos_2 += way;
+  std::cout << "pos2=" << pos_2 << std::endl;
 
-   // std::cout << "pos_1=" << pos_1 << std::endl;
 }
 
+//These could overflow after 11 days of continous full speed running... 
+int last_pos_1 = 0;
+int last_pos_2 = 0;
+int current_pos_1 = 0;
+int current_pos_2 = 0;
+float vel_1 = 0.0;
+float vel_2 = 0.0;
+// Calculates the instantaneous velocity given an update rate in hertz. (In number of ticks per second)
+float calc_velocity_1(float hertz)
+{
+  last_pos_1 = current_pos_1;
+  current_pos_1 = pos_1;
+  vel_1 = (current_pos_1 - last_pos_1) * hertz;
+  std::cout << "vel1=" << vel_1 << std::endl;
+
+  return vel_1;
+}
+
+float calc_velocity_2(float hertz)
+{
+  last_pos_2 = current_pos_2;
+  current_pos_2 = pos_2;
+  vel_2 = (current_pos_2 - last_pos_2) * hertz;
+  std::cout << "vel2=" << vel_2 << std::endl;
+  
+  return vel_2;
+}
+
+void publish_encoders(ros::Publisher encoder_publisher) {
+  std_msgs::String msg;
+
+  vel_1 = calc_velocity_1(LOOP_RATE);
+  vel_2 = calc_velocity_2(LOOP_RATE);
+
+  std::stringstream ss;
+  ss << "pos1: " << pos_1 << " vel1: " << vel_1 << " pos2: " << pos_2 << " vel1: " << vel_2;
+  // TODO: Define this message structure
+  msg.data = ss.str();
+  ROS_INFO("%s", msg.data.c_str());
+
+  encoder_publisher.publish(msg);
+}
+
+// cleanup pigpio and callbacks 
 void shutdown(int s){
-  // cleanup pigpio and callbacks
   decoder1->re_cancel();
   decoder2->re_cancel();
   gpioTerminate();
 
   printf("Caught signal %d\n",s);
-  exit(1); 
+  ros::shutdown();
 
-}
-
-void publish_encoders(ros::Publisher encoder_publisher) {
-// %Tag(FILL_MESSAGE)%
-  std_msgs::String msg;
-
-  std::stringstream ss;
-  ss << "pos1: " << pos_1 << " pos2: " << pos_2;
-  msg.data = ss.str();
-// %EndTag(FILL_MESSAGE)%
-
-// %Tag(ROSCONSOLE)%
-  ROS_INFO("%s", msg.data.c_str());
-// %EndTag(ROSCONSOLE)%
-
-  /**
-   * The publish() function is how you send messages. The parameter
-   * is the message object. The type of this object must agree with the type
-   * given as a template parameter to the advertise<>() call, as was done
-   * in the constructor above.
-   */
-// %Tag(PUBLISH)%
-  encoder_publisher.publish(msg);
 }
 
 int main(int argc, char **argv)
 {
   /**
-   * The ros::init() function needs to see argc and argv so that it can perform
-   * any ROS arguments and name remapping that were provided at the command line.
-   * For programmatic remappings you can use a different version of init() which takes
-   * remappings directly, but for most command-line programs, passing argc and argv is
-   * the easiest way to do it.  The third argument to init() is the name of the node.
-   *
    * You must call one of the versions of ros::init() before using any other
    * part of the ROS system.
    */
@@ -142,78 +129,47 @@ int main(int argc, char **argv)
    */
   ros::NodeHandle n;
 
-  /**
-   * The subscribe() call is how you tell ROS that you want to receive messages
-   * on a given topic.  This invokes a call to the ROS
-   * master node, which keeps a registry of who is publishing and who
-   * is subscribing.  Messages are passed to a callback function, here
-   * called chatterCallback.  subscribe() returns a Subscriber object that you
-   * must hold on to until you want to unsubscribe.  When all copies of the Subscriber
-   * object go out of scope, this callback will automatically be unsubscribed from
-   * this topic.
-   *
-   * The second parameter to the subscribe() function is the size of the message
-   * queue.  If messages are arriving faster than they are being processed, this
-   * is the number of messages that will be buffered up before beginning to throw
-   * away the oldest ones.
-   */
+// SHUTDOWN CODE
+  // struct sigaction sigIntHandler;
 
-// SETUP SHUTDOWN CODE
-  struct sigaction sigIntHandler;
+  // sigIntHandler.sa_handler = shutdown;
+  // sigemptyset(&sigIntHandler.sa_mask);
+  // sigIntHandler.sa_flags = 0;
 
-  sigIntHandler.sa_handler = shutdown;
-  sigemptyset(&sigIntHandler.sa_mask);
-  sigIntHandler.sa_flags = 0;
+  // sigaction(SIGINT, &sigIntHandler, NULL);
 
-  sigaction(SIGINT, &sigIntHandler, NULL);
+// TODO: It seems that neither of these SIGINT handlers works. 
 
-// %Tag(SUBSCRIBER)%
+  signal(SIGINT, shutdown);
+
   ros::Subscriber sub = n.subscribe("/pacmouse/motor/cmd", 1000, motor_command_callback);
-// %EndTag(SUBSCRIBER)%
 
-// %Tag(PUBLISHER)%
   ros::Publisher encoder_publisher = n.advertise<std_msgs::String>("/pacmouse/encoders", 1000);
-// %EndTag(PUBLISHER)%
 
-  if (gpioInitialise() < 0) return 1;
+  if (gpioInitialise() < 0) {
+    ROS_INFO("Could not initialize GPIOs. I'm borked.");
+    return 1;
+  }
+
+  gpioSetMode(L_MOT_GPIO, PI_OUTPUT);
+  gpioSetMode(R_MOT_GPIO, PI_OUTPUT);
+  gpioSetMode(MOTOR_MODE_PIN, PI_OUTPUT);
+  gpioWrite(MOTOR_MODE_PIN, 1);
 
   decoder1 = new re_decoder(ENCODER_A_1, ENCODER_B_1, callback_1);
   decoder2 = new re_decoder(ENCODER_A_2, ENCODER_B_2, callback_2);
 
-  // red_ecoder dec = red_decoder()
-
-  
-
-
-
-  /**
-   * ros::spin() will enter a loop, pumping callbacks.  With this version, all
-   * callbacks will be called from within this thread (the main one).  ros::spin()
-   * will exit when Ctrl-C is pressed, or the node is shutdown by the master.
-   */
-// %Tag(SPIN)%
-  // ros::spin();
-// %EndTag(SPIN)%
-
-// %Tag(LOOP_RATE)%
-  ros::Rate loop_rate(10);
-// %EndTag(LOOP_RATE)%
+  ros::Rate loop_rate(LOOP_RATE);
 
   while (ros::ok())
   {
 
     publish_encoders(encoder_publisher);
-// %EndTag(PUBLISH)%
 
-// %Tag(SPINONCE)%
     ros::spinOnce();
-// %EndTag(SPINONCE)%
 
-// %Tag(RATE_SLEEP)%
     loop_rate.sleep();
-// %EndTag(RATE_SLEEP)%
 
   }
   return 0;
 }
-// %EndTag(FULLTEXT)%
