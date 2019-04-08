@@ -21,6 +21,8 @@
 #define R_MOT_GPIO 13
 #define L_MOT_DIR 7
 #define R_MOT_DIR 16
+
+#define MOTOR_PWM_FREQUENCY 100
  
 //TODO: Figure out a way to import these parameters rather than recompiling source when you want to change them. 
 float LOOP_RATE = 10;
@@ -39,8 +41,8 @@ void motor_command_callback(const pacmouse_pkg::Drive::ConstPtr& msg)
         // # set the directions of the motors. 0 is forward, 1 is backward
   gpioWrite(L_MOT_DIR, (int)(msg->L < 0));
   gpioWrite(R_MOT_DIR, (int)(msg->R < 0));
-  gpioPWM(L_MOT_GPIO, (int)(abs(msg->L * 255)));
-  gpioPWM(R_MOT_GPIO, (int)(abs(msg->R * 255)));
+  gpioPWM(L_MOT_GPIO, abs((int)(msg->L * 255)));
+  gpioPWM(R_MOT_GPIO, abs((int)(msg->R * 255)));
 
 }
 
@@ -143,10 +145,16 @@ int main(int argc, char **argv)
     return 1;
   }
 
+  // set all the motor pins as output
   gpioSetMode(L_MOT_GPIO, PI_OUTPUT);
   gpioSetMode(R_MOT_GPIO, PI_OUTPUT);
   gpioSetMode(L_MOT_DIR, PI_OUTPUT);
   gpioSetMode(R_MOT_DIR, PI_OUTPUT);
+
+  // and set their motor frequency
+  gpioSetPWMfrequency(L_MOT_GPIO, MOTOR_PWM_FREQUENCY);
+  gpioSetPWMfrequency(R_MOT_GPIO, MOTOR_PWM_FREQUENCY);
+
   gpioSetMode(MOTOR_MODE_PIN, PI_OUTPUT);
   gpioWrite(MOTOR_MODE_PIN, 1);
 
