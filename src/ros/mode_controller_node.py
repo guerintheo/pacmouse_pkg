@@ -2,8 +2,9 @@
 import rospy
 import signal
 import sys
+import time
 
-from std_msgs.msg import Bool, Empty, String, Int16
+from std_msgs.msg import Bool, Empty, String, Int16, Float64
 from pacmouse_pkg.msg import LED  # TODO: Create this custom message
 
 
@@ -27,16 +28,9 @@ class ModeController(object):
     """
 
     def __init__(self):
-        # Previous, current, and desired top-level modes
+        # Previous and current top-level modes
         self.prev_mode = None
-        self.curr_mode = Mode.IDLE
-        self.desired_mode = None
-        # TODO (Theo): Does it make sense to use desired_mode with the
-        # paradigm we have set up here? Desired mode could be a sort of
-        # "mode" message sent be a node trying to change the mode of the
-        # mode controller, I feel like. There may be some other
-        # intuitive use for such a variable, but not sure currently, so
-        # probably will not use it. Consider changing usage.
+        self.set_curr_mode_idle()
         
         self.idle_submode = None
         
@@ -47,6 +41,13 @@ class ModeController(object):
         self.button4_state = None
         
         self.rotary_option_threshold = 100  # number of ticks # TODO: Set to an intuitive value
+        # Number of seconds to wait before starting shortest-path solving or
+        # exploration if toggled by a human
+        self.zero_pose_and_heading_delay_seconds = 3
+        
+        # TODO: Get this information from planner or pose estimator, or
+        # whichever node determines that we have reached maze goal
+        self.found_path_to_maze_goal = False
         
         signal.signal(signal.SIGINT, self.sigint_handler)
         
@@ -71,7 +72,7 @@ class ModeController(object):
                                                  String,
                                                  queue_size=1)
         self.set_plan_speed_pub = rospy.Publisher(
-                                    '/pacmouse/mode/set_plan_speed', String,
+                                    '/pacmouse/mode/set_plan_speed', Float64,
                                     queue_size=1)
         self.set_encoder_dial_pub = rospy.Publisher(
                                         '/pacmouse/mode/set_encoder_dial', Bool,
@@ -88,14 +89,22 @@ class ModeController(object):
         # Rotary dial subscriber
         rospy.Subsciber('/pacmouse/encoder_dial', Int16, self.cb_encoder_dial)
         
+    def set_curr_mode_idle(self):
+        self.curr_mode = Mode.IDLE
+        self.led_function = self.set_leds_for_idle
+    
     def cb_button1(self, data):
         """
         Callback for a button1 toggle event.
+        
+        This button is used to enter or exit the SET_MODE sub-mode of IDLE if we
+        are currently in the IDLE mode.
         """
+        # Store the button state
         self.button1_state = data.data
+        # Only act on button toggle when in IDLE mode.
         if self.curr_mode is not Mode.IDLE:
             return
-        # Only act on button toggle when in IDLE mode.
         if self.button1_state and self.idle_submode is None:
             # Button toggled high while not in a sub-mode of the IDLE mode
             # (i.e., we are in the top-level IDLE mode): enter SET_MODE state in
@@ -103,30 +112,73 @@ class ModeController(object):
             # input or another toggle of button1.
             self.idle_submode = Mode.SET_MODE
             self.rotary_dial_value = 0
+            self.led_function = self.set_leds_for_set_mode
+            self.led_function()
+            # Disarm the motors while in IDLE mode
+            self.set_motor_arm_pub.publish(False)
             # Signal to the encoders that we wish to receive encoder ticks now.
             # We do this setting dynamically so as to avoid overhead of constant
             # encoder callbacks in the mode controller when not IDLE (e.g., when
-            # driving)
+            # driving).
             self.set_encoder_dial_pub.publish(True)
             # TODO
-        if not self.button1_state and self.idle_submode is Mode.SET_MODE:
+        elif not self.button1_state and self.idle_submode is Mode.SET_MODE:
             # Button toggled low while in SET_MODE mode: depending on the value
             # of the rotary option, either go back to top-level IDLE mode, go
             # to EXPLORING mode, or go to SHORTEST_PATH_SOLVING mode.
+            self.idle_submode = None  # we are exiting an IDLE sub-mode
+            # Stop reading encoder ticks
             self.set_encoder_dial_pub.publish(False)
             if self.rotary_dial_value >= self.rotary_option_threshold:
-                self.desired_mode = Mode.SHORTEST_PATH_SOLVING
+                if self.found_path_to_maze_goal:
+                    # Can only do shortest-path solve if we have found the
+                    # goal/center of the maze
+                    self.start_shortest_path_solve(toggled_by_human=True)
+                else:
+                    self.set_curr_mode_idle()
             elif self.rotary_dial_value <= -self.rotary_option_threshold:
-                self.desired_mode = Mode.EXPLORING
+                self.start_exploring(toggled_by_human=True)
             else:
                 # Remain IDLE
-                self.curr_mode = Mode.IDLE
+                self.set_curr_mode_idle()
+                
         
     def cb_button2(self, data):
         """
         Callback for a button2 toggle event.
+        
+        This button is used to enter or exit the SET_SPEED sub-mode of IDLE if
+        we are currently in the IDLE mode.
         """
+        # Store the button state
         self.button2_state = data.data
+        # Only act on button toggle when in IDLE mode.
+        if self.curr_mode is not Mode.IDLE:
+            return
+        if self.button2_state and self.idle_submode is None:
+            # Button toggled high while not in a sub-mode of the IDLE mode
+            # (i.e., we are in the top-level IDLE mode): enter SET_SPEED state
+            # in the IDLE state machine. In this mode, we now accept rotary
+            # encoder input or another toggle of button2.
+            self.idle_submode = Mode.SET_SPEED
+            self.rotary_dial_value = 0
+            self.led_function = self.set_leds_for_set_speed
+            self.led_function()
+            # Disarm the motors while in IDLE mode
+            self.set_motor_arm_pub.publish(False)
+            # Signal to the encoders that we wish to receive encoder ticks now.
+            # We do this setting dynamically so as to avoid overhead of constant
+            # encoder callbacks in the mode controller when not IDLE (e.g., when
+            # driving).
+            self.set_encoder_dial_pub.publish(True)
+            # TODO
+        elif not self.button2_state and self.idle_submode is Mode.SET_SPEED:
+            # Button toggled low while in SET_SPEED mode
+            self.idle_submode = None  # we are exiting an IDLE sub-mode
+            # Stop reading encoder ticks
+            self.set_encoder_dial_pub.publish(False)
+            self.set_plan_speed_pub.publish(self.rotary_dial_value)
+            self.set_curr_mode_idle()
         
     def cb_button3(self, data):
         """
@@ -140,7 +192,7 @@ class ModeController(object):
         """
         self.button4_state = data.data
         
-    def encoder_dial(self, data):
+    def cb_encoder_dial(self, data):
         """
         Callback for the encoder dial. This callback increments or decrements a
         dial value (depending on direction of rotation of the encoder tick),
@@ -151,8 +203,63 @@ class ModeController(object):
         selection progress.
         """
         self.rotary_dial_value += data.data
-        # TODO: LEDs
+        self.led_function()
         
+    def start_shortest_path_solve(self, toggled_by_human=False):
+        """
+        Set up the robot to transition into shortest-path solve mode.
+        
+        Summary of what is done in this function:
+            - Arm the motors
+            - Send message to planner to plan a shortest path
+            - Send message to maze estimator to fix the maze estimate
+              (Could perhaps just have planner fix its maze representation.
+              TODO: Figure out a good way to do this.)
+            - Send message to LEDs to have them reflect shortest-path solving
+              mode
+            - If toggled by human, then also send message to pose estimator and
+              IMU to zero the pose and heading values, respectively
+        """
+        self.curr_mode = Mode.SHORTEST_PATH_SOLVING
+        if toggled_by_human:
+            print('Sleeping {} seconds before starting shortest path.'.format(
+                  self.zero_pose_and_heading_delay_seconds))
+            time.sleep(self.zero_pose_and_heading_delay_seconds)
+            print('Zeroing pose and heading.')
+            self.zero_pose_pub.publish(Empty())
+            self.zero_heading_pub.publish(Empty())
+        # Arm the motors
+        self.set_motor_arm_pub.publish(True)
+        self.set_plan_mode_pub.publish('SHORTEST_PATH_SOLVING')
+        self.led_function = self.set_leds_for_shortest_path
+        self.led_function()  # TODO: Figure out if we want LEDs to change during a shortest path run
+            
+        
+    def start_exploring(self, toggled_by_human=False):
+        """
+        Set up the robot to transition into exploring mode.
+        
+        Summary of what is done in this function:
+            - Arm the motors
+            - Send message to planner to plan for maze exploration
+            - Send message to maze estimator to activate maze estimation (TODO)
+            - Send message to LEDs to have them reflect exploration mode
+            - If toggled by human, then also send message to pose estimator and
+              IMU to zero the pose and heading values, respectively
+        """
+        self.curr_mode = Mode.EXPLORING
+        if toggled_by_human:
+            print('Sleeping {} seconds before starting exploration.'.format(
+                  self.zero_pose_and_heading_delay_seconds))
+            time.sleep(self.zero_pose_and_heading_delay_seconds)
+            print('Zeroing pose and heading.')
+            self.zero_pose_pub.publish(Empty())
+            self.zero_heading_pub.publish(Empty())
+        # Arm the motors
+        self.set_motor_arm_pub.publish(True)
+        self.set_plan_mode_pub.publish('EXPLORING')
+        self.led_function = self.set_leds_for_exploring
+        self.led_function()  # TODO: Figure out if we want LEDs to change during exploration, perhaps to indicate confidence in pose and/or maze estimate, potential estimate divergence, etc.
         
     def sigint_handler(self, signal, frame):
         """
