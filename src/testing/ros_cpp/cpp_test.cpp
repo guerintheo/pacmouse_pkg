@@ -19,8 +19,6 @@
 #define MOTOR_MODE_PIN 25
 #define L_MOT_GPIO 12
 #define R_MOT_GPIO 13
-// mr_dir = 16
-// ml_dir = 7
  
 //TODO: Figure out a way to import these parameters rather than recompiling source when you want to change them. 
 float LOOP_RATE = 10;
@@ -34,11 +32,7 @@ re_decoder *decoder2 = NULL;
 void motor_command_callback(const pacmouse_pkg::Drive::ConstPtr& msg)
 {
   ROS_INFO("Setting PWM value to: [%f, %f]", msg->L, msg->R);
-  // TODO: Add support for negative values by setting the direction pin to 1 if backwards is desired.
-
-        // # set the directions of the motors. 0 is forward, 1 is backward
-        // self.pi.write(p.ml_dir, int(self.l < 0))
-        // self.pi.write(p.mr_dir, int(self.r < 0))
+  // TODO: Add support for
   gpioPWM(L_MOT_GPIO, (int)(msg->L * 255));
   gpioPWM(R_MOT_GPIO, (int)(msg->R * 255));
 
