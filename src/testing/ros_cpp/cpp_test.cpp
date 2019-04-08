@@ -19,6 +19,8 @@
 #define MOTOR_MODE_PIN 25
 #define L_MOT_GPIO 12
 #define R_MOT_GPIO 13
+#define L_MOT_DIR 7
+#define R_MOT_DIR 16
  
 //TODO: Figure out a way to import these parameters rather than recompiling source when you want to change them. 
 float LOOP_RATE = 10;
@@ -32,26 +34,24 @@ re_decoder *decoder2 = NULL;
 void motor_command_callback(const pacmouse_pkg::Drive::ConstPtr& msg)
 {
   ROS_INFO("Setting PWM value to: [%f, %f]", msg->L, msg->R);
-  // TODO: Add support for
-  gpioPWM(L_MOT_GPIO, (int)(msg->L * 255));
-  gpioPWM(R_MOT_GPIO, (int)(msg->R * 255));
+  // TODO: Add support for negative values by setting the direction pin to 1 if backwards is desired.
+
+        // # set the directions of the motors. 0 is forward, 1 is backward
+  gpioWrite(L_MOT_DIR, (int)(msg->L < 0));
+  gpioWrite(R_MOT_DIR, (int)(msg->R < 0));
+  gpioPWM(L_MOT_GPIO, (int)(abs(msg->L * 255)));
+  gpioPWM(R_MOT_GPIO, (int)(abs(msg->R * 255)));
 
 }
 
 void callback_1(int way)
 {
-
   pos_1 += way;
-  std::cout << "pos1=" << pos_1 << std::endl;
-
 }
 
 void callback_2(int way)
 {
-
   pos_2 += way;
-  std::cout << "pos2=" << pos_2 << std::endl;
-
 }
 
 //These could overflow after 11 days of continous full speed running... 
@@ -67,7 +67,6 @@ float calc_velocity_1(float hertz)
   last_pos_1 = current_pos_1;
   current_pos_1 = pos_1;
   vel_1 = (current_pos_1 - last_pos_1) * hertz;
-  std::cout << "vel1=" << vel_1 << std::endl;
 
   return vel_1;
 }
@@ -77,7 +76,6 @@ float calc_velocity_2(float hertz)
   last_pos_2 = current_pos_2;
   current_pos_2 = pos_2;
   vel_2 = (current_pos_2 - last_pos_2) * hertz;
-  std::cout << "vel2=" << vel_2 << std::endl;
   
   return vel_2;
 }
@@ -147,6 +145,8 @@ int main(int argc, char **argv)
 
   gpioSetMode(L_MOT_GPIO, PI_OUTPUT);
   gpioSetMode(R_MOT_GPIO, PI_OUTPUT);
+  gpioSetMode(L_MOT_DIR, PI_OUTPUT);
+  gpioSetMode(R_MOT_DIR, PI_OUTPUT);
   gpioSetMode(MOTOR_MODE_PIN, PI_OUTPUT);
   gpioWrite(MOTOR_MODE_PIN, 1);
 
