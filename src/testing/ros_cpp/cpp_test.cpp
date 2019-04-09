@@ -29,6 +29,7 @@ int ENCODER_L_B;
 int MOTOR_MODE_PIN;
 int L_MOT_GPIO;
 int R_MOT_GPIO;
+int L_MOT_DIR;
 int R_MOT_DIR;
 
 float MOTOR_PWM_FREQUENCY;
