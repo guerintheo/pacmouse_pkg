@@ -1,0 +1,18 @@
+enc_r_a: 23
+enc_r_b: 24
+enc_l_a: 22
+enc_l_b: 27
+encoder_freq: 15.0
+
+ml_dir: 7  # corresponds to physical pin 26
+ml_pwm: 13  # corresponds to physical pin 33
+mr_dir: 16  # bcm pin 16 corresponds to physical pin 36
+mr_pwm: 12  # bcm pin 12 corresponds to physical pin 32
+motor_mode_pin: 25  # corresponds to physical pin 22
+
+motor_pwm_freq: 100.0
+
+motor_controller_pid: [0.0, 0.0, 0.0]
+motor_control_freq: 100.0
+
+ticks_per_radian: 42.7713
