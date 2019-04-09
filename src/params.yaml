@@ -16,3 +16,8 @@ motor_controller_pid: [0.0, 0.0, 0.0]
 motor_control_freq: 100.0
 
 ticks_per_radian: 42.7713
+
+button_1: 18
+button_2: 19
+button_3: 20
+button_4: 21
