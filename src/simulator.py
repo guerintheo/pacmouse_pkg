@@ -127,12 +127,13 @@ class DrivingSimulator:
         # build a maze and set the target sell
         self.maze_size = (8,8)
         self.real_maze = Maze2(*self.maze_size)
-
-        temp_maze = Maze(*self.maze_size)
-        temp_maze.build_wall_matrices()
-        print temp_maze
-        self.real_maze.v_walls = 1 -temp_maze.v_walls
-        self.real_maze.h_walls = 1 -temp_maze.h_walls
+        self.real_maze.generate_random_maze()
+        print self.real_maze
+        # temp_maze = Maze(*self.maze_size)
+        # temp_maze.build_wall_matrices()
+        # print temp_maze
+        # self.real_maze.v_walls = 1 -temp_maze.v_walls
+        # self.real_maze.h_walls = 1 -temp_maze.h_walls
 
         # specify the initial state
         self.real_bot_state = np.array([0.5*p.maze_cell_size, 0.5*p.maze_cell_size, np.pi/2,0,0,0])
@@ -150,17 +151,19 @@ class DrivingSimulator:
         self.estimator.u_sigma = self.u_sigma           # and the noise model
 
         self.estimated_maze = Maze2(*self.maze_size)
+        self.estimated_maze.v_walls[:,:] = 1.
+        self.estimated_maze.h_walls[:,:] = 1.
         self.estimated_maze.build_segment_list()
 
         self.cmd = np.zeros(2)
         self.forward_increment = 40.
         self.steer_increment = 40.
-        self.dt = 0.2
+        self.dt = 0.1
 
     def update_estimated_maze(self):
         pose = self.estimator.state[:3]
 
-        decrement_amount = 0.12
+        decrement_amount = 0.4
         increment_amount = 0.1
         update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount)
 
@@ -182,7 +185,7 @@ class DrivingSimulator:
         self.real_bot_state += np.random.normal(u_mu, self.u_sigma)
 
         # get the sensor data (with noise)
-        lidars = estimate_lidar_returns(self.real_bot_state[:3], self.real_maze) + np.random.normal(0, self.lidar_sigma, 6)
+        lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.real_maze)[0] + np.random.normal(0, self.lidar_sigma, 6)
         encoders = cmd + np.random.normal(0, self.encoder_sigma, size=2)
 
         return lidars, encoders
