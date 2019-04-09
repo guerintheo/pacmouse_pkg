@@ -1,7 +1,6 @@
 #include "ros/ros.h"
 #include "pacmouse_pkg/Drive.h"
 #include <iostream>
-#include <string>
 
 #include <pigpio.h>
 #include <unistd.h>
