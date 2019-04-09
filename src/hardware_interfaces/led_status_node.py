@@ -1,9 +1,10 @@
 import rospy
 import pacmouse_pkg.src.params as p
+from pacmouse_pkg.msg import LED
 from apa102_led import apa102
 import time
 
-OFF = 0x000000 #Off
+OFF = 0x000000 #Off 
 RED = 0xFF0000 #Red
 ORANGE = 0xFF7F00 #Orange
 YELLOW = 0xFFFF00 #Yellow
@@ -12,12 +13,26 @@ BLUE = 0x0000FF #Blue
 PURPLE = 0x4B0082 #Indigo
 VIOLET = 0x9400D3 #Violet
 
+def append_hex(a, b):
+    sizeof_b = 0
+
+    # get size of b in bits
+    while((b >> sizeof_b) > 0):
+        sizeof_b += 1
+
+    # align answer to nearest 4 bits (hex digit)
+    sizeof_b += sizeof_b % 4
+
+    return (a << sizeof_b) | b
+
 class LEDs: 
 	def __init__(self):
 		rospy.init_node('led_status_node')
 		# master_status_sub = rospy.Subscriber('/master_status', MasterStatusMsg, master_status_callback)
 		self.strip = apa102.APA102(num_led=p.num_leds, global_brightness=p.led_default_brightness, mosi=p.mosi, sclk=p.sclk, order='rgb')
 		
+		rospy.Subscriber('/pacmouse/mode/set_leds', LED, self.color_callback)
+
 		self.rainbow()
 		
 		self.strip.set_pixel_rgb(0,GREEN)
@@ -26,6 +41,12 @@ class LEDs:
 		rospy.on_shutdown(self.shutdown) # TODO: Ask ros geniuses if this is the right way to shut down.
 
 		rospy.spin()
+
+	def color_callback(self, LED):
+		print 'setting {} to {}'.format(LED.led_num, hex(int(LED.color, 16)))
+		self.strip.set_pixel_rgb(LED.led_num,hex(int(LED.color, 16)))
+
+		self.strip.show()
 
 	def setall(self, color):
 		for i in range(p.num_leds):
