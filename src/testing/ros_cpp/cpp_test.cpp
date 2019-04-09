@@ -17,10 +17,10 @@
 // re-run this script.
 float LOOP_RATE;
 
-int BUTTON_1 18
-int BUTTON_2 19
-int BUTTON_3 20
-int BUTTON_4 21
+int BUTTON_1;
+int BUTTON_2;
+int BUTTON_3; 
+int BUTTON_4;
 
 int ENCODER_R_A;
 int ENCODER_R_B;
