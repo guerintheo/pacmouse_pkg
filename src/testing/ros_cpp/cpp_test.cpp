@@ -23,6 +23,7 @@
 #define R_MOT_DIR 16
 
 #define MOTOR_PWM_FREQUENCY 100
+#define TICKS_PER_RADIAN 42.7713
  
 //TODO: Figure out a way to import these parameters rather than recompiling source when you want to change them. 
 float LOOP_RATE = 10;
@@ -61,46 +62,22 @@ int last_pos_1 = 0;
 int last_pos_2 = 0;
 int current_pos_1 = 0;
 int current_pos_2 = 0;
-float vel_1 = 0.0;
-float vel_2 = 0.0;
 
 // Calculates the instantaneous velocity given an update rate in hertz. (In number of ticks per second)
 float calc_velocity_1(float hertz)
 {
   last_pos_1 = current_pos_1;
   current_pos_1 = pos_1;
-  vel_1 = (current_pos_1 - last_pos_1) * hertz;
+  return (current_pos_1 - last_pos_1) * hertz / TICKS_PER_RADIAN;
 
-  return vel_1;
 }
 
 float calc_velocity_2(float hertz)
 {
   last_pos_2 = current_pos_2;
   current_pos_2 = pos_2;
-  vel_2 = (current_pos_2 - last_pos_2) * hertz;
+  return (current_pos_2 - last_pos_2) * hertz / TICKS_PER_RADIAN;
   
-  return vel_2;
-}
-
-void publish_encoders(ros::Publisher encoder_publisher) {
-  // std_msgs::String msg;
-
-  vel_1 = calc_velocity_1(LOOP_RATE);
-  vel_2 = calc_velocity_2(LOOP_RATE);
-
-  // std::stringstream ss;
-  // ss << "pos1: " << pos_1 << " vel1: " << vel_1 << " pos2: " << pos_2 << " vel1: " << vel_2;
-  // // TODO: Define this message structure
-  // msg.data = ss.str();
-
-  // // ROS_INFO("%s", msg.data.c_str());
-
-  pacmouse_pkg::Drive msg;
-  msg.L = vel_1;
-  msg.R = vel_2;
-
-  encoder_publisher.publish(msg);
 }
 
 // cleanup pigpio and callbacks 
@@ -144,7 +121,8 @@ int main(int argc, char **argv)
 
   ros::Subscriber sub = n.subscribe("/pacmouse/motor/cmd", 1000, motor_command_callback);
 
-  ros::Publisher encoder_publisher = n.advertise<pacmouse_pkg::Drive>("/pacmouse/encoders", 1);
+  ros::Publisher position_publisher = n.advertise<pacmouse_pkg::Drive>("/pacmouse/encoders/position", 1);
+  ros::Publisher velocity_publisher = n.advertise<pacmouse_pkg::Drive>("/pacmouse/encoders/velocity", 1);
 
   if (gpioInitialise() < 0) {
     ROS_INFO("Could not initialize GPIOs. I'm borked.");
@@ -169,10 +147,20 @@ int main(int argc, char **argv)
 
   ros::Rate loop_rate(LOOP_RATE);
 
+  pacmouse_pkg::Drive pos_msg;
+  pacmouse_pkg::Drive vel_msg;
+
   while (ros::ok())
   {
 
-    publish_encoders(encoder_publisher);
+    pos_msg.L = pos_2 / TICKS_PER_RADIAN;
+    pos_msg.R = -pos_1 / TICKS_PER_RADIAN;
+    
+    vel_msg.L = -calc_velocity_2(LOOP_RATE);
+    vel_msg.R = calc_velocity_1(LOOP_RATE);
+
+    position_publisher.publish(pos_msg);
+    velocity_publisher.publish(vel_msg);
 
     ros::spinOnce();
 
