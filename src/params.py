@@ -32,7 +32,11 @@ motor_pwm_freq = 100
 # These pin numbers are GPIO.BOARD
 #button_pins = [12,35,38,40]
 # These pin numbers are BCM
-button_pins = [18, 19, 20, 21]
+button_1 = 18
+button_2 = 19
+button_3 = 20
+button_4 = 21
+button_pins = [button_1, button_2, button_3, button_4]
 
 ######################### MOTOR PINS ###########################################
 # NOTE: These pin numbers are BCM (Broadcom), not GPIO.BOARD / physical pin
