@@ -48,7 +48,7 @@ class ModeController(object):
         self.init_publishers()
         self.init_subscribers()
         
-        self.led_modes = ModeLEDSignalFunctions(self.set_leds_pub)
+        self.led_modes = ModeLEDSignalFunctions(self)
         
     def init_publishers(self):
         """Initialize ROS publishers."""
@@ -230,7 +230,10 @@ class ModeController(object):
         This callback also publishes to the LED node to indicate rotary option
         selection progress.
         """
-        self.rotary_dial_value += data.R
+        self.rotary_dial_value = data.R
+        # Only set LEDs on encoder callback when not in IDLE mode
+        if self.curr_mode is not Mode.IDLE:
+            return
         self.led_function()
         
     def restart_software_stack(self):
@@ -310,12 +313,16 @@ class ModeController(object):
 
 class ModeLEDSignalFunctions(object):
     
-    def __init__(self, set_leds_pub):
-        self.set_leds_pub = set_leds_pub
+    def __init__(self, mode_controller):
+        self.mc = mode_controller
+        self.set_leds_pub = self.mc.set_leds_pub
         
     def set_leds_for_idle(self):
-        # TODO
-        pass
+        """Set LED 0 to green."""
+        led_msg = LED()
+        led_msg.led_num = 0
+        led_msg.hex_color = '0x00FF00'
+        self.set_leds_pub.publish(led_msg)
         
     def set_leds_for_set_mode(self):
         # TODO
@@ -323,7 +330,20 @@ class ModeLEDSignalFunctions(object):
         
     def set_leds_for_set_speed(self):
         # TODO
-        pass
+        led_msg = LED()
+        rotary_dial_angle_diff = self.mc.rotary_dial_value - self.mc.rotary_dial_start_value
+        if rotary_dial_angle_diff > 10:
+            led_msg.led_num = 0
+            led_msg.hex_color = '0xFF7F00'  # orange
+            self.set_leds_pub.publish(led_msg)
+        if rotary_dial_angle_diff > 20:
+            led_msg.led_num = 1
+            led_msg.hex_color = '0xFF7F00'  # orange
+            self.set_leds_pub.publish(led_msg)
+        if rotary_dial_angle_diff > 30:
+            led_msg.led_num = 2
+            led_msg.hex_color = '0xFF7F00'  # orange
+            self.set_leds_pub.publish(led_msg)
         
     def set_leds_for_maze_revert(self):
         # TODO
