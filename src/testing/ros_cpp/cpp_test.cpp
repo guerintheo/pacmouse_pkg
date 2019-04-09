@@ -41,6 +41,7 @@ re_decoder *decoder1 = NULL;
 re_decoder *decoder2 = NULL;
 
 void motor_command_callback(const pacmouse_pkg::Drive::ConstPtr& msg)
+{
   ROS_INFO("Setting PWM value to: [%f, %f]", msg->L, msg->R);
   // TODO: Add support for negative values by setting the direction pin to 1 if backwards is desired.
 
