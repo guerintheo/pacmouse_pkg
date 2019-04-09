@@ -16,6 +16,12 @@
 #define ENCODER_A_2 22
 #define ENCODER_B_2 27
 
+#define BUTTON_1 18
+#define BUTTON_2 19
+#define BUTTON_3 20
+#define BUTTON_4 21
+
+
 #define MOTOR_MODE_PIN 25
 #define L_MOT_GPIO 12
 #define R_MOT_GPIO 13
