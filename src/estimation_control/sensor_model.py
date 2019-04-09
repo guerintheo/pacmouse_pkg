@@ -192,6 +192,13 @@ def debug_plot_wall_intersect_coords(wall_intersect_coords, wall_mask=None):
     else:
         plt.scatter(xs, ys)
 
+def debug_plot_lidar_enpoints(lidar_global_vecs, lidar_global_xys, min_dists):
+    # [n x m x 2] array
+    endpoints = lidar_global_xys + lidar_global_vecs * min_dists[:,:,None]
+    xs = np.ravel(endpoints[:,:,0])
+    ys = np.ravel(endpoints[:,:,1])
+    plt.scatter(xs, ys)
+
 def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, debug_plot=False):
     # each pose is a 3-vector [x, y, 3]
     # there are n poses, so poses is an [n x 3] matrix
@@ -260,7 +267,7 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, debug_
     # [n x m x w+1] a mask of which potential wall intersections are valid
     v_wall_mask = v_wall_hit_mask * v_wall_in_maze_mask * v_wall_in_front_mask
 
-    if debug_plot: debug_plot_wall_intersect_coords(v_wall_intersect_coords, v_wall_mask)
+    # if debug_plot: debug_plot_wall_intersect_coords(v_wall_intersect_coords, v_wall_mask)
 
     ################## FIND HORIZONTAL WALL INTERSECTIONS ##################
     # [h+1] the global y coordinates of all the sets horizontal walls
@@ -297,7 +304,7 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, debug_
     # [n x m x h+1] a mask of which potential wall intersections are valid
     h_wall_mask = h_wall_hit_mask * h_wall_in_maze_mask * h_wall_in_front_mask
 
-    if debug_plot: debug_plot_wall_intersect_coords(h_wall_intersect_coords, h_wall_mask)
+    # if debug_plot: debug_plot_wall_intersect_coords(h_wall_intersect_coords, h_wall_mask)
 
     ################## GET THE CLOSEST WALL INTERSECTION ##################
 
@@ -310,11 +317,25 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, debug_
     h_intersect_min_distance = np.ma.masked_equal(h_wall_intersect_distances, 0, copy=False).min(axis=2)
 
     # return the shorter of the vertical and horizontal min distances (excluding nans)
-    return np.nanmin(np.array([v_intersect_min_distance, h_intersect_min_distance]), axis=0)
+    min_dists = np.nanmin(np.array([v_intersect_min_distance, h_intersect_min_distance]), axis=0)
+    choose_horizontal = np.nanargmin(np.array([v_intersect_min_distance, h_intersect_min_distance]), axis=0)
+
+    # subtract off the maze wall thickness
+    vertical_dist_to_remove = p.maze_wall_thickness/2./np.abs(lidar_global_vecs[:,:,0])
+    horizontal_dist_to_remove = p.maze_wall_thickness/2./np.abs(lidar_global_vecs[:,:,1])
+
+    min_dists -= choose_horizontal * horizontal_dist_to_remove
+    min_dists -= (1-choose_horizontal) * vertical_dist_to_remove
+
+    if debug_plot: debug_plot_lidar_enpoints(lidar_global_vecs, lidar_global_xys, min_dists)
+    return min_dists
 
 
 def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.05):
     assert isinstance(maze, Maze2)
+
+    # there are m lidars
+    # the maze is w x h
 
     c = p.maze_cell_size
 
@@ -329,11 +350,13 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
 
     ########################## DECREMENT WALLS THAT WE PASS THRU ##########################
     # handle vertical walls first
-    x_indices = np.tile(np.arange(maze.width+1), [p.num_lidars, 1])
+
+    # [m]
+    x_indices = np.arange(maze.width+1)
     x_coords = x_indices * c
-    # this is a matrix with one row for each of the lidars
+    # [m x w+1] this is a matrix with one row for each of the lidars
     # y = (x - x0)/dx * dy + y0
-    y_coords = (x_coords - lidar_starts[:,0, None])/lidar_vecs[:,0, None] * lidar_vecs[:,1, None] + lidar_starts[:, 1, None]
+    y_coords = (x_coords[None,:] - lidar_starts[:,0, None])/lidar_vecs[:,0, None] * lidar_vecs[:,1, None] + lidar_starts[:, 1, None]
     y_indices = np.floor(y_coords/c).astype(int)
     y_indices = np.clip(y_indices, 0, maze.height-1)
 
@@ -341,8 +364,13 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     on_vecs_mask = np.sum(np.stack([x_coords > lidar_lowers[:,0, None], x_coords < lidar_uppers[:,0, None],
                                     y_coords > lidar_lowers[:,1, None], y_coords < lidar_uppers[:,1, None]]), axis=0)
     on_vecs_mask = (on_vecs_mask==4)
+
+    # [m x w+1] decrement the walls less if the lidar doesn't pass through the middle
+    dists_to_middle_of_wall = np.abs(c/2. - y_coords % c)
+    decrement_coeffs = dists_to_middle_of_wall*2/c
+
     # and subtract from all the corresponding walls
-    maze.v_walls[x_indices[on_vecs_mask], y_indices[on_vecs_mask]] -= decrement_amount
+    maze.v_walls[x_indices[on_vecs_mask], y_indices[on_vecs_mask]] -= decrement_coeffs[on_vecs_mask] * decrement_amount
 
     # handle horizontal walls second
     y_indices = np.tile(np.arange(maze.height+1), [p.num_lidars, 1])
@@ -357,8 +385,13 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
                                     y_coords > lidar_lowers[:,1, None], y_coords < lidar_uppers[:,1, None]]), axis=0)
     # and subtract from all the corresponding walls
     on_vecs_mask = (on_vecs_mask==4)
+
+    # [m x h+1] decrement the walls less if the lidar doesn't pass through the middle
+    dists_to_middle_of_wall = np.abs(c/2. - x_coords % c)
+    decrement_coeffs = dists_to_middle_of_wall*2/c
+
     # and subtract from all the corresponding walls
-    maze.h_walls[x_indices[on_vecs_mask], y_indices[on_vecs_mask]] -= decrement_amount
+    maze.h_walls[x_indices[on_vecs_mask], y_indices[on_vecs_mask]] -= decrement_coeffs[on_vecs_mask] * decrement_amount
 
     ########################## INCREMENT WALLS THAT WE HIT ##########################
     # this is an array of distances to the nearest walls [Left, Down, Right, Up]

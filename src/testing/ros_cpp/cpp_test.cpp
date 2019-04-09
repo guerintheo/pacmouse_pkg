@@ -17,6 +17,11 @@
 // re-run this script.
 float LOOP_RATE;
 
+int BUTTON_1 18
+int BUTTON_2 19
+int BUTTON_3 20
+int BUTTON_4 21
+
 int ENCODER_R_A;
 int ENCODER_R_B;
 int ENCODER_L_A;
@@ -25,7 +30,6 @@ int ENCODER_L_B;
 int MOTOR_MODE_PIN;
 int L_MOT_GPIO;
 int R_MOT_GPIO;
-int L_MOT_DIR;
 int R_MOT_DIR;
 
 float MOTOR_PWM_FREQUENCY;
@@ -38,7 +42,6 @@ re_decoder *decoder1 = NULL;
 re_decoder *decoder2 = NULL;
 
 void motor_command_callback(const pacmouse_pkg::Drive::ConstPtr& msg)
-{
   ROS_INFO("Setting PWM value to: [%f, %f]", msg->L, msg->R);
   // TODO: Add support for negative values by setting the direction pin to 1 if backwards is desired.
 
@@ -51,6 +54,10 @@ void motor_command_callback(const pacmouse_pkg::Drive::ConstPtr& msg)
 }
 
 void load_params(ros::NodeHandle n) {
+    n.getParam("/pacmouse/params/button_1", BUTTON_1);
+    n.getParam("/pacmouse/params/button_2", BUTTON_2);
+    n.getParam("/pacmouse/params/button_3", BUTTON_3);
+    n.getParam("/pacmouse/params/button_4", BUTTON_4);
     n.getParam("/pacmouse/params/encoder_freq", LOOP_RATE);
     n.getParam("/pacmouse/params/enc_r_a", ENCODER_R_A);
     n.getParam("/pacmouse/params/enc_r_b", ENCODER_R_B);
