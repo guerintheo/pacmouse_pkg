@@ -63,6 +63,7 @@ int current_pos_1 = 0;
 int current_pos_2 = 0;
 float vel_1 = 0.0;
 float vel_2 = 0.0;
+
 // Calculates the instantaneous velocity given an update rate in hertz. (In number of ticks per second)
 float calc_velocity_1(float hertz)
 {
@@ -83,16 +84,21 @@ float calc_velocity_2(float hertz)
 }
 
 void publish_encoders(ros::Publisher encoder_publisher) {
-  std_msgs::String msg;
+  // std_msgs::String msg;
 
   vel_1 = calc_velocity_1(LOOP_RATE);
   vel_2 = calc_velocity_2(LOOP_RATE);
 
-  std::stringstream ss;
-  ss << "pos1: " << pos_1 << " vel1: " << vel_1 << " pos2: " << pos_2 << " vel1: " << vel_2;
-  // TODO: Define this message structure
-  msg.data = ss.str();
-  ROS_INFO("%s", msg.data.c_str());
+  // std::stringstream ss;
+  // ss << "pos1: " << pos_1 << " vel1: " << vel_1 << " pos2: " << pos_2 << " vel1: " << vel_2;
+  // // TODO: Define this message structure
+  // msg.data = ss.str();
+
+  // // ROS_INFO("%s", msg.data.c_str());
+
+  pacmouse_pkg::Drive msg;
+  msg.L = vel_1;
+  msg.R = vel_2;
 
   encoder_publisher.publish(msg);
 }
@@ -138,7 +144,7 @@ int main(int argc, char **argv)
 
   ros::Subscriber sub = n.subscribe("/pacmouse/motor/cmd", 1000, motor_command_callback);
 
-  ros::Publisher encoder_publisher = n.advertise<std_msgs::String>("/pacmouse/encoders", 1000);
+  ros::Publisher encoder_publisher = n.advertise<pacmouse_pkg::Drive>("/pacmouse/encoders", 1);
 
   if (gpioInitialise() < 0) {
     ROS_INFO("Could not initialize GPIOs. I'm borked.");
