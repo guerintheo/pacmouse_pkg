@@ -35,7 +35,12 @@ class LEDs:
 
 		self.rainbow()
 		
-		self.strip.set_pixel_rgb(0,GREEN)
+		led_msg = LED()
+		led_msg.led_num = 0
+		led_msg.hex_color = '0x00FF00'
+
+		# self.strip.set_pixel_rgb(0,GREEN)
+		self.color_callback(led_msg)
 		self.strip.show()
 
 		rospy.on_shutdown(self.shutdown) # TODO: Ask ros geniuses if this is the right way to shut down.
@@ -43,8 +48,8 @@ class LEDs:
 		rospy.spin()
 
 	def color_callback(self, LED):
-		print 'setting {} to {}'.format(LED.led_num, hex(int(LED.color, 16)))
-		self.strip.set_pixel_rgb(LED.led_num,hex(int(LED.color, 16)))
+		print 'setting {} to {}'.format(LED.led_num, int(LED.hex_color, 16))
+		self.strip.set_pixel_rgb(LED.led_num,int(LED.hex_color, 16))
 
 		self.strip.show()
 

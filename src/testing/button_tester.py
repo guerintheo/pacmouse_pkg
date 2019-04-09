@@ -8,7 +8,7 @@ class ButtonTester:
 		rospy.init_node('button_tester') 
 		self.publishers = dict()
 		for i, pin in enumerate(p.button_pins):
-			self.publishers[i] = rospy.Publisher('/pacmouse/buttons/{}'.format(i+1), Bool, queue_size=1)
+			self.publishers[i+1] = rospy.Publisher('/pacmouse/buttons/{}'.format(i+1), Bool, queue_size=1)
 
 		self.spin()
 
@@ -21,10 +21,10 @@ class ButtonTester:
 				args = raw.split(" ")
 				button = int(args[0])
 				state = bool(int(args[1]))
+				print("Publishing button {} to {}".format(button, state))
+				self.publishers[button].publish(state)
 			except:
 				print 'Failed to parse "{}"'.format(raw)
-			print("Publishing button {} to {}".format(button, state))
-			self.publishers[button].publish(state)
 
 
 if __name__ == '__main__':
