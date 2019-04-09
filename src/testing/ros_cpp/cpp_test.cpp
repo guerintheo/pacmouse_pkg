@@ -1,7 +1,9 @@
 #include "ros/ros.h"
-#include "std_msgs/String.h"
+#include "std_msgs/Empty.h"
 #include "pacmouse_pkg/Drive.h"
 #include <iostream>
+#include <string>
+#include <fstream>
 
 #include <pigpio.h>
 #include <unistd.h>
@@ -24,9 +26,11 @@
 
 #define MOTOR_PWM_FREQUENCY 100
 #define TICKS_PER_RADIAN 42.7713
- 
-//TODO: Figure out a way to import these parameters rather than recompiling source when you want to change them. 
+
+const std::string params_filename = "/home/pi/ros_catkin_ws/src/pacmouse_pkg/src/params.py";
+//TODO: Figure out a way to import these parameters rather than recompiling source when you want to change them.
 float LOOP_RATE = 10;
+bool got_new_loop_rate = false;
 
 int pos_1 = 0;
 int pos_2 = 0;
@@ -47,6 +51,29 @@ void motor_command_callback(const pacmouse_pkg::Drive::ConstPtr& msg)
 
 }
 
+void reload_params() {
+    // Dynamically reload parameters from file to enable tuning without
+    // recompiling. This is useful for fast iteration and debugging purposes.
+    // Open file from which to read
+    std::ifstream file(params_filename);
+    std::string line;
+    while (std::getline(file, line)) {
+      std::cout << "READING LINE: " << line << "\n";
+      std::string encoder_freq_str = "encoder_freq = ";
+      if (line.compare(0, encoder_freq_str.length(), encoder_freq_str) == 0) {
+        // Extract the encoder frequency value as a float
+        // TODO: Are there issues with concurrency, accessing these variables in main thread?
+        LOOP_RATE = std::stof(line.substr(encoder_freq_str.length()));
+        got_new_loop_rate = true;
+      }
+    }
+}
+
+void reload_params_callback(const std_msgs::Empty::ConstPtr& msg)
+{
+  reload_params();
+}
+
 void callback_1(int way)
 {
   pos_1 += way;
@@ -54,7 +81,7 @@ void callback_1(int way)
 
 void callback_2(int way)
 {
-  pos_2 += way;
+  pos_2 -= way;
 }
 
 //These could overflow after 11 days of continous full speed running... 
@@ -98,6 +125,9 @@ int main(int argc, char **argv)
    * part of the ROS system.
    */
   ros::init(argc, argv, "motor_test");
+  
+  // Load the initial parameters from file
+  reload_params();
 
   /**
    * NodeHandle is the main access point to communications with the ROS system.
@@ -120,6 +150,7 @@ int main(int argc, char **argv)
   signal(SIGINT, shutdown);
 
   ros::Subscriber sub = n.subscribe("/pacmouse/motor/cmd", 1000, motor_command_callback);
+  ros::Subscriber reload_params_sub = n.subscribe("/pacmouse/reload_params", 1, reload_params_callback);
 
   ros::Publisher position_publisher = n.advertise<pacmouse_pkg::Drive>("/pacmouse/encoders/position", 1);
   ros::Publisher velocity_publisher = n.advertise<pacmouse_pkg::Drive>("/pacmouse/encoders/velocity", 1);
@@ -154,9 +185,9 @@ int main(int argc, char **argv)
   {
 
     pos_msg.L = pos_2 / TICKS_PER_RADIAN;
-    pos_msg.R = -pos_1 / TICKS_PER_RADIAN;
+    pos_msg.R = pos_1 / TICKS_PER_RADIAN;
     
-    vel_msg.L = -calc_velocity_2(LOOP_RATE);
+    vel_msg.L = calc_velocity_2(LOOP_RATE);
     vel_msg.R = calc_velocity_1(LOOP_RATE);
 
     position_publisher.publish(pos_msg);
@@ -165,6 +196,13 @@ int main(int argc, char **argv)
     ros::spinOnce();
 
     loop_rate.sleep();
+    
+    // TODO: Not sure that this works (e.g., the reassignment of loop_rate)
+    if (got_new_loop_rate) {
+      printf("GOT NEW LOOP RATE: %f Hz\n", LOOP_RATE);
+      got_new_loop_rate = false;
+      loop_rate = ros::Rate(LOOP_RATE);
+    }
 
   }
   return 0;
