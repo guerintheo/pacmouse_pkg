@@ -4,8 +4,10 @@ In order to prevent the motors from spinning at full chooch on boot, we need to 
 
 Put the following line in `/boot/config.txt`. This will set GPIOs 0-27 to output driving low. This sets gpios as soon as the Pi boots, so the left motor will spin for 3 seconds before it stops. 
 ```
-gpio=0-27=op,dl
-gpio=7=op,dh
+gpio=0-13=op,dl
+# DO NOT DO ANYTHING to GPIOs 14, 15. They are the serial lines and will not work if you config them low.
+gpio=16-27=op,dl
+gpio=25=op,dh
 ```
 
 **NOTE**: Due to a goof on the PCB, the GPIOs for Lidar 1 and 2 were swapped. The GPIOs for Lidar 3 and 4 were also swapped. We changed this in `paramys.py` but I'm just mentioning it here so that we remember. 
