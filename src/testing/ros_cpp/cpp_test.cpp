@@ -1,7 +1,6 @@
 #include "ros/ros.h"
 #include "pacmouse_pkg/Drive.h"
 #include <iostream>
-#include <string>
 
 #include <pigpio.h>
 #include <unistd.h>
@@ -16,6 +15,11 @@
 // call `rosparam load src/params.yaml /pacmouse/params` from pacmouse_pkg/, and
 // re-run this script.
 float LOOP_RATE;
+
+int BUTTON_1;
+int BUTTON_2;
+int BUTTON_3; 
+int BUTTON_4;
 
 int ENCODER_R_A;
 int ENCODER_R_B;
@@ -51,6 +55,10 @@ void motor_command_callback(const pacmouse_pkg::Drive::ConstPtr& msg)
 }
 
 void load_params(ros::NodeHandle n) {
+    n.getParam("/pacmouse/params/button_1", BUTTON_1);
+    n.getParam("/pacmouse/params/button_2", BUTTON_2);
+    n.getParam("/pacmouse/params/button_3", BUTTON_3);
+    n.getParam("/pacmouse/params/button_4", BUTTON_4);
     n.getParam("/pacmouse/params/encoder_freq", LOOP_RATE);
     n.getParam("/pacmouse/params/enc_r_a", ENCODER_R_A);
     n.getParam("/pacmouse/params/enc_r_b", ENCODER_R_B);

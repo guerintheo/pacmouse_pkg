@@ -3,9 +3,10 @@ import rospy
 import signal
 import sys
 import time
+from enum import Enum 
 
 from std_msgs.msg import Bool, Empty, String, Int16, Float64
-from pacmouse_pkg.msg import LED  # TODO: Create this custom message
+from pacmouse_pkg.msg import LED, Drive 
 
 
 class Mode(Enum):
@@ -28,9 +29,7 @@ class ModeController(object):
     """
 
     def __init__(self):
-        # Previous and current top-level modes
-        self.prev_mode = None
-        self.set_curr_mode_idle()
+
         
         self.idle_submode = None
         
@@ -48,7 +47,10 @@ class ModeController(object):
         self.init_publishers()
         self.init_subscribers()
         
-        self.led_modes = ModeLEDSignalFunctions(self.set_leds_pub)
+        self.led_modes = ModeLEDSignalFunctions(self)
+        # Previous and current top-level modes
+        self.prev_mode = None
+        self.set_curr_mode_idle()
         
     def init_publishers(self):
         """Initialize ROS publishers."""
@@ -80,7 +82,7 @@ class ModeController(object):
         rospy.Subscriber('/pacmouse/buttons/4', Bool, self.cb_button4)
         
         # Rotary dial subscriber
-        rospy.Subsciber('/pacmouse/encoders/position', Drive, self.cb_encoder_dial)
+        rospy.Subscriber('/pacmouse/encoders/position', Drive, self.cb_encoder_dial)
         
     def set_curr_mode_idle(self):
         self.curr_mode = Mode.IDLE
@@ -136,6 +138,7 @@ class ModeController(object):
         """
         button2_state = data.data
         # Only act on button toggle when in IDLE mode.
+
         if self.curr_mode is not Mode.IDLE:
             return
         if button2_state and self.idle_submode is None:
@@ -143,6 +146,7 @@ class ModeController(object):
             # (i.e., we are in the top-level IDLE mode): enter SET_SPEED state
             # in the IDLE state machine. In this mode, we now accept rotary
             # encoder input or another toggle of button2.
+            print 'button2 toggled high'
             self.idle_submode = Mode.SET_SPEED
             self.rotary_dial_start_value = self.rotary_dial_value
             self.led_function = self.led_modes.set_leds_for_set_speed
@@ -230,7 +234,12 @@ class ModeController(object):
         This callback also publishes to the LED node to indicate rotary option
         selection progress.
         """
-        self.rotary_dial_value += data.R
+        self.rotary_dial_value = data.R
+        # Only set LEDs on encoder callback when not in IDLE mode
+        print 'idle_submode: {}'.format(self.idle_submode)
+        if self.idle_submode is None:
+            return
+        # print ''self.rotary_dial_value
         self.led_function()
         
     def restart_software_stack(self):
@@ -310,12 +319,17 @@ class ModeController(object):
 
 class ModeLEDSignalFunctions(object):
     
-    def __init__(self, set_leds_pub):
-        self.set_leds_pub = set_leds_pub
+    def __init__(self, mode_controller):
+        self.mc = mode_controller
+        self.set_leds_pub = self.mc.set_leds_pub
         
     def set_leds_for_idle(self):
-        # TODO
-        pass
+        """Set LED 0 to green."""
+        print 'In Mode Idle' 
+        led_msg = LED()
+        led_msg.led_num = 0
+        led_msg.hex_color = '0x00FF00'
+        self.set_leds_pub.publish(led_msg)
         
     def set_leds_for_set_mode(self):
         # TODO
@@ -323,7 +337,14 @@ class ModeLEDSignalFunctions(object):
         
     def set_leds_for_set_speed(self):
         # TODO
-        pass
+        print 'In Mode Set_Speed' 
+        led_msg = LED()
+        rotary_dial_angle_diff = self.mc.rotary_dial_value - self.mc.rotary_dial_start_value
+        print 'diff: {}'.format(rotary_dial_angle_diff)
+        
+        led_msg.led_num = 0
+        led_msg.hex_color = hex(int(int('0xFF7F00', 16) + rotary_dial_angle_diff * 1000)) # TODO: Make it swipe a range of colors in a rainbow to display slow change. 
+        self.set_leds_pub.publish(led_msg)
         
     def set_leds_for_maze_revert(self):
         # TODO
