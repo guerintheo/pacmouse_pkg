@@ -338,7 +338,7 @@ def debug_plot_mark_intersections_vertical(x_coords, y_coords, decrement_coeffs,
         for i in range(num_intersections):
             if on_vecs_mask[l, i] == 1:
                 d = decrement_coeffs[l, i]
-                plt.scatter(x_coords[i], y_coords[l, i], color=(1,0,0,1.-d))
+                plt.scatter(x_coords[i], y_coords[l, i], color=(1,0,0,d))
 
 def debug_plot_mark_intersections_horizontal(x_coords, y_coords, decrement_coeffs, on_vecs_mask):
     num_lidars, num_intersections = on_vecs_mask.shape
@@ -347,7 +347,11 @@ def debug_plot_mark_intersections_horizontal(x_coords, y_coords, decrement_coeff
         for i in range(num_intersections):
             if on_vecs_mask[l, i] == 1:
                 d = decrement_coeffs[l, i]
-                plt.scatter(x_coords[l,i], y_coords[i], color=(1,0,0,1.-d))
+                plt.scatter(x_coords[l,i], y_coords[i], color=(1,0,0,d))
+
+def debug_plot_mark_lidar_endpoints(lidar_global_ends, h_wall_mask):
+    for l, on_h_wall in enumerate(h_wall_mask):
+        plt.scatter(lidar_global_ends[l, 0], lidar_global_ends[l,1], color=(0, on_h_wall, 0))
 
 def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.05, debug_plot=False):
     assert isinstance(maze, Maze2)
@@ -390,77 +394,80 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     # handle vertical walls first
 
     # [m]
-    x_indices = np.arange(maze.width+1)
-    x_coords = x_indices * c
-    # [m x w+1] this is a matrix with one row for each of the lidars
-    # y = (x - x0)/dx * dy + y0
-    y_coords = (x_coords[None,:] - lidar_global_xys[:,0, None])/lidar_global_vecs[:,0, None] *\
-               lidar_global_vecs[:,1, None] + lidar_global_xys[:, 1, None]
-    y_indices = np.floor(y_coords/c).astype(int)
-    y_indices = np.clip(y_indices, 0, maze.height-1)
+    # x_indices = np.arange(maze.width+1)
+    # x_coords = x_indices * c
+    # # [m x w+1] this is a matrix with one row for each of the lidars
+    # # y = (x - x0)/dx * dy + y0
+    # y_coords = (x_coords[None,:] - lidar_global_xys[:,0, None])/lidar_global_vecs[:,0, None] *\
+    #            lidar_global_vecs[:,1, None] + lidar_global_xys[:, 1, None]
+    # y_indices = np.floor(y_coords/c).astype(int)
+    # y_indices = np.clip(y_indices, 0, maze.height-1)
 
-    # create a mask of the intersection coordates that are actually on the rays of the lidars
-    on_vecs_mask = np.sum(np.stack([x_coords[None,:] > lidar_lowers[:,0, None], x_coords[None,:] < lidar_uppers[:,0, None],
-                                    y_coords > lidar_lowers[:,1, None], y_coords < lidar_uppers[:,1, None]]), axis=0)
-    on_vecs_mask = (on_vecs_mask==4)
+    # # create a mask of the intersection coordates that are actually on the rays of the lidars
+    # on_vecs_mask = np.sum(np.stack([x_coords[None,:] > lidar_lowers[:,0, None], x_coords[None,:] < lidar_uppers[:,0, None],
+    #                                 y_coords > lidar_lowers[:,1, None], y_coords < lidar_uppers[:,1, None]]), axis=0)
+    # on_vecs_mask = (on_vecs_mask==4)
 
-    # [m x w+1] decrement the walls less if the lidar doesn't pass through the middle
-    dists_to_middle_of_wall = np.abs(c/2. - y_coords % c)
-    decrement_coeffs = dists_to_middle_of_wall*2/c
-    print on_vecs_mask
+    # # [m x w+1] decrement the walls less if the lidar doesn't pass through the middle
+    # dists_to_middle_of_wall = np.abs(c/2. - y_coords % c)
+    # decrement_coeffs = 1. - dists_to_middle_of_wall*2/c
+    # print on_vecs_mask
 
-    if debug_plot: debug_plot_mark_intersections_vertical(x_coords, y_coords, decrement_coeffs, on_vecs_mask)
+    # if debug_plot: debug_plot_mark_intersections_vertical(x_coords, y_coords, decrement_coeffs, on_vecs_mask)
 
-    # and subtract from all the corresponding walls
-    maze.v_walls[x_indices, y_indices] -= decrement_coeffs * decrement_amount * on_vecs_mask
+    # # and subtract from all the corresponding walls
+    # maze.v_walls[x_indices, y_indices] -= decrement_coeffs * decrement_amount * on_vecs_mask
 
-    # # handle horizontal walls second
-    y_indices = np.arange(maze.height+1)
-    y_coords = y_indices * c
+    # # # handle horizontal walls second
+    # y_indices = np.arange(maze.height+1)
+    # y_coords = y_indices * c
 
-    # [m x h+1] this is a matrix with one row for each of the lidars
-    # x = (y - y0)/dy * dx + x0
-    x_coords = (y_coords[None,:] - lidar_global_xys[:,1, None])/lidar_global_vecs[:,1, None] *\
-               lidar_global_vecs[:,0, None] + lidar_global_xys[:, 0, None]
-    x_indices = np.floor(x_coords/c).astype(int)
-    x_indices = np.clip(x_indices, 0, maze.width-1)
+    # # [m x h+1] this is a matrix with one row for each of the lidars
+    # # x = (y - y0)/dy * dx + x0
+    # x_coords = (y_coords[None,:] - lidar_global_xys[:,1, None])/lidar_global_vecs[:,1, None] *\
+    #            lidar_global_vecs[:,0, None] + lidar_global_xys[:, 0, None]
+    # x_indices = np.floor(x_coords/c).astype(int)
+    # x_indices = np.clip(x_indices, 0, maze.width-1)
 
-    # create a mask of the intersection coordates that are actually on the rays of the lidars
-    on_vecs_mask = np.sum(np.stack([x_coords > lidar_lowers[:,0, None], x_coords < lidar_uppers[:,0, None],
-                                    y_coords[None,:] > lidar_lowers[:,1, None], y_coords[None,:] < lidar_uppers[:,1, None]]), axis=0)
-    # and subtract from all the corresponding walls
-    on_vecs_mask = (on_vecs_mask==4)
+    # # create a mask of the intersection coordates that are actually on the rays of the lidars
+    # on_vecs_mask = np.sum(np.stack([x_coords > lidar_lowers[:,0, None], x_coords < lidar_uppers[:,0, None],
+    #                                 y_coords[None,:] > lidar_lowers[:,1, None], y_coords[None,:] < lidar_uppers[:,1, None]]), axis=0)
+    # # and subtract from all the corresponding walls
+    # on_vecs_mask = (on_vecs_mask==4)
 
-    # [m x h+1] decrement the walls less if the lidar doesn't pass through the middle
-    dists_to_middle_of_wall = np.abs(c/2. - x_coords % c)
-    decrement_coeffs = dists_to_middle_of_wall*2/c
+    # # [m x h+1] decrement the walls less if the lidar doesn't pass through the middle
+    # dists_to_middle_of_wall = np.abs(c/2. - x_coords % c)
+    # decrement_coeffs = 1. - dists_to_middle_of_wall*2/c
 
-    if debug_plot: debug_plot_mark_intersections_horizontal(x_coords, y_coords, decrement_coeffs, on_vecs_mask)
+    # if debug_plot: debug_plot_mark_intersections_horizontal(x_coords, y_coords, decrement_coeffs, on_vecs_mask)
 
-    # and subtract from all the corresponding walls
-    maze.h_walls[x_indices, y_indices] -= decrement_coeffs * decrement_amount * on_vecs_mask
+    # # and subtract from all the corresponding walls
+    # maze.h_walls[x_indices, y_indices] -= decrement_coeffs * decrement_amount * on_vecs_mask
 
     ########################## INCREMENT WALLS THAT WE HIT ##########################
     # this is an array of distances to the nearest walls [Left, Down, Right, Up]
-    # dists = np.hstack([np.mod(lidar_ends, c), np.mod(-lidar_ends, c)])
+    # dists = np.hstack([np.mod(lidar_global_ends, c), np.mod(-lidar_global_ends, c)])
     # dists = dists[:,[3,1,0,2]] # reorder the dists to [Up, Down, Left, Right]
 
     # # find which walls are closest. this will be a list with 1s if the h walls are closer. 0s for v walls
-    # closest_walls = np.argmin(dists, axis=1) < 2
+    # h_wall_mask = np.argmin(dists, axis=1) < 2
 
-    # # divide by the cell size
-    # normalized_ends = lidar_ends/c
+    # find which walls are closest. this will be a list with 1s if the h walls are closer. 0s for v walls
+    h_wall_mask = np.argmin(np.abs(lidar_global_ends/c - np.round(lidar_global_ends/c)), axis=1)
 
-    # # convert coordinates to x,y indices of the walls
-    # h_indices = np.array([np.floor(normalized_ends[:,0]), np.round(normalized_ends[:,1])], dtype=int).T
-    # v_indices = np.array([np.round(normalized_ends[:,0]), np.floor(normalized_ends[:,1])], dtype=int).T
 
-    # h_indices = h_indices[closest_walls]
-    # v_indices = v_indices[1-closest_walls]
+    # divide by the cell size
+    normalized_ends = lidar_global_ends/c
 
-    # maze.h_walls[h_indices[:,0], h_indices[:,1]] += increment_amount
-    # maze.v_walls[v_indices[:,0], v_indices[:,1]] += increment_amount
+    # convert coordinates to x,y indices of the walls
+    h_indices = np.array([np.floor(normalized_ends[:,0]), np.round(normalized_ends[:,1])], dtype=int).T
+    v_indices = np.array([np.round(normalized_ends[:,0]), np.floor(normalized_ends[:,1])], dtype=int).T
 
+    if debug_plot: debug_plot_mark_lidar_endpoints(lidar_global_ends, h_wall_mask)
+
+    # update the maze
+    maze.h_walls[h_indices[:,0], h_indices[:,1]] += increment_amount * h_wall_mask
+    maze.v_walls[v_indices[:,0], v_indices[:,1]] += increment_amount * (1-h_wall_mask)
 
     # make sure the wall probabilities stay between 0 and 1
     maze.h_walls = np.clip(maze.h_walls, 0, 1)
