@@ -2,7 +2,7 @@ enc_r_a: 23
 enc_r_b: 24
 enc_l_a: 22
 enc_l_b: 27
-encoder_freq: 15.0
+loop_rate: 20
 
 ml_dir: 7  # corresponds to physical pin 26
 ml_pwm: 13  # corresponds to physical pin 33
@@ -21,3 +21,12 @@ button_1: 18
 button_2: 19
 button_3: 20
 button_4: 21
+
+motor_coeff: 0.025
+
+motor_pid:
+  kp: 0.025
+  ki: 0.0
+  kd: 0.0
+
+pwm_cmd_max: 1.0

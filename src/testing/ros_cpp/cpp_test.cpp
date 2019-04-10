@@ -10,6 +10,7 @@
 #include "rotary_encoder.hpp"
 #include "rotary_encoder.cpp"
 
+using namespace std; // give access to std library functions withoud std::func
 
 // Load these parameters from the ROS Parameter Server rather than recompiling
 // source when you want to change them. To load the parameters from a YAML file,
@@ -17,8 +18,8 @@
 // re-run this script.
 float LOOP_RATE;
 
-int BUTTON_1;
-int BUTTON_2;
+int BUTTON_L;
+int BUTTON_R;
 int BUTTON_3; 
 int BUTTON_4;
 
@@ -36,12 +37,18 @@ int R_MOT_DIR;
 float MOTOR_PWM_FREQUENCY;
 float TICKS_PER_RADIAN;
 
+float MOTOR_COEFF;
 float MOTOR_PID_KP;
 float MOTOR_PID_KI;
 float MOTOR_PID_KD;
 
-int pos_1 = 0;
-int pos_2 = 0;
+float PWM_CMD_MAX;
+
+float sp_L = 0;
+float sp_R = 0;
+
+int pos_L = 0;
+int pos_R = 0;
 
 re_decoder *decoder1 = NULL;
 re_decoder *decoder2 = NULL;
@@ -52,19 +59,27 @@ void motor_command_callback(const pacmouse_pkg::Drive::ConstPtr& msg)
   // TODO: Add support for negative values by setting the direction pin to 1 if backwards is desired.
 
         // # set the directions of the motors. 0 is forward, 1 is backward
-  gpioWrite(L_MOT_DIR, (int)(msg->L < 0));
-  gpioWrite(R_MOT_DIR, (int)(msg->R < 0));
-  gpioPWM(L_MOT_GPIO, abs((int)(msg->L * 255)));
-  gpioPWM(R_MOT_GPIO, abs((int)(msg->R * 255)));
+  sp_L = msg->L;
+  sp_R = msg->R;
 
 }
 
+
+void set_motors(float L, float R) {
+  L = min(max(L, -PWM_CMD_MAX), PWM_CMD_MAX);
+  R = min(max(R, -PWM_CMD_MAX), PWM_CMD_MAX);
+  gpioWrite(L_MOT_DIR, (int)(L < 0));
+  gpioWrite(R_MOT_DIR, (int)(R < 0));
+  gpioPWM(L_MOT_GPIO, abs((int)(L * 255)));
+  gpioPWM(R_MOT_GPIO, abs((int)(R * 255)));
+}
+
 void load_params(ros::NodeHandle n) {
-    n.getParam("/pacmouse/params/button_1", BUTTON_1);
-    n.getParam("/pacmouse/params/button_2", BUTTON_2);
+    n.getParam("/pacmouse/params/button_L", BUTTON_L);
+    n.getParam("/pacmouse/params/button_R", BUTTON_R);
     n.getParam("/pacmouse/params/button_3", BUTTON_3);
     n.getParam("/pacmouse/params/button_4", BUTTON_4);
-    n.getParam("/pacmouse/params/encoder_freq", LOOP_RATE);
+    n.getParam("/pacmouse/params/loop_rate", LOOP_RATE);
     n.getParam("/pacmouse/params/enc_r_a", ENCODER_R_A);
     n.getParam("/pacmouse/params/enc_r_b", ENCODER_R_B);
     n.getParam("/pacmouse/params/enc_l_a", ENCODER_L_A);
@@ -79,38 +94,40 @@ void load_params(ros::NodeHandle n) {
     n.getParam("/pacmouse/params/motor_pid/kp", MOTOR_PID_KP);
     n.getParam("/pacmouse/params/motor_pid/ki", MOTOR_PID_KI);
     n.getParam("/pacmouse/params/motor_pid/kd", MOTOR_PID_KD);
+    n.getParam("/pacmouse/params/motor_coeff", MOTOR_COEFF);
+    n.getParam("/pacmouse/params/pwm_cmd_max", PWM_CMD_MAX);
 }
 
-void callback_1(int way)
+void callback_L(int way)
 {
-  pos_1 += way;
+  pos_L += way;
 }
 
-void callback_2(int way)
+void callback_R(int way)
 {
-  pos_2 -= way;
+  pos_R -= way;
 }
 
 //These could overflow after 11 days of continous full speed running... 
-int last_pos_1 = 0;
-int last_pos_2 = 0;
-int current_pos_1 = 0;
-int current_pos_2 = 0;
+int last_pos_L = 0;
+int last_pos_R = 0;
+int current_pos_L = 0;
+int current_pos_R = 0;
 
 // Calculates the instantaneous velocity given an update rate in hertz. (In number of ticks per second)
-float calc_velocity_1(float hertz)
+float calc_velocity_L(float hertz)
 {
-  last_pos_1 = current_pos_1;
-  current_pos_1 = pos_1;
-  return (current_pos_1 - last_pos_1) * hertz / TICKS_PER_RADIAN;
+  last_pos_L = current_pos_L;
+  current_pos_L = pos_L;
+  return (current_pos_L - last_pos_L) * hertz / TICKS_PER_RADIAN;
 
 }
 
-float calc_velocity_2(float hertz)
+float calc_velocity_R(float hertz)
 {
-  last_pos_2 = current_pos_2;
-  current_pos_2 = pos_2;
-  return (current_pos_2 - last_pos_2) * hertz / TICKS_PER_RADIAN; 
+  last_pos_R = current_pos_R;
+  current_pos_R = pos_R;
+  return (current_pos_R - last_pos_R) * hertz / TICKS_PER_RADIAN; 
 }
 
 // cleanup pigpio and callbacks 
@@ -177,8 +194,8 @@ int main(int argc, char **argv)
   gpioSetMode(MOTOR_MODE_PIN, PI_OUTPUT);
   gpioWrite(MOTOR_MODE_PIN, 1);
 
-  decoder1 = new re_decoder(ENCODER_R_A, ENCODER_R_B, callback_1);
-  decoder2 = new re_decoder(ENCODER_L_A, ENCODER_L_B, callback_2);
+  decoder1 = new re_decoder(ENCODER_R_A, ENCODER_R_B, callback_L);
+  decoder2 = new re_decoder(ENCODER_L_A, ENCODER_L_B, callback_R);
 
   ros::Rate loop_rate(LOOP_RATE);
 
@@ -186,20 +203,28 @@ int main(int argc, char **argv)
   pacmouse_pkg::Drive vel_msg;
 
   // TODO: use these to set the motor speed
-  PID pid1 = PID(MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);
-  PID pid2 = PID(MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);
+  PID pid_L = PID(MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);
+  PID pid_R = PID(MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);
 
+  float cmd_L, cmd_R;
   while (ros::ok())
   {
-
-    pos_msg.R = pos_1 / TICKS_PER_RADIAN;
-    pos_msg.L = pos_2 / TICKS_PER_RADIAN;
+    // convert the position to radians
+    pos_msg.R = pos_L / TICKS_PER_RADIAN;
+    pos_msg.L = pos_R / TICKS_PER_RADIAN;
     
-    vel_msg.R = calc_velocity_1(LOOP_RATE);
-    vel_msg.L = calc_velocity_2(LOOP_RATE);
+    // calculate the velocity (in radians)
+    vel_msg.R = calc_velocity_L(LOOP_RATE);
+    vel_msg.L = calc_velocity_R(LOOP_RATE);
 
+    // publish the position and velocity
     position_publisher.publish(pos_msg);
     velocity_publisher.publish(vel_msg);
+
+    // step the PID controller and command the motors
+    cmd_L = pid_L.step(sp_L - vel_msg.L, 1./LOOP_RATE) + MOTOR_COEFF * sp_L;
+    cmd_R = pid_R.step(sp_R - vel_msg.R, 1./LOOP_RATE) + MOTOR_COEFF * sp_R;
+    set_motors(cmd_L, cmd_R);
 
     ros::spinOnce();
 
