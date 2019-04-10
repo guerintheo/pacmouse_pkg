@@ -151,8 +151,8 @@ class DrivingSimulator:
         self.estimator.u_sigma = self.u_sigma           # and the noise model
 
         self.estimated_maze = Maze2(*self.maze_size)
-        self.estimated_maze.v_walls[:,:] = 1.
-        self.estimated_maze.h_walls[:,:] = 1.
+        # self.estimated_maze.v_walls[:,:] = 1.
+        # self.estimated_maze.h_walls[:,:] = 1.
         self.estimated_maze.build_segment_list()
 
         self.cmd = np.zeros(2)
@@ -163,9 +163,9 @@ class DrivingSimulator:
     def update_estimated_maze(self):
         pose = self.estimator.state[:3]
 
-        decrement_amount = 0.4
+        decrement_amount = 0.05
         increment_amount = 0.1
-        update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount)
+        update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount, debug_plot=plt)
 
         self.estimated_maze.build_segment_list()
 
@@ -191,11 +191,12 @@ class DrivingSimulator:
         return lidars, encoders
 
     def animate_plot(self, i):
-        self.update()
         ax1.clear()
         plt.xlim(0, self.real_maze.width * p.maze_cell_size)
         plt.ylim(0, self.real_maze.height * p.maze_cell_size)
         plt.gca().set_aspect('equal', adjustable='box')
+
+        self.update()
         self.estimated_maze.plot(plt)
         for particle in self.estimator.pf.particles: self.draw_bot(ax1, particle, 'r', 0.2)   # draw the particles
         self.draw_outer_chassis(ax1, self.estimator.state[:3], 'g', 0.5)        # draw the estimated bot
@@ -207,9 +208,10 @@ class DrivingSimulator:
         plt.add_patch(arrow)
 
     def draw_outer_chassis(self, plt, pose, color, alpha):
-        corners = np.array([[0,1,1,0], [0,0,1,1]]) - 0.5
-        corners *= np.array([p.robot_length, p.robot_width])[:, None]
-        corners = np.array([rotate_2d(c, pose[2]) for c in corners.T])
+        corners = np.array([[0,1,1,0], [0,0,1,1]]).T - 0.5
+        corners *= np.array([p.robot_length, p.robot_width])[None,:]
+        # corners = np.array([rotate_2d(c, pose[2]) for c in corners.T])
+        corners = rotate_2d_multiple(corners, pose[None,2])
         corners += pose[None, :2]
 
         for i in range(4):
@@ -219,8 +221,8 @@ class DrivingSimulator:
             plt.plot((x1, x2), (y1, y2), color=color, alpha=alpha)
 
         # draw the positions of the lidars
-        lidar_global_xy = lidar_end_points(pose, self.lidars)
-        plt.scatter(lidar_global_xy[:,0], lidar_global_xy[:,1], color=color, alpha=alpha)
+        # lidar_global_xy = lidar_end_points(pose, self.lidars)
+        # plt.scatter(lidar_global_xy[:,0], lidar_global_xy[:,1], color=color, alpha=alpha)
 
     def on_key_press(self, event):
         """
