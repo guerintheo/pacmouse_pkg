@@ -178,7 +178,7 @@ def estimate_lidar_returns(pose, maze, plot=False, transparency_threshold=0.5):
 def debug_plot_poses(poses):
     plt.scatter(*poses[:,:2].T)
 
-def debug_plot_lidar_vecs(lidar_global_xys, lidar_global_vecs, lidar_length=2.0):
+def debug_plot_lidar_vecs(lidar_global_xys, lidar_global_vecs, lidar_length=1.0):
     start_x, start_y = np.moveaxis(lidar_global_xys,2,0)
     end_x, end_y = np.moveaxis(lidar_global_xys+lidar_global_vecs*lidar_length,2,0)
     plt.plot((np.ravel(start_x), np.ravel(end_x)), (np.ravel(start_y), np.ravel(end_y)), c='r', alpha=0.2)
@@ -211,7 +211,7 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, debug_
     lidar_local_thetas = p.lidar_transforms[:, 2]
 
     # this is an [n x m] array
-    lidar_global_thetas = poses[:, 2, None] + p.lidar_transforms[None, :, 2]
+    lidar_global_thetas = poses[:, 2, None] + lidar_local_thetas[None, :]
 
     # this is an [n x m x 2 x 2] array
     lidar_global_rotation_matrices = np.moveaxis(
@@ -331,23 +331,25 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, debug_
     return min_dists
 
 
-def debug_plot_mark_intersections_vertical(x_coords, y_coords, on_vecs_mask):
+def debug_plot_mark_intersections_vertical(x_coords, y_coords, decrement_coeffs, on_vecs_mask):
+    num_lidars, num_intersections = on_vecs_mask.shape
+    print x_coords.shape, y_coords.shape, on_vecs_mask.shape
+    for l in range(num_lidars):
+        for i in range(num_intersections):
+            if on_vecs_mask[l, i] == 1:
+                d = decrement_coeffs[l, i]
+                plt.scatter(x_coords[i], y_coords[l, i], color=(1,0,0,1.-d))
+
+def debug_plot_mark_intersections_horizontal(x_coords, y_coords, decrement_coeffs, on_vecs_mask):
     num_lidars, num_intersections = on_vecs_mask.shape
 
     for l in range(num_lidars):
         for i in range(num_intersections):
             if on_vecs_mask[l, i] == 1:
-                plt.plot(x_coords[l], y_coords[l, i])
+                d = decrement_coeffs[l, i]
+                plt.scatter(x_coords[l,i], y_coords[i], color=(1,0,0,1.-d))
 
-def debug_plot_mark_intersections_horizontal(x_coords, y_coords, on_vecs_mask):
-    num_lidars, num_intersections = on_vecs_mask.shape
-
-    for l in range(num_lidars):
-        for i in range(num_intersections):
-            if on_vecs_mask[l, i] == 1:
-                plt.plot(x_coords[l,i], y_coords[l])
-
-def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.05):
+def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.05, debug_plot=False):
     assert isinstance(maze, Maze2)
 
     # there are m lidars
@@ -355,14 +357,34 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
 
     c = p.maze_cell_size
 
-    # get some information about the positions of the lidars
-    R = rotation_matrix_2d(pose[2])
-    lidar_starts = pose[None, :2] + np.dot(R, p.lidar_transforms[:, :2].T).T
-    lidar_thetas = p.lidar_transforms[:,2] + pose[2]
-    lidar_vecs = rotate_2d_multiple(np.array([lidars, np.zeros_like(lidars)]).T, lidar_thetas)
-    lidar_ends = lidar_starts + lidar_vecs
-    lidar_lowers = np.min([lidar_starts, lidar_ends], axis=0)
-    lidar_uppers = np.max([lidar_starts, lidar_ends], axis=0)
+# this is an [m] array
+    lidar_local_thetas = p.lidar_transforms[:, 2]
+
+    # this is an [m] array
+    lidar_global_thetas = pose[2] + lidar_local_thetas
+
+    # this is an [m x 2 x 2] array
+    lidar_global_rotation_matrices = np.moveaxis(
+                                     np.array([[np.cos(lidar_global_thetas), -np.sin(lidar_global_thetas)],
+                                               [np.sin(lidar_global_thetas),  np.cos(lidar_global_thetas)]]),
+                                     2, 0)
+
+    # this is an [m x 2] array
+    lidar_local_xys = p.lidar_transforms[:, :2]
+
+    # [m x 2] array
+    lidar_global_xys = pose[None, :2] + np.einsum('mij,mi->mj', lidar_global_rotation_matrices, lidar_local_xys)
+
+    # [m x 2] array
+    lidar_global_vecs = np.einsum('mij,mi->mj', lidar_global_rotation_matrices, np.array([[1,0]]) * lidars[:, None])
+
+    lidar_global_ends = lidar_global_xys + lidar_global_vecs
+
+    lidar_lowers = np.min([lidar_global_xys, lidar_global_ends], axis=0)
+    lidar_uppers = np.max([lidar_global_xys, lidar_global_ends], axis=0)
+
+    if debug_plot: debug_plot_poses(pose[None,:])
+    if debug_plot: debug_plot_lidar_vecs(lidar_global_xys[None,:,:], lidar_global_vecs[None,:,:])
 
     ########################## DECREMENT WALLS THAT WE PASS THRU ##########################
     # handle vertical walls first
@@ -372,37 +394,40 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     x_coords = x_indices * c
     # [m x w+1] this is a matrix with one row for each of the lidars
     # y = (x - x0)/dx * dy + y0
-    y_coords = (x_coords[None,:] - lidar_starts[:,0, None])/lidar_vecs[:,0, None] * lidar_vecs[:,1, None] + lidar_starts[:, 1, None]
+    y_coords = (x_coords[None,:] - lidar_global_xys[:,0, None])/lidar_global_vecs[:,0, None] *\
+               lidar_global_vecs[:,1, None] + lidar_global_xys[:, 1, None]
     y_indices = np.floor(y_coords/c).astype(int)
     y_indices = np.clip(y_indices, 0, maze.height-1)
 
     # create a mask of the intersection coordates that are actually on the rays of the lidars
-    on_vecs_mask = np.sum(np.stack([x_coords > lidar_lowers[:,0, None], x_coords < lidar_uppers[:,0, None],
+    on_vecs_mask = np.sum(np.stack([x_coords[None,:] > lidar_lowers[:,0, None], x_coords[None,:] < lidar_uppers[:,0, None],
                                     y_coords > lidar_lowers[:,1, None], y_coords < lidar_uppers[:,1, None]]), axis=0)
     on_vecs_mask = (on_vecs_mask==4)
 
     # [m x w+1] decrement the walls less if the lidar doesn't pass through the middle
     dists_to_middle_of_wall = np.abs(c/2. - y_coords % c)
     decrement_coeffs = dists_to_middle_of_wall*2/c
+    print on_vecs_mask
 
-    debug_plot_mark_intersections_vertical(x_coords, y_coords, on_vecs_mask)
+    if debug_plot: debug_plot_mark_intersections_vertical(x_coords, y_coords, decrement_coeffs, on_vecs_mask)
 
     # and subtract from all the corresponding walls
     maze.v_walls[x_indices, y_indices] -= decrement_coeffs * decrement_amount * on_vecs_mask
 
-    # handle horizontal walls second
+    # # handle horizontal walls second
     y_indices = np.arange(maze.height+1)
     y_coords = y_indices * c
 
     # [m x h+1] this is a matrix with one row for each of the lidars
     # x = (y - y0)/dy * dx + x0
-    x_coords = (y_coords[None,:] - lidar_starts[:,1, None])/lidar_vecs[:,1, None] * lidar_vecs[:,0, None] + lidar_starts[:, 0, None]
+    x_coords = (y_coords[None,:] - lidar_global_xys[:,1, None])/lidar_global_vecs[:,1, None] *\
+               lidar_global_vecs[:,0, None] + lidar_global_xys[:, 0, None]
     x_indices = np.floor(x_coords/c).astype(int)
     x_indices = np.clip(x_indices, 0, maze.width-1)
 
     # create a mask of the intersection coordates that are actually on the rays of the lidars
     on_vecs_mask = np.sum(np.stack([x_coords > lidar_lowers[:,0, None], x_coords < lidar_uppers[:,0, None],
-                                    y_coords > lidar_lowers[:,1, None], y_coords < lidar_uppers[:,1, None]]), axis=0)
+                                    y_coords[None,:] > lidar_lowers[:,1, None], y_coords[None,:] < lidar_uppers[:,1, None]]), axis=0)
     # and subtract from all the corresponding walls
     on_vecs_mask = (on_vecs_mask==4)
 
@@ -410,7 +435,7 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     dists_to_middle_of_wall = np.abs(c/2. - x_coords % c)
     decrement_coeffs = dists_to_middle_of_wall*2/c
 
-    debug_plot_mark_intersections_horizontal(x_coords, y_coords, on_vecs_mask)
+    if debug_plot: debug_plot_mark_intersections_horizontal(x_coords, y_coords, decrement_coeffs, on_vecs_mask)
 
     # and subtract from all the corresponding walls
     maze.h_walls[x_indices, y_indices] -= decrement_coeffs * decrement_amount * on_vecs_mask
@@ -534,7 +559,7 @@ def test_estimate_lidar_returns_multi():
     plt.show()
 
 def test_update_walls():
-    maze = Maze2(16,16)
+    maze = Maze2(4,4)
     maze.generate_random_maze()
 
     # # plot the maze
@@ -546,13 +571,13 @@ def test_update_walls():
 
     # generate poses
     n = 1
-    poses = np.array([np.random.rand(n)*maze.width * p.maze_cell_size,
-                      np.random.rand(n)*maze.height * p.maze_cell_size,
-                      np.random.rand(n)*np.pi*2]).T
+    pose = np.array([(np.random.randint(maze.width) + 0.5)* p.maze_cell_size,
+                      (np.random.randint(maze.height) + 0.5)* p.maze_cell_size,
+                      np.random.rand()*np.pi*2])
 
-    lidars = estimate_lidar_returns_multi(poses, maze, debug_plot=False)
+    lidars = estimate_lidar_returns_multi(pose[None,:], maze, debug_plot=False)[0]
 
-    update_walls(poses[0], lidars, maze)
+    update_walls(pose, lidars, maze, debug_plot=True)
 
     plt.show()
 
