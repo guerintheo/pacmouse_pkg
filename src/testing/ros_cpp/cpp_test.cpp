@@ -35,6 +35,10 @@ int R_MOT_DIR;
 float MOTOR_PWM_FREQUENCY;
 float TICKS_PER_RADIAN;
 
+float MOTOR_PID_KP;
+float MOTOR_PID_KI;
+float MOTOR_PID_KD;
+
 int pos_1 = 0;
 int pos_2 = 0;
 
@@ -71,6 +75,9 @@ void load_params(ros::NodeHandle n) {
     n.getParam("/pacmouse/params/mr_dir", R_MOT_DIR);
     n.getParam("/pacmouse/params/motor_pwm_freq", MOTOR_PWM_FREQUENCY);
     n.getParam("/pacmouse/params/ticks_per_radian", TICKS_PER_RADIAN);
+    n.getParam("/pacmouse/params/motor_pid/kp", MOTOR_PID_KP);
+    n.getParam("/pacmouse/params/motor_pid/ki", MOTOR_PID_KI);
+    n.getParam("/pacmouse/params/motor_pid/kd", MOTOR_PID_KD);
 }
 
 void callback_1(int way)
@@ -177,6 +184,10 @@ int main(int argc, char **argv)
 
   pacmouse_pkg::Drive pos_msg;
   pacmouse_pkg::Drive vel_msg;
+
+  // TODO: use these to set the motor speed
+  PID pid1 = PID(MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);
+  PID pid2 = PID(MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);
 
   while (ros::ok())
   {

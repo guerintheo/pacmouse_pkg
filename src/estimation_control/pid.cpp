@@ -33,5 +33,3 @@ void PID::reset() {
 	int_err = 0;
 	prev_err = 0;
 }
-
-
