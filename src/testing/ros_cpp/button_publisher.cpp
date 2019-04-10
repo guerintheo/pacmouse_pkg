@@ -7,6 +7,8 @@ using namespace std;
 
 class Buttons {
 public:
+	ros::Publisher publishers[4];
+
 	Buttons(int p[4], ros::NodeHandle n) {
 
 		char channel[20];
@@ -17,6 +19,7 @@ public:
 			// setup a publisher
 			sprintf(channel, "/pacmouse/buttons/%d", i+1);
 			ros::Publisher publisher = n.advertise<std_msgs::Int8>(channel, 1);
+			publishers[i] = publisher; // save the publisher so it's memory doesnt get cleared
 
 			// configure the gpio
 			gpioSetMode(pin, PI_INPUT);
