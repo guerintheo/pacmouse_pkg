@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <signal.h>
 
+#include "pid.cpp"
 #include "rotary_encoder.hpp"
 #include "rotary_encoder.cpp"
 
@@ -21,7 +22,7 @@ int BUTTON_2;
 int BUTTON_3; 
 int BUTTON_4;
 
-int ENCODER_R_A;
+int ENCODER_R_A; 
 int ENCODER_R_B;
 int ENCODER_L_A;
 int ENCODER_L_B;
@@ -109,8 +110,7 @@ float calc_velocity_2(float hertz)
 {
   last_pos_2 = current_pos_2;
   current_pos_2 = pos_2;
-  return (current_pos_2 - last_pos_2) * hertz / TICKS_PER_RADIAN;
-  
+  return (current_pos_2 - last_pos_2) * hertz / TICKS_PER_RADIAN; 
 }
 
 // cleanup pigpio and callbacks 

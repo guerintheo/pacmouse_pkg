@@ -8,5 +8,5 @@ int main(int argc, char **argv) {
 	for (int i=0; i<100; i++) {
 		sp = (i%10)/10.;
 		printf("Set point: %f\t, value: %d\t, command: %f\n", sp, 0, pid.step(sp, dt));
-	}
+	} 
 }

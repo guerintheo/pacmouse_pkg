@@ -14,7 +14,7 @@ public:
 
 	float step(float err, float dt);
 	void reset();
-};
+}; 
 
 float PID::step(float err, float dt) {
 	int_err += err * dt;
