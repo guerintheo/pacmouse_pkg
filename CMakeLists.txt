@@ -201,11 +201,11 @@ install(DIRECTORY launch rviz urdf
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_executable(pigpio_cpp_test src/testing/ros_cpp/pigpio_cpp_test.cpp)
+# add_executable(pigpio_cpp_test src/testing/ros_cpp/pigpio_cpp_test.cpp)
 
-target_link_libraries(pigpio_cpp_test ${catkin_LIBRARIES} pigpio) # link pigpio library
+# target_link_libraries(pigpio_cpp_test ${catkin_LIBRARIES} pigpio) # link pigpio library
 
-add_dependencies(pigpio_cpp_test pacmouse_pkg_generate_messages_cpp )
+# add_dependencies(pigpio_cpp_test pacmouse_pkg_generate_messages_cpp )
 
 #############
 ## Example ##
@@ -223,3 +223,7 @@ add_dependencies(pigpio_cpp_test pacmouse_pkg_generate_messages_cpp )
 add_executable(cpp_test src/testing/ros_cpp/cpp_test.cpp)
 target_link_libraries(cpp_test ${catkin_LIBRARIES} pigpio) 
 add_dependencies(cpp_test pacmouse_pkg_generate_messages_cpp)
+
+add_executable(button_publisher src/testing/ros_cpp/button_publisher.cpp)
+target_link_libraries(button_publisher ${catkin_LIBRARIES} pigpio) 
+# add_dependencies(button_publisher pacmouse_pkg_generate_messages_cpp)
