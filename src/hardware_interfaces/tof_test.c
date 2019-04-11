@@ -1,10 +1,10 @@
-#include "vl6180_pi/include/vl6180_pi.h"
+#include <vl6180_pi/vl6180_pi.h>
 #include <stdio.h>
 #include <wiringPi.h>
 #include <unistd.h>
 
-// gcc test.c -o test -L. -lvl6180_pi -lwiringPi -Wl,-rpath /home/pi/vl6180_pi
-// gcc tof_test.c -o tof_test -L. -lvl6180_pi -lwiringPi -Wl,-rpath /home/pi/pacmouse_pkg/src/hardware_interfaces/vl6180_pi
+// gcc tof_test.c -o tof_test -lvl6180_pi -lwiringPi
+
 int main(){
 	setbuf(stdout, NULL);
 	int num_tofs = 5;
