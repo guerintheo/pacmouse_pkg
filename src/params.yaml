@@ -30,3 +30,6 @@ motor_pid:
   kd: 0.0
 
 pwm_cmd_max: 1.0
+
+imu_serial_port: "/dev/ttyAMA0"  # TODO: This may need to be changed
+imu_pub_rate: 20  # Hz
