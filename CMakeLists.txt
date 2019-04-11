@@ -53,7 +53,6 @@ add_message_files(
   Maze.msg
   Drive.msg
   LED.msg
-  Lidars.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -221,23 +220,10 @@ install(DIRECTORY launch rviz urdf
 # add_dependencies(listener pacmouse_pkg_generate_messages_cpp)
 
 # Our big cpp file will need to have pigpio linked to run properly
-add_executable(cpp_test src/testing/ros_cpp/cpp_test.cpp)
-target_link_libraries(cpp_test ${catkin_LIBRARIES} pigpio) 
-add_dependencies(cpp_test pacmouse_pkg_generate_messages_cpp)
+#add_executable(cpp_test src/testing/ros_cpp/cpp_test.cpp)
+#target_link_libraries(cpp_test ${catkin_LIBRARIES} pigpio)
+#add_dependencies(cpp_test pacmouse_pkg_generate_messages_cpp)
 
-add_executable(button_publisher src/testing/ros_cpp/button_publisher.cpp)
-target_link_libraries(button_publisher ${catkin_LIBRARIES} pigpio) 
-add_dependencies(button_publisher pacmouse_pkg_generate_messages_cpp)
-
-
-# help the linker find the lidar library
-# CXXFLAGS += -I/usr/local/include
-# LDFLAGS += -L/usr/local/lib
-
-add_executable(tof_pub src/hardware_interfaces/tof_pub.cpp)
-target_link_libraries(tof_pub ${catkin_LIBRARIES} wiringPi) 
-
-link_directories(/usr/local/lib)
-target_link_libraries(tof_pub vl6180_pi) 
-
-add_dependencies(tof_pub pacmouse_pkg_generate_messages_cpp)
+#add_executable(button_publisher src/testing/ros_cpp/button_publisher.cpp)
+#target_link_libraries(button_publisher ${catkin_LIBRARIES} pigpio) 
+# add_dependencies(button_publisher pacmouse_pkg_generate_messages_cpp)

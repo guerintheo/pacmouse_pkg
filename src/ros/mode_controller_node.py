@@ -3,10 +3,10 @@ import rospy
 import signal
 import sys
 import time
-from enum import Enum 
+from enum import Enum
 
 from std_msgs.msg import Bool, Empty, String, Int16, Float64
-from pacmouse_pkg.msg import LED, Drive 
+from pacmouse_pkg.msg import LED, Drive
 
 
 class Mode(Enum):
@@ -14,7 +14,7 @@ class Mode(Enum):
     EXPLORING = 1
     SHORTEST_PATH_SOLVING = 2
     RETURNING = 3  # returning to start cell of maze
-    
+
     # Sub-modes of IDLE:
     SET_MODE = 4
     SET_SPEED = 5
@@ -30,28 +30,28 @@ class ModeController(object):
 
     def __init__(self):
 
-        
+
         self.idle_submode = None
-        
+
         self.rotary_option_threshold = 100  # number of ticks # TODO: Set to an intuitive value
         # Number of seconds to wait before starting shortest-path solving or
         # exploration if toggled by a human
         self.zero_pose_and_heading_delay_seconds = 3
-        
+
         # TODO: Get this information from planner or pose estimator, or
         # whichever node determines that we have reached maze goal
         self.found_path_to_maze_goal = False
-        
+
         signal.signal(signal.SIGINT, self.sigint_handler)
-        
+
         self.init_publishers()
         self.init_subscribers()
-        
+
         self.led_modes = ModeLEDSignalFunctions(self)
         # Previous and current top-level modes
         self.prev_mode = None
         self.set_curr_mode_idle()
-        
+
     def init_publishers(self):
         """Initialize ROS publishers."""
         self.set_motor_arm_pub = rospy.Publisher('/pacmouse/mode/set_motor_arm',
@@ -72,7 +72,9 @@ class ModeController(object):
         self.set_plan_speed_pub = rospy.Publisher(
                                     '/pacmouse/mode/set_plan_speed', Float64,
                                     queue_size=1)
-    
+        self.restart_software_pub = rospy.Publisher('/pacmouse/restart', Empty,
+                                                    queue_size=1)
+
     def init_subscribers(self):
         """Initialize ROS subscribers."""
         # Button subscribers
@@ -80,18 +82,18 @@ class ModeController(object):
         rospy.Subscriber('/pacmouse/buttons/2', Bool, self.cb_button2)
         rospy.Subscriber('/pacmouse/buttons/3', Bool, self.cb_button3)
         rospy.Subscriber('/pacmouse/buttons/4', Bool, self.cb_button4)
-        
+
         # Rotary dial subscriber
         rospy.Subscriber('/pacmouse/encoders/position', Drive, self.cb_encoder_dial)
-        
+
     def set_curr_mode_idle(self):
         self.curr_mode = Mode.IDLE
         self.led_function = self.led_modes.set_leds_for_idle
-    
+
     def cb_button1(self, data):
         """
         Callback for a button1 toggle event.
-        
+
         This button is used to enter or exit the SET_MODE sub-mode of IDLE if we
         are currently in the IDLE mode.
         """
@@ -128,11 +130,11 @@ class ModeController(object):
             else:
                 # Remain IDLE
                 self.set_curr_mode_idle()
-                
+
     def cb_button2(self, data):
         """
         Callback for a button2 toggle event.
-        
+
         This button is used to enter or exit the SET_SPEED sub-mode of IDLE if
         we are currently in the IDLE mode.
         """
@@ -159,11 +161,11 @@ class ModeController(object):
             rotary_dial_angle_diff = self.rotary_dial_value - self.rotary_dial_start_value
             self.set_plan_speed_pub.publish(rotary_dial_angle_diff)
             self.set_curr_mode_idle()
-        
+
     def cb_button3(self, data):
         """
         Callback for a button3 toggle event.
-        
+
         This button is used to enter or exit the SET_MAZE_REVERT sub-mode of
         IDLE if we are currently in the IDLE mode.
         """
@@ -189,11 +191,11 @@ class ModeController(object):
             rotary_dial_angle_diff = self.rotary_dial_value - self.rotary_dial_start_value
             # self.load_maze_pub.publish()
             self.set_curr_mode_idle()
-        
+
     def cb_button4(self, data):
         """
         Callback for a button4 toggle event.
-        
+
         This button is used to enter or exit the SET_RESTART sub-mode of IDLE if
         we are currently in the IDLE mode.
         """
@@ -223,14 +225,14 @@ class ModeController(object):
             else:
                 # Remain IDLE
                 self.set_curr_mode_idle()
-        
+
     def cb_encoder_dial(self, data):
         """
         Callback for the encoder dial. This callback increments or decrements a
         dial value (depending on direction of rotation of the encoder tick),
         which allows other mode events to associate rotary ticks with an option,
         depending on which sub-mode of the IDLE mode we are in.
-        
+
         This callback also publishes to the LED node to indicate rotary option
         selection progress.
         """
@@ -239,24 +241,25 @@ class ModeController(object):
         print 'idle_submode: {}'.format(self.idle_submode)
         if self.idle_submode is None:
             return
-        # print ''self.rotary_dial_value
         self.led_function()
-        
+
     def restart_software_stack(self):
         """
         Restart the software stack.
-        
+
         This would typically only be called if there is an error that an
         operator has deemed requires a hard restart of the software stack, such
         as diverging pose or maze estimates.
         """
-        # TODO
-        pass
-        
+        # Disarm the motors before trying to restart
+        self.set_motor_arm_pub.publish(False)
+        time.sleep(1)
+        self.restart_software_pub.publish(Empty())
+
     def start_shortest_path_solve(self, toggled_by_human=False):
         """
         Set up the robot to transition into shortest-path solve mode.
-        
+
         Summary of what is done in this function:
             - Arm the motors
             - Send message to planner to plan a shortest path
@@ -281,11 +284,11 @@ class ModeController(object):
         self.set_plan_mode_pub.publish('SHORTEST_PATH_SOLVING')
         self.led_function = self.led_modes.set_leds_for_shortest_path
         self.led_function()  # TODO: Figure out if we want LEDs to change during a shortest path run
-        
+
     def start_exploring(self, toggled_by_human=False):
         """
         Set up the robot to transition into exploring mode.
-        
+
         Summary of what is done in this function:
             - Arm the motors
             - Send message to planner to plan for maze exploration
@@ -307,57 +310,158 @@ class ModeController(object):
         self.set_plan_mode_pub.publish('EXPLORING')
         self.led_function = self.led_modes.set_leds_for_exploring
         self.led_function()  # TODO: Figure out if we want LEDs to change during exploration, perhaps to indicate confidence in pose and/or maze estimate, potential estimate divergence, etc.
-        
+
     def sigint_handler(self, signal, frame):
         """
         Exit cleanly upon receiving a SIGINT signal (e.g., from Ctrl-C keyboard
         interrupt).
         """
         # TODO
-        # E.g., send message to disarm motors
+        # Send message to disarm motors
+        self.set_motor_arm_pub.publish(False)
         sys.exit()
 
 class ModeLEDSignalFunctions(object):
-    
+
+    GREEN = '0x00FF00'
+    OFF = '0x000000'
+    ORANGE = '0xFF7F00'
+    RED = '0xFF0000'
+
     def __init__(self, mode_controller):
         self.mc = mode_controller
         self.set_leds_pub = self.mc.set_leds_pub
-        
+
+    def clear_leds(self):
+        for i in range(3):
+            # Clear each of the 3 LEDs
+            self.clear_led(i)
+
+    def clear_led(self, led_num):
+        led_msg = LED()
+        led_msg.hex_color = OFF
+        led_msg.led_num = led_num
+        self.set_leds_pub.publish(led_msg)
+
     def set_leds_for_idle(self):
         """Set LED 0 to green."""
-        print 'In Mode Idle' 
+        print 'In Mode Idle'
         led_msg = LED()
         led_msg.led_num = 0
-        led_msg.hex_color = '0x00FF00'
+        led_msg.hex_color = GREEN
         self.set_leds_pub.publish(led_msg)
-        
+        # Clear the other two LEDs
+        self.clear_led(1)
+        self.clear_led(2)
+
     def set_leds_for_set_mode(self):
-        # TODO
-        pass
-        
+        print('In mode SET_MODE')
+        led_msg = LED()
+        led_msg.led_num = 1
+        led_msg.hex_color = ORANGE
+        self.set_leds_pub.publish(led_msg)
+
+        rotary_dial_angle_diff = self.mc.rotary_dial_value - self.mc.rotary_dial_start_value
+        print('Rotary angle diff: {}'.format(rotary_dial_angle_diff))
+        if rotary_dial_angle_diff >= self.mc.rotary_option_threshold:
+            led_msg.led_num = 2
+            if self.mc.found_path_to_maze_goal:
+                # Can only do shortest-path solve if we have found the
+                # goal/center of the maze. Indicate this with LED 2 set to green
+                led_msg.hex_color = GREEN
+            else:
+                led_msg.hex_color = RED
+            self.set_leds_pub.publish(led_msg)
+            self.clear_led(0)
+        elif rotary_dial_angle_diff <= -self.rotary_option_threshold:
+            # Exploration mode. Set LED 0 to green
+            led_msg.led_num = 0
+            led_msg.hex_color = GREEN
+            self.set_leds_pub.publish(led_msg)
+            self.clear_led(2)
+        else:
+            # Remain IDLE
+            self.clear_led(0)
+            self.clear_led(2)
+
     def set_leds_for_set_speed(self):
-        # TODO
-        print 'In Mode Set_Speed' 
+        print('In mode SET_SPEED')
+        self.set_leds_spectrum()
+
+    def set_leds_spectrum(self):
         led_msg = LED()
         rotary_dial_angle_diff = self.mc.rotary_dial_value - self.mc.rotary_dial_start_value
-        print 'diff: {}'.format(rotary_dial_angle_diff)
-        
+        print('Rotary angle diff: {}'.format(rotary_dial_angle_diff))
+
         led_msg.led_num = 0
-        led_msg.hex_color = hex(int(int('0xFF7F00', 16) + rotary_dial_angle_diff * 1000)) # TODO: Make it swipe a range of colors in a rainbow to display slow change. 
+        led_msg.hex_color = self.compute_color_on_spectrum(rotary_dial_angle_diff)
         self.set_leds_pub.publish(led_msg)
-        
+
+        led_msg.led_num = 1
+        if rotary_dial_angle_diff >= self.mc.rotary_option_threshold:
+            rotary_dial_angle_diff = rotary_dial_angle_diff - self.mc.rotary_option_threshold
+            led_msg.hex_color = self.compute_color_on_spectrum(rotary_dial_angle_diff)
+        else:
+            led_msg.hex_color = OFF
+        self.set_leds_pub.publish(led_msg)
+
+        led_msg.led_num = 2
+        if rotary_dial_angle_diff >= self.mc.rotary_option_threshold:
+            rotary_dial_angle_diff = rotary_dial_angle_diff - self.mc.rotary_option_threshold
+            led_msg.hex_color = self.compute_color_on_spectrum(rotary_dial_angle_diff)
+        else:
+            led_msg.hex_color = OFF
+        self.set_leds_pub.publish(led_msg)
+
+    def compute_color_on_spectrum(self, angle):
+        """Map an angle value to a color between red and blue."""
+        ratio = angle/self.mc.rotary_option_threshold
+        r = g = b = 0
+        inner_ratio = self._calculate_inner_ratio(ratio)
+        if ratio < 1.0/6.0:
+            r = 255
+            g = 255*inner_ratio
+            b = 0
+        elif ratio < 1.0/3.0:
+            r = 255 - 255*inner_ratio
+            g = 255
+            b = 0
+        elif ratio < 1.0/2.0:
+            r = 0
+            g = 255
+            b = 255*inner_ratio
+        elif ratio < 2.0/3.0:
+            r = 0
+            g = 255 - 255*inner_ratio
+            b = 255
+        elif ratio < 5.0/6.0:
+            r = 255*inner_ratio
+            g = 0
+            b = 255
+        else:
+            r = 255
+            g = 0
+            b = 255 - 255*inner_ratio
+        return self._rgb_to_hex_str(r, g, b)
+
+    def _calculate_inner_ratio(self, num):
+        return (num % (1.0/6.0))/(1.0/6.0)
+
+    def _rgb_to_hex_str(self, r, g, b):
+        return hex((r << 16) + (g << 8) + b)
+
     def set_leds_for_maze_revert(self):
-        # TODO
-        pass
-        
+        print('In mode SET_MAZE_REVERT')
+        self.set_leds_spectrum()
+
     def set_leds_for_restart(self):
         # TODO
         pass
-        
+
     def set_leds_for_shortest_path(self):
         # TODO
         pass
-        
+
     def set_leds_for_exploring(self):
         # TODO
         pass
