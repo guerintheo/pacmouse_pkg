@@ -40,8 +40,8 @@ def vel_and_psi_dot_from_wheel_vels(u):
     velocity of the robot given left and right motor angular velocities. See
     LaTeX document for the math.
     """
-    v = p.wheel_radius/2.0*((u[0]+u[1])/p.gear_ratio)
-    psi_dot = (p.wheel_radius*p.wheel_dist_y)/(2*(p.wheel_dist_x**2 + p.wheel_dist_y**2))*((u[1]-u[0])/p.gear_ratio)
+    v = p.wheel_radius/2.0*((u[0]+u[1]))
+    psi_dot = (p.wheel_radius*p.wheel_dist_y)/(2*(p.wheel_dist_x**2 + p.wheel_dist_y**2))*((u[1]-u[0]))
     return np.array([v, psi_dot])
 
 def motion_model2(x, u, dt):
@@ -95,8 +95,8 @@ def inverse_motion_model(cmd):
         1d numpy array: 2-vector of [left, right] wheel speeds in radians/second
     """
     v, d_theta = cmd
-    gvy = p.gear_ratio * v * p.wheel_dist_y
+    gvy = v * p.wheel_dist_y
     ry = p.wheel_radius * p.wheel_dist_y
-    gtd = p.gear_ratio * d_theta * (p.wheel_dist_x**2 + p.wheel_dist_y**2)
+    gtd = d_theta * (p.wheel_dist_x**2 + p.wheel_dist_y**2)
 
     return (gvy + np.array([-1,1]) * gtd)/ry
