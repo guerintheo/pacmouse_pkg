@@ -12,7 +12,7 @@ motor_mode_pin: 25  # corresponds to physical pin 22
 
 motor_pwm_freq: 100.0
 
-motor_controller_pid: [0.0, 0.0, 0.0]
+# motor_controller_pid: [0.0, 0.0, 0.0]
 motor_control_freq: 100.0
 
 ticks_per_radian: 42.7713
@@ -33,3 +33,5 @@ pwm_cmd_max: 1.0
 
 imu_serial_port: "/dev/ttyAMA0"  # TODO: This may need to be changed
 imu_pub_rate: 20  # Hz
+
+lidar_pins: [7, 19, 11, 23, 29]
