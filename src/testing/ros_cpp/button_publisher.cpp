@@ -2,41 +2,50 @@
 #include <pigpio.h>
 #include <iostream>
 #include <std_msgs/Int8.h>
+#include <unistd.h>
 
 using namespace std;
 
 class Buttons {
 public:
 	ros::Publisher publishers[4];
+	int pins[4];
+	int old_levels[4];
+	int levels[4];
 
 	Buttons(int p[4], ros::NodeHandle n) {
 
 		char channel[20];
 		
 		for (int i = 0; i < 4; i++) {
-			int pin = p[i];
+			int pin = pins[i] = p[i];
 
 			// setup a publisher
 			sprintf(channel, "/pacmouse/buttons/%d", i+1);
-			ros::Publisher publisher = n.advertise<std_msgs::Int8>(channel, 1);
-			publishers[i] = publisher; // save the publisher so it's memory doesnt get cleared
+			publishers[i] = n.advertise<std_msgs::Int8>(channel, 1);
 
 			// configure the gpio
 			gpioSetMode(pin, PI_INPUT);
 			gpioSetPullUpDown(pin, PI_PUD_UP);
-			gpioSetAlertFuncEx(pin, callback, &publisher);
 		}
 	};
 
-	static void callback(int gpio, int level, uint32_t tick, void *user);
+
+	void publish_changes();
 };
 
 
-void Buttons::callback(int gpio, int level, uint32_t tick, void *user) {
-   ros::Publisher *publisher = (ros::Publisher *)user;
+
+void Buttons::publish_changes() {
    std_msgs::Int8 msg;
-   msg.data = level;
-   publisher->publish(msg);
+
+	for (int i = 0; i < 4; i++) {
+		levels[i] = gpioRead(pins[i]);
+		if (old_levels[i] != levels[i]) {
+			msg.data = old_levels[i] = levels[i];
+	  		publishers[i].publish(msg);
+		}
+	}
 }
 
 int main(int argc, char **argv)
@@ -47,9 +56,14 @@ int main(int argc, char **argv)
   }
   ros::init(argc, argv, "button_publisher");
   ros::NodeHandle n;
+
   int p[] = {7, 13, 16, 12};
   Buttons b = Buttons(p, n);
-  ros::spin();
+
+  while (ros::ok()) {  
+  	b.publish_changes();
+  	usleep(100000000);
+  }
   return 0;
 }
 
