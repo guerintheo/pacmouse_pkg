@@ -32,14 +32,14 @@ class OdomGroundTruthCompare(object):
         new_mocap_yaw = data.z
         curr_time = rospy.Time.now()
         dt = curr_time - self.prev_mocap_time
-        mocap_yaw_rate = (new_mocap_yaw - self.prev_mocap_yaw)/dt
+        mocap_yaw_rate = (new_mocap_yaw - self.prev_mocap_yaw)/dt.to_sec()
         self.prev_mocap_yaw = new_mocap_yaw
         self.prev_mocap_time = curr_time
         
         new_mocap_pos = [data.x, data.y]
         dist_travelled = np.hypot(new_mocap_pos[0] - self.prev_mocap_pos[0], new_mocap_pos[1] - self.prev_mocap_pos[1])
         self.prev_mocap_pos = new_mocap_pos
-        vel = dist_travelled/dt
+        vel = dist_travelled/dt.to_sec()
         
         new_msg = Vector3()
         new_msg.x = vel
