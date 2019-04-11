@@ -268,7 +268,7 @@ class FullSimulator:
         self.encoder_sigma = 5
 
         self.estimator = Estimator(self.real_bot_state)                         # initialize the state estimator
-        self.estimator.set_maze(self.estimated_maze, obs_func=lidar_observation_function_gaussian)   # pass it the maze
+        self.estimator.set_maze(self.estimated_maze, obs_func=lidar_observation_function_gaussian_multi)   # pass it the maze
         self.estimator.u_sigma = self.u_sigma           # and the noise model
 
         self.cmd = np.zeros(2)
@@ -279,12 +279,12 @@ class FullSimulator:
     def update_estimated_maze(self):
         pose = self.estimator.state[:3]
 
-        decrement_amount = 0.06
-        increment_amount = 0.05
+        decrement_amount = 0.1
+        increment_amount = 0.2
         update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount)
 
         self.estimated_maze.build_segment_list()
-        self.estimator.set_maze(self.estimated_maze, obs_func=lidar_observation_function_gaussian)
+        self.estimator.set_maze(self.estimated_maze, obs_func=lidar_observation_function_gaussian_multi)
 
     def update(self):
         # run the simulator to update the "real" robot
@@ -302,7 +302,7 @@ class FullSimulator:
         self.real_bot_state += np.random.normal(u_mu, self.u_sigma)
 
         # get the sensor data (with noise)
-        lidars, _ = estimate_lidar_returns(self.real_bot_state[:3], self.real_maze) + np.random.normal(0, self.lidar_sigma, 6)
+        lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.real_maze)[0] + np.random.normal(0, self.lidar_sigma, 6)
         encoders = cmd + np.random.normal(0, self.encoder_sigma, size=2)
 
         return lidars, encoders
@@ -324,9 +324,10 @@ class FullSimulator:
         plt.add_patch(arrow)
 
     def draw_outer_chassis(self, plt, pose, color, alpha):
-        corners = np.array([[0,1,1,0], [0,0,1,1]]) - 0.5
-        corners *= np.array([p.robot_length, p.robot_width])[:, None]
-        corners = np.array([rotate_2d(c, pose[2]) for c in corners.T])
+        corners = np.array([[0,1,1,0], [0,0,1,1]]).T - 0.5
+        corners *= np.array([p.robot_length, p.robot_width])[None,:]
+        # corners = np.array([rotate_2d(c, pose[2]) for c in corners.T])
+        corners = rotate_2d_multiple(corners, pose[None,2])
         corners += pose[None, :2]
 
         for i in range(4):
@@ -336,8 +337,9 @@ class FullSimulator:
             plt.plot((x1, x2), (y1, y2), color=color, alpha=alpha)
 
         # draw the positions of the lidars
-        lidar_global_xy = lidar_end_points(pose, self.lidars)
-        plt.scatter(lidar_global_xy[:,0], lidar_global_xy[:,1], color=color, alpha=alpha)
+        # lidar_global_xy = lidar_end_points(pose, self.lidars)
+        # plt.scatter(lidar_global_xy[:,0], lidar_global_xy[:,1], color=color, alpha=alpha)
+
 
     def on_key_press(self, event):
         """

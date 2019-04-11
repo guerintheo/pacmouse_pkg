@@ -49,6 +49,19 @@ def lidar_observation_function_gaussian(Z, x, maze):
     base_variance = 0.01
     return np.prod(gaussian(z_exp, Z, base_variance + (1.-z_conf)/100.))
 
+def lidar_observation_function_gaussian_multi(Z, xs, maze):
+    z_exp, z_conf = estimate_lidar_returns_multi(xs, maze, return_confidences=True)
+
+    # NOTE(izzy): we take 1-z_conf because z_conf represents how likely there is to be
+    # wall at the point where the lidar hits, and we want the variance to be lower if
+    # we are more certain that there is a wall at that position.
+
+    # NOTE(aaron): we may need to scale and offset z_conf to avoid zero variance
+    # NOTE(aaron): z_conf should never be smaller than the transparency_threshold arg
+    # to the estimate_lidar_returns model
+    base_variance = 0.01
+    return np.prod(gaussian(z_exp, Z[None,:], base_variance + (1.-z_conf)/100.)+1e-5, axis=1)
+
 def estimate_lidar_returns_old(pose, maze):
     plot = False
 
@@ -199,7 +212,7 @@ def debug_plot_lidar_enpoints(debug_plot, lidar_global_vecs, lidar_global_xys, m
     ys = np.ravel(endpoints[:,:,1])
     plt.scatter(xs, ys)
 
-def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, debug_plot=None):
+def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, return_confidences=False, debug_plot=None):
     # each pose is a 3-vector [x, y, 3]
     # there are n poses, so poses is an [n x 3] matrix
     # there are m lidars
@@ -317,8 +330,9 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, debug_
     h_intersect_min_distance = np.ma.masked_equal(h_wall_intersect_distances, 0, copy=False).min(axis=2)
 
     # return the shorter of the vertical and horizontal min distances (excluding nans)
-    min_dists = np.nanmin(np.array([v_intersect_min_distance, h_intersect_min_distance]), axis=0)
-    choose_horizontal = np.nanargmin(np.array([v_intersect_min_distance, h_intersect_min_distance]), axis=0)
+    stacked_min_distance = np.array([v_intersect_min_distance, h_intersect_min_distance])
+    min_dists = np.nanmin(stacked_min_distance, axis=0)
+    choose_horizontal = np.nanargmin(stacked_min_distance, axis=0)
 
     # subtract off the maze wall thickness
     vertical_dist_to_remove = p.maze_wall_thickness/2./np.abs(lidar_global_vecs[:,:,0])
@@ -328,7 +342,17 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, debug_
     min_dists -= (1-choose_horizontal) * vertical_dist_to_remove
 
     if debug_plot: debug_plot_lidar_enpoints(debug_plot, lidar_global_vecs, lidar_global_xys, min_dists)
-    return min_dists
+
+    if return_confidences:
+        v_intersect_argmin_distance = np.ma.masked_equal(v_wall_intersect_distances, 0, copy=False).argmin(axis=2)
+        h_intersect_argmin_distance = np.ma.masked_equal(h_wall_intersect_distances, 0, copy=False).argmin(axis=2)
+        min_dist_h_wall_hit_confidences = np.take_along_axis(h_wall_hit_confidences, h_intersect_argmin_distance[:,:,None], axis=2)[:,:,0]
+        min_dist_v_wall_hit_confidences = np.take_along_axis(v_wall_hit_confidences, v_intersect_argmin_distance[:,:,None], axis=2)[:,:,0]
+        confidences = choose_horizontal * min_dist_h_wall_hit_confidences + (1-choose_horizontal) * min_dist_v_wall_hit_confidences
+        return min_dists, confidences
+
+    else:
+        return min_dists
 
 
 def debug_plot_mark_intersections_vertical(debug_plot, x_coords, y_coords, decrement_coeffs, on_vecs_mask):
@@ -546,6 +570,8 @@ def plot_segment_list(plt, segment_list):
 def test_estimate_lidar_returns_multi():
     maze = Maze2(16,16)
     maze.generate_random_maze()
+    maze.v_walls *= np.random.rand(*maze.v_walls.shape)
+    maze.h_walls *= np.random.rand(*maze.h_walls.shape)
 
     # # plot the maze
     maze.build_segment_list()
@@ -555,12 +581,12 @@ def test_estimate_lidar_returns_multi():
     plt.ylim(-border, maze.height * p.maze_cell_size+border)
 
     # generate poses
-    n = 5
+    n = 50
     poses = np.array([np.random.rand(n)*maze.width * p.maze_cell_size,
                       np.random.rand(n)*maze.height * p.maze_cell_size,
                       np.random.rand(n)*np.pi*2]).T
 
-    estimate_lidar_returns_multi(poses, maze, debug_plot=plt)
+    lidars, confidences = estimate_lidar_returns_multi(poses, maze, return_confidences=True, debug_plot=plt)
 
     plt.show()
 
@@ -588,8 +614,8 @@ def test_update_walls():
     plt.show()
 
 if __name__ == '__main__':
-    # test_estimate_lidar_returns_multi()
-    test_update_walls()
+    test_estimate_lidar_returns_multi()
+    # test_update_walls()
 
 
     # m = Maze(16,16)
