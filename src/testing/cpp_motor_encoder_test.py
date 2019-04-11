@@ -12,11 +12,11 @@ class MotorEncoderTester:
 		cmd= Drive()
 
 		while not rospy.is_shutdown():
-			raw = raw_input('Enter a motor speed (0.0 < val < 1.0):\t').strip()
+			raw = raw_input('Enter motor speeds <L> <R>:\t').strip()
 			try:
-				val = float(raw)
-				cmd.L = val
-				cmd.R = val
+				val_L, val_R = raw.split(' ')
+				cmd.L = float(val_L)
+				cmd.R = float(val_R)
 			except:
 				print 'Failed to parse "{}"'.format(raw)
 			self.cmd_pub.publish(cmd)
