@@ -408,8 +408,9 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     on_vecs_mask = (on_vecs_mask==4)
 
     # [m x w+1] decrement the walls less if the lidar doesn't pass through the middle
-    dists_to_middle_of_wall = np.abs(c/2. - y_coords % c)
-    decrement_coeffs = 1. - dists_to_middle_of_wall*2/c
+    centeredness = 1. - np.abs(c/2. - y_coords % c)
+    orthogonality = np.abs(np.cos(lidar_global_thetas))
+    decrement_coeffs = centeredness * orthogonality[:, None]
 
     if debug_plot: debug_plot_mark_intersections_vertical(debug_plot, x_coords, y_coords, decrement_coeffs, on_vecs_mask)
 
@@ -434,8 +435,9 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     on_vecs_mask = (on_vecs_mask==4)
 
     # [m x h+1] decrement the walls less if the lidar doesn't pass through the middle
-    dists_to_middle_of_wall = np.abs(c/2. - x_coords % c)
-    decrement_coeffs = 1. - dists_to_middle_of_wall*2/c
+    centeredness = 1. - np.abs(c/2. - x_coords % c)
+    orthogonality = np.abs(np.sin(lidar_global_thetas))
+    decrement_coeffs = centeredness * orthogonality[:, None]
 
     if debug_plot: debug_plot_mark_intersections_horizontal(debug_plot, x_coords, y_coords, decrement_coeffs, on_vecs_mask)
 

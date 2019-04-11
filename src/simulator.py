@@ -163,8 +163,8 @@ class DrivingSimulator:
     def update_estimated_maze(self):
         pose = self.estimator.state[:3]
 
-        decrement_amount = 0.05
-        increment_amount = 0.1
+        decrement_amount = 0.1
+        increment_amount = 0.2
         update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount, debug_plot=plt)
 
         self.estimated_maze.build_segment_list()
