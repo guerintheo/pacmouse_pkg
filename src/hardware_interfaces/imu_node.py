@@ -20,7 +20,8 @@ class IMUNode(object):
 
         rospy.Subscriber('/pacmouse/mode/zero_heading', Empty, self.reset_heading)
 
-        self.bno = BNO055.BNO055(serial_port=rospy.get_param("/pacmouse/params/imu_serial_port"))
+        self.bno = BNO055.BNO055(serial_port=rospy.get_param("/pacmouse/params/imu_serial_port"),
+                                 serial_timeout_sec=10)  # default is 5 sec
         # Try to initialize the IMU
         if not self.bno.begin():
             raise RuntimeError('The BNO055 failed to initialize. Check if the sensor is connected.')
@@ -32,7 +33,7 @@ class IMUNode(object):
         if status == 0x01:
             # System status is in error mode
             print('System error: {0}'.format(error))
-            print('See datasheet section 4.3.59 for the meaning.') 
+            print('See datasheet section 4.3.59 for the meaning.')
 
     def spin(self):
         rate_hz = rospy.get_param("/pacmouse/params/imu_pub_rate")
@@ -55,7 +56,7 @@ class IMUNode(object):
             rate_ros.sleep()
 
     def am_upside_down(self, roll, pitch):
-        # Needs to be both so you are fully upside down 
+        # Needs to be both so you are fully upside down
         am_upside_down = (-30 <= roll <= 30 and -120 <= pitch <= -60)
         if am_upside_down:
             # print('am_upside_down')

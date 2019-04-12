@@ -41,7 +41,7 @@ class ModeController(object):
 
         # TODO: Get this information from planner or pose estimator, or
         # whichever node determines that we have reached maze goal
-        self.found_path_to_maze_goal = False
+        self.found_path_to_maze_goal = True  # TODO: Should be False at the start
 
         signal.signal(signal.SIGINT, self.sigint_handler)
 
