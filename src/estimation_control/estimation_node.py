@@ -23,7 +23,7 @@ class EstimationNode:
 		self.prev_t = time.time()
 
 		self.maze = Maze2()
-		self.maze.load('../utils/mini.maze')
+		self.maze.load('../utils/mini_flipped.maze')
 		self.estimator.set_maze(self.maze)
 
 		self.maze_pub = rospy.Publisher('/pacmouse/maze', Maze, queue_size=1)
@@ -37,7 +37,7 @@ class EstimationNode:
 
 
 	def publish_pose_estimate(self):
-		msg = Vector3
+		msg = Vector3()
 		msg.x, msg.y, msg.z = self.estimator.state[:3]
 		self.pose_pub.publish(msg)
 
