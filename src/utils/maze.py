@@ -372,7 +372,7 @@ class Maze2:
 
             while start != end:
                 if end < 0:
-                    return -1 # No solution exists
+                    return [] # No solution exists
                 path.append(end)
                 end = self.predecessors[start, end]
 

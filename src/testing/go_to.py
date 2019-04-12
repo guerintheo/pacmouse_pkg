@@ -110,12 +110,12 @@ class GoTo:
 class GoToPlan:
 	def __init__(self):
 		rospy.init_node('goto_plan')
-		self.plan_pub = rospy.Publisher('/pacmouse/goal', Vector3, queue_size=1)
+		self.plan_pub = rospy.Publisher('/pacmouse/plan', Vector3, queue_size=1)
 
 	def set_plan(self, x,y,t=0):
 		msg = Vector3()
-		msg.x = x * p.maze_cell_size
-		msg.y = y * p.maze_cell_size
+		msg.x = x
+		msg.y = y
 		msg.z = t
 		self.plan_pub.publish(msg)
 

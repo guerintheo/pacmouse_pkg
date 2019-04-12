@@ -12,10 +12,6 @@ def step(x, sp):
     Returns:
         1d numpy array: a 2-vector [drive, steer]
     """
-    steering_coeff = 1.
-    drive_coeff    = 1.
-    max_speed = 0.15 # m/s
-    max_angle = np.pi/4
 
     e_x, e_y = sp[:2] - x[:2]                   # the position difference
     e_t = wrap(np.arctan2(e_y, e_x) - x[2])     # the angular error to point at the desired position
@@ -24,11 +20,11 @@ def step(x, sp):
 
     # 1 when facing the target. 0 when facing away from target
 
-    facing_target = (max_angle - np.abs(e_t))/(max_angle) if np.abs(e_t) < max_angle else 0
+    facing_target = (p.controller_max_angle - np.abs(e_t))/(p.controller_max_angle) if np.abs(e_t) < p.controller_max_angle else 0
 
-    steering_command = e_t * steering_coeff             # turn to face the target
-    drive_command = d * facing_target * drive_coeff     # drive forward faster when facing the target
-    drive_command = np.clip(drive_command, 0, max_speed)
+    steering_command = e_t * p.controller_steering_coeff             # turn to face the target
+    drive_command = d * facing_target * p.controller_drive_coeff     # drive forward faster when facing the target
+    drive_command = np.clip(drive_command, 0, p.controller_max_speed)
     return np.array([drive_command, steering_command])
 
 

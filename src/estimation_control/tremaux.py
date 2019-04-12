@@ -6,6 +6,7 @@ class Tremaux:
     def __init__(self, maze):
         self.markers = np.zeros(maze.width * maze.height)
         self.retracing = False
+        self.min_count = 0
 
     def get_plan(self, cell, maze):
         self.markers[cell] += 1
@@ -14,6 +15,7 @@ class Tremaux:
         possible_cells = [c for c in possible_cells if maze.get_wall_between(cell, c) == 0]
 
         cell_counts = [self.markers[c] for c in possible_cells]
+        self.min_count = np.min(self.markers)
         return possible_cells[np.argmin(cell_counts)]
 
 

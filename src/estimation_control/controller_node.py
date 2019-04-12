@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import rospy
 import numpy as np
 
@@ -18,9 +19,12 @@ class ControllerNode:
 		self.arm = False
 
 		self.cmd_pub = rospy.Publisher('/pacmouse/motor/cmd', Drive, queue_size=1)
+		rospy.on_shutdown(self.shutdown)
+
 		rospy.Subscriber('/pacmouse/pose/mocap', Vector3, self.pose_callback)
 		rospy.Subscriber('/pacmouse/plan', Vector3, self.plan_callback)
 		rospy.Subscriber('/pacmouse/mode/set_motor_arm', Bool, self.arm_callback)
+
 		rospy.spin()
 
 	def pose_callback(self, msg):
@@ -51,5 +55,13 @@ class ControllerNode:
 		self.arm = msg.data
 		print 'Armed' if self.arm else 'Disarmed'
 
+	def shutdown(self):
+		cmd = Drive()
+		cmd.L = 0
+		cmd.R = 0
+		self.cmd_pub.publish(cmd)
+		print 'Received shutdown.'
+
+
 if __name__ == '__main__':
-	ros_is_a_piece_of_shit = ControllerNode()
+	controller = ControllerNode()

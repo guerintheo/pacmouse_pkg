@@ -1,5 +1,5 @@
 import numpy as np
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 import time
 
 from pacmouse_pkg.src.utils.maze import Maze, Maze2
