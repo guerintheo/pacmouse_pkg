@@ -7,6 +7,8 @@ from pacmouse_pkg.src.utils.maze import Maze2
 import pacmouse_pkg.src.params as p
 
 from pacmouse_pkg.msg import Lidars, Drive, Maze
+from geometry_msgs.msg import Vector3
+from std_msgs.msg import Float64
 
 class EstimationNode:
 	def __init__(self):
@@ -58,7 +60,8 @@ class EstimationNode:
 	def lidars_callback(self, msg):
 		# the lidars message is a fixed array of size 6. we only use the 
 		# first five spots because we only have five working lidars :(
-		self.lidars = msg.dists[:p.num_lidars]
+		# we need to convert from millimeters to meters
+		self.lidars = np.array(msg.dists[:p.num_lidars]) / 1000.0
 
 		# pose estimate updates are triggered on the lidars. yay
 		self.update_pose_estimate()

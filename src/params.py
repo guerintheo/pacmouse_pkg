@@ -83,4 +83,4 @@ controller_max_speed = 0.2 # m/s
 controller_max_angle = np.pi/6
 
 ######################### ESTIMATION PARAMS ################################
-num_particles
+num_particles = 20
