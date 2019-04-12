@@ -6,7 +6,6 @@ from pacmouse_pkg.src.utils.math_utils import wrap
 from Adafruit_BNO055 import BNO055
 from std_msgs.msg import Float64, Empty  # for heading value
 
-
 class IMUNode(object):
     """
     Class that interfaces with the Adafruit BNO055 IMU.
@@ -20,7 +19,11 @@ class IMUNode(object):
 
         rospy.Subscriber('/pacmouse/mode/zero_heading', Empty, self.reset_heading)
 
-        self.bno = BNO055.BNO055(serial_port=rospy.get_param("/pacmouse/params/imu_serial_port"))
+        self.start_imu()
+
+    def start_imu(self):
+        self.bno = BNO055.BNO055(serial_port=rospy.get_param("/pacmouse/params/imu_serial_port"),
+                                 serial_timeout_sec=2)  # default is 5 sec
         # Try to initialize the IMU
         if not self.bno.begin():
             raise RuntimeError('The BNO055 failed to initialize. Check if the sensor is connected.')
@@ -32,7 +35,7 @@ class IMUNode(object):
         if status == 0x01:
             # System status is in error mode
             print('System error: {0}'.format(error))
-            print('See datasheet section 4.3.59 for the meaning.') 
+            print('See datasheet section 4.3.59 for the meaning.')
 
     def spin(self):
         rate_hz = rospy.get_param("/pacmouse/params/imu_pub_rate")
@@ -42,30 +45,34 @@ class IMUNode(object):
         while not rospy.is_shutdown():
             # Read the Euler angles for heading, roll, and pitch, all given in
             # degrees
-            heading, roll, pitch = np.array(self.bno.read_euler()) - self.offset
+            try:
+                heading, roll, pitch = np.array(self.bno.read_euler()) - self.offset
+            except:
+                print 'cannot poll imu, attempting to restart once'
+                self.start_imu()
+                heading, roll, pitch = np.array(self.bno.read_euler()) - self.offset
 
-            # TODO: Do something with roll or pitch data as a means of user input
+
             self.am_upside_down(roll, pitch)
             # Convert to radians
             heading = wrap(np.radians(heading))
-            # print('Heading: {} radians'.format(heading))
+            # print('Heading: {} radians'.format(heading)) 
             heading_msg = Float64()
             heading_msg.data = heading
             self.imu_pub.publish(heading_msg)
             rate_ros.sleep()
 
     def am_upside_down(self, roll, pitch):
-        # Needs to be both so you are fully upside down 
+        # Needs to be both so you are fully upside down
         am_upside_down = (-30 <= roll <= 30 and -120 <= pitch <= -60)
         if am_upside_down:
-            # print('am_upside_down')
             self.imu_am_upside_down.publish(Empty())
 
     def reset_heading(self, data):
         current_pos = self.bno.read_euler()
         print('offset heard at {}'.format(current_pos))
         self.offset = np.array(current_pos)
-        print('new pose: {}'.format(current_pos - self.offset))
+        print('new orientation: {}'.format(current_pos - self.offset))
 
 if __name__ == '__main__':
     imu = IMUNode()

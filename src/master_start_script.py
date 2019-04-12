@@ -1,9 +1,12 @@
 #!/usr/bin/python
+import sys, os
+if os.geteuid() != 0:
+    exit("YOU GOTTA RUN ME WITH SUDO BRO!!!")
+
 import rospy
 from std_msgs.msg import Empty
 from subprocess import Popen
 import time
-import sys
 import roslaunch
 
 
@@ -59,7 +62,6 @@ class MasterStartNode(object):
         print('Terminating launched launch file.')
         self.launch.shutdown()
         self.launch_new_process()
-
 
 if __name__ == '__main__':
     master_start = MasterStartNode()

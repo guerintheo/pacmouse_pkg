@@ -31,7 +31,8 @@ motor_pid:
 
 pwm_cmd_max: 1.0
 
-imu_serial_port: "/dev/ttyAMA0"  # TODO: This may need to be changed
-imu_pub_rate: 20  # Hz
+imu_serial_port: "/dev/ttyAMA0"
+imu_pub_rate: 15  # Hz
 
 lidar_pins: [7, 19, 11, 23, 29]
+num_lidars: 5

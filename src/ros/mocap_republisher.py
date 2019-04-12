@@ -5,6 +5,8 @@ from std_msgs.msg import Empty
 from pyquaternion import Quaternion
 import numpy as np
 
+import pacmouse_pkg.src.params as p
+
 class MocapRepublisher(object):
 
     def __init__(self):
@@ -29,14 +31,14 @@ class MocapRepublisher(object):
         self.curr_mocap_pose[2] = yaw
 
         self.repub_msg.x = self.curr_mocap_pose[0] - self.pose_offset[0]
-        self.repub_msg.y = self.curr_mocap_pose[1] -self.pose_offset[1]
+        self.repub_msg.y = self.curr_mocap_pose[1] - self.pose_offset[1]
         self.repub_msg.z = yaw
 
     def cb_zero_pose(self, data):
         """Zero the pose estimate."""
         # TODO: Account for heading correctly? Do a transform with the yaw angle?
         print('Zeroing the pose.')
-        self.pose_offset[:2] = self.curr_mocap_pose[:2]
+        self.pose_offset[:2] = self.curr_mocap_pose[:2] - p.maze_cell_size/2  # or maze_inner_size if origin is to be inner corner of bottom-left cell
 
     def spin(self):
         rate = rospy.Rate(10)

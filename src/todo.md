@@ -13,6 +13,7 @@
  * add ROS publishing for the lidars in a C++ script
  * fix edge cases in macaroni planner
  
+ * ~~Investigate IMU intermittencies and try rebooting the serial line if it goes down. ~~
  * Use Planner and controller in mocap
  * Fully test mode_controller
  * clean up the directories
