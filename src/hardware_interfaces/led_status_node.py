@@ -37,7 +37,7 @@ class LEDs:
 		self.rainbow()
 		self.color_callback(LED(0, '0x00FF00'))
 		
-		rospy.on_shutdown(self.shutdown) # TODO: Ask ros geniuses if this is the right way to shut down.
+		rospy.on_shutdown(self.shutdown)
 
 		rospy.spin()
 

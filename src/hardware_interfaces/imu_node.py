@@ -6,7 +6,6 @@ from pacmouse_pkg.src.utils.math_utils import wrap
 from Adafruit_BNO055 import BNO055
 from std_msgs.msg import Float64, Empty  # for heading value
 
-
 class IMUNode(object):
     """
     Class that interfaces with the Adafruit BNO055 IMU.
@@ -19,6 +18,8 @@ class IMUNode(object):
         self.imu_am_upside_down = rospy.Publisher('/pacmouse/imu/am_upside_down', Empty, queue_size=1)
 
         rospy.Subscriber('/pacmouse/mode/zero_heading', Empty, self.reset_heading)
+
+        self.start_imu()
 
     def start_imu(self):
         self.bno = BNO055.BNO055(serial_port=rospy.get_param("/pacmouse/params/imu_serial_port"),
@@ -47,14 +48,15 @@ class IMUNode(object):
             try:
                 heading, roll, pitch = np.array(self.bno.read_euler()) - self.offset
             except:
-                print 'cannot poll imu, restarting it'
+                print 'cannot poll imu, attempting to restart once'
                 self.start_imu()
+                heading, roll, pitch = np.array(self.bno.read_euler()) - self.offset
 
-            # TODO: Do something with roll or pitch data as a means of user input
+
             self.am_upside_down(roll, pitch)
             # Convert to radians
             heading = wrap(np.radians(heading))
-            # print('Heading: {} radians'.format(heading))
+            # print('Heading: {} radians'.format(heading)) 
             heading_msg = Float64()
             heading_msg.data = heading
             self.imu_pub.publish(heading_msg)
@@ -64,7 +66,6 @@ class IMUNode(object):
         # Needs to be both so you are fully upside down
         am_upside_down = (-30 <= roll <= 30 and -120 <= pitch <= -60)
         if am_upside_down:
-            # print('am_upside_down')
             self.imu_am_upside_down.publish(Empty())
 
     def reset_heading(self, data):
