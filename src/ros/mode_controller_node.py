@@ -89,9 +89,23 @@ class ModeController(object):
         # Rotary dial subscriber
         rospy.Subscriber('/pacmouse/encoders/position', Drive, self.cb_encoder_dial)
 
+        # IMU rotation sense subscriber
+        rospy.Subscriber('/pacmouse/imu/am_upside_down', Empty, self.cb_am_upside_down)
+
     def set_curr_mode_idle(self):
         self.curr_mode = Mode.IDLE
         self.led_function = self.led_modes.set_leds_for_idle
+
+    def cb_am_upside_down(self, data):
+        """
+        Callback for an upside down IMU rotation event.
+
+        If we are in EXPLORING or SHORTEST_PATH_SOLVING mode, then we want to
+        return to IDLE.
+        """
+        if self.curr_mode is Mode.EXPLORING or self.curr_mode is Mode.SHORTEST_PATH_SOLVING:
+            print('Sensed IMU upside-down event. Transitioning from mode {} to mode {}.'.format(self.curr_mode, Mode.IDLE))
+            self.set_curr_mode_idle()
 
     def cb_button1(self, data):
         """
@@ -401,7 +415,10 @@ class ModeLEDSignalFunctions(object):
         print('Rotary angle diff: {}'.format(rotary_dial_angle_diff))
 
         led_msg.led_num = 0
-        led_msg.hex_color = self.compute_color_on_spectrum(rotary_dial_angle_diff)
+        if rotary_dial_angle_diff > 0:
+            led_msg.hex_color = self.compute_color_on_spectrum(rotary_dial_angle_diff)
+        else:
+            led_msg.hex_color = ModeLEDSignalFunctions.RED
         self.set_leds_pub.publish(led_msg)
 
         led_msg.led_num = 1
@@ -450,8 +467,22 @@ class ModeLEDSignalFunctions(object):
         self.set_leds_spectrum()
 
     def set_leds_for_restart(self):
-        # TODO
-        pass
+        print('In mode SET_RESTART')
+        led_msg = LED()
+        led_msg.led_num = 1
+        led_msg.hex_color = ModeLEDSignalFunctions.RED
+        self.set_leds_pub.publish(led_msg)
+
+        rotary_dial_angle_diff = self.mc.rotary_dial_value - self.mc.rotary_dial_start_value
+        print('Rotary angle diff: {}'.format(rotary_dial_angle_diff))
+        if rotary_dial_angle_diff >= self.mc.rotary_option_threshold:
+            led_msg.hex_color = ModeLEDSignalFunctions.GREEN
+        else:
+            # Remain IDLE
+            led_msg.hex_color = ModeLEDSignalFunctions.RED
+        self.set_leds_pub.publish(led_msg)
+        self.clear_led(0)
+        self.clear_led(2)
 
     def set_leds_for_shortest_path(self):
         # TODO
