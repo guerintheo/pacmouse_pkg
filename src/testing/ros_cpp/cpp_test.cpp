@@ -208,7 +208,8 @@ int main(int argc, char **argv)
   PID pid_R = PID(MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);
 
   // buttons object handles updates from the buttons
-  Buttons buttons = Buttons({7, 13, 16, 12}, n);
+  int button_pins[4] = {7, 13, 16, 12};
+  Buttons buttons = Buttons(button_pins, n);
 
   float cmd_L, cmd_R;
   while (ros::ok())
@@ -230,7 +231,7 @@ int main(int argc, char **argv)
     cmd_R = pid_R.step(sp_R - vel_msg.R, 1./LOOP_RATE) + MOTOR_COEFF * sp_R;
     set_motors(cmd_L, cmd_R);
 
-    buttons.publish_changes()
+    buttons.publish_changes();
 
     ros::spinOnce();
 
