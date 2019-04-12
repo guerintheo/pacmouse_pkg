@@ -1,6 +1,9 @@
 import numpy as np
-# from matplotlib import pyplot as plt
 import time
+import os
+# only load matplotlib if we are not on the pi
+if os.uname()[1] != 'pi':
+    from matplotlib import pyplot as plt
 
 from pacmouse_pkg.src.utils.maze import Maze, Maze2
 import pacmouse_pkg.src.params as p
@@ -273,7 +276,7 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, return
     
     # [n x m x w+1] create a mask to remember which v wall intersections are within the maze
     v_wall_in_maze_mask = np.logical_and(v_wall_intersect_coords[:,:,1,:] > 0,
-                                              v_wall_intersect_coords[:,:,1,:] < maze.height*p.maze_cell_size)
+                                         v_wall_intersect_coords[:,:,1,:] < maze.height*p.maze_cell_size)
 
     # [n x m x 2 x w+1] Then divide by the cell size to get the index of each wall in the maze.v_wall array
     v_wall_intersect_indices = np.floor(v_wall_intersect_coords/p.maze_cell_size).astype(int)
@@ -310,11 +313,14 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, return
     
     # [n x m x h+1] create a mask to remember which horizontal wall intersections are within the maze
     h_wall_in_maze_mask = np.logical_and(h_wall_intersect_coords[:,:,0,:] > 0,
-                                         h_wall_intersect_coords[:,:,0,:] < maze.width*p.maze_cell_size)
+                                         h_wall_intersect_coords[:,:,0,:] < (maze.width)*p.maze_cell_size)
 
     # [n x m x 2 x h+1] Then divide by the cell size to get the index of each wall in the maze.h_wall array
     h_wall_intersect_indices = np.floor(h_wall_intersect_coords/p.maze_cell_size).astype(int)
     # we need to mask the indices to make sure we are looking up on valid maze.h_wall indices (not outside the maze)
+
+
+
     h_wall_intersect_indices = h_wall_intersect_indices * h_wall_in_maze_mask[:,:,None,:]
 
     # [n x m x h+1] # do a lookup on the maze to see whether or not a wall exists at each of these x,y indices
@@ -483,7 +489,9 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     normalized_ends = lidar_global_ends/c
 
     end_in_maze_mask = np.prod(np.logical_and(normalized_ends > 0,
-                                               normalized_ends < np.array([maze.width, maze.height])[None,:]), axis=1)
+                                              normalized_ends < np.array([maze.width, maze.height])[None,:]), axis=1)
+
+    max_lidar_dist_mask = lidars < p.max_lidar_dist
 
     # find which walls are closest. this will be a list with 1s if the h walls are closer. 0s for v walls
     h_wall_mask = np.argmin(np.abs(normalized_ends - np.round(normalized_ends)), axis=1)
@@ -499,8 +507,8 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     if debug_plot: debug_plot_mark_lidar_endpoints(debug_plot, lidar_global_ends, h_wall_mask, h_centeredness, v_centeredness)
 
     # update the maze
-    maze.h_walls[h_indices[:,0], h_indices[:,1]] += increment_amount * h_wall_mask * h_centeredness * end_in_maze_mask
-    maze.v_walls[v_indices[:,0], v_indices[:,1]] += increment_amount * (1-h_wall_mask) * v_centeredness * end_in_maze_mask
+    maze.h_walls[h_indices[:,0], h_indices[:,1]] += increment_amount * h_wall_mask * h_centeredness * end_in_maze_mask * max_lidar_dist_mask
+    maze.v_walls[v_indices[:,0], v_indices[:,1]] += increment_amount * (1-h_wall_mask) * v_centeredness * end_in_maze_mask * max_lidar_dist_mask
 
     # make sure the wall probabilities stay between 0 and 1
     maze.h_walls = np.clip(maze.h_walls, 0, 1)
@@ -578,7 +586,7 @@ def plot_segment_list(plt, segment_list):
         plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k')
 
 def test_estimate_lidar_returns_multi():
-    maze = Maze2(16,16)
+    maze = Maze2(5,3)
     maze.generate_random_maze()
     maze.v_walls *= np.random.rand(*maze.v_walls.shape)
     maze.h_walls *= np.random.rand(*maze.h_walls.shape)
@@ -591,7 +599,7 @@ def test_estimate_lidar_returns_multi():
     plt.ylim(-border, maze.height * p.maze_cell_size+border)
 
     # generate poses
-    n = 3
+    n = 1
     poses = np.array([np.random.rand(n)*maze.width * p.maze_cell_size,
                       np.random.rand(n)*maze.height * p.maze_cell_size,
                       np.random.rand(n)*np.pi*2]).T
