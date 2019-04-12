@@ -6,6 +6,7 @@ from geometry_msgs.msg import Vector3
 from pacmouse_pkg.src.estimation_control.dynamics import motion_model, inverse_motion_model
 from pacmouse_pkg.src.estimation_control.control import step, get_sp
 from pacmouse_pkg.src.utils.maze import Maze2
+import pacmouse_pkg.src.params as p
 import time
 
 MAX_RATE = 10
@@ -106,6 +107,18 @@ class GoTo:
 						print 'Failed to parse "{}". Setting velocity to zero.'.format(raw)
 					
 
+class GoToPlan:
+	def __init__(self):
+		rospy.init_node('goto_plan')
+		self.plan_pub = rospy.Publisher('/pacmouse/goal', Vector3, queue_size=1)
+
+	def set_plan(self, x,y,t=0):
+		msg = Vector3()
+		msg.x = x * p.maze_cell_size
+		msg.y = y * p.maze_cell_size
+		msg.z = t
+		self.plan_pub.publish(msg)
+
 
 if __name__ == '__main__':
-	gt = GoTo()
+	gt = GoToPlan()

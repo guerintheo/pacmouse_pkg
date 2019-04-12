@@ -11,17 +11,26 @@ import pacmouse_pkg.src.params as p
 class PlannerNode:
 	def __init__(self):
 		rospy.init_node('planner_node')
-		rospy.Subscriber('/pacmouse/pose/mocap', Vector3, self.pose_callback)
-		rospy.Subscriber('/pacmouse/mode/set_plan_mode', String, self.mode_callback)
-		rospy.Subscriber('/pacmouse/maze', Maze, self.maze_callback)
+
 		self.plan_publisher = rospy.Publisher('/pacmouse/plan', Vector3, queue_size=1)
 
 		self.pose = np.zeros(3)
 		self.prev_plan = np.zeros(3)
-		self.shortest_path_solving = False
-		self.maze = None
+
+		# self.shortest_path_solving = False
+		# self.maze = None
+
+
+		self.shortest_path_solving = True
+		self.maze = Maze2()
+		self.maze.load('../utils/mini.maze')
+
 		self.goal_cell = None
-		
+
+		rospy.Subscriber('/pacmouse/pose/mocap', Vector3, self.pose_callback)
+		rospy.Subscriber('/pacmouse/mode/set_plan_mode', String, self.mode_callback)
+		rospy.Subscriber('/pacmouse/maze', Maze, self.maze_callback)
+		rospy.Subscriber('/pacmouse/goal', Vector3, self.set_goal_for_testing)
 		rospy.spin()
 
 	def plan_shortest_path(self):
@@ -41,7 +50,6 @@ class PlannerNode:
 				msg.x = target_cell[0]
 				msg.y = target_cell[1]
 				self.plan_publisher.publish(msg)
-
 
 	def pose_callback(self, msg):
 		self.pose[0] = msg.x
@@ -74,6 +82,10 @@ class PlannerNode:
 			# use dijkstras to solve the pairwise distances when we are in shortest path mode
 			self.maze.build_adjacency_matrix(threshold=p.wall_transparency_threshold)
 			self.maze.solve()
+
+	def set_goal_for_testing(self, msg):
+		self.goal = np.array([msg.x, msg.y])
+		print 'Goal cell set to {} {}'.format(*self.goal)
 
 if __name__ == '__main__':
 	ros_is_garbage = PlannerNode()
