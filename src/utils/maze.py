@@ -357,6 +357,35 @@ class Maze2:
                         connected = connected > threshold
                     self.adj_matrix[i, j] = self.adj_matrix[j, i] = connected
 
+    def solve(self):
+        self.dists, self.predecessors = dijkstra(self.adj_matrix, directed=False,
+                                        unweighted=True, return_predecessors=True)
+
+    def get_path(self, c1, c2):
+        c1_index = c1[1] * self.width + c1[0]
+        c2_index = c2[1] * self.width + c2[0]
+
+        if self.dists[c1_index, c2_index] > 0:
+            path = []
+            start = c1_index
+            end = c2_index
+
+            while start != end:
+                if end < 0:
+                    return -1 # No solution exists
+                path.append(end)
+                end = self.predecessors[start, end]
+
+            path.append(start)
+            return np.flipud(path)
+
+        else: return []
+
+    def route(self, c1, c2, threshold=None):
+        self.build_adjacency_matrix(threshold=threshold)
+        self.solve()
+        return self.get_path(c1, c2)
+
     def __str__(self):
         output = ""
         for y in range(self.height, -1, -1):
