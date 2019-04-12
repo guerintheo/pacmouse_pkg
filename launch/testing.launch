@@ -7,10 +7,10 @@
 
     <!-- Hardware interface nodes -->
     <node pkg="pacmouse_pkg" type="cpp_test" name="gpio_handler_cpp" /> <!-- Handles encoders, motors -->
-    <node pkg="pacmouse_pkg" type="button_publisher.py" name="button_publisher_cpp" />
+    <!-- <node pkg="pacmouse_pkg" type="button_tester.py" name="button_tester" /> -->
     <node pkg="pacmouse_pkg" type="led_status_node.py" name="led_status_node" />
-    <node pkg="pacmouse_pkg" type="imu_node.py" name="imu_node" />
-    <node pkg="pacmouse_pkg" type="lidar_node.py" name="lidar_node" />
+    <!-- <node pkg="pacmouse_pkg" type="imu_node.py" name="imu_node" /> -->
+    <!-- <node pkg="pacmouse_pkg" type="lidar_node.py" name="lidar_node" /> -->
 
     <!-- Higher-level nodes -->
     <!-- planner, pose estimator, maze estimator, etc. -->
