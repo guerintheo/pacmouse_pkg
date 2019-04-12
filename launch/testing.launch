@@ -10,7 +10,7 @@
     <!-- <node pkg="pacmouse_pkg" type="button_tester.py" name="button_tester" output="screen" /> -->
     <node pkg="pacmouse_pkg" type="led_status_node.py" name="led_status_node" output="screen" />
     <node pkg="pacmouse_pkg" type="imu_node.py" name="imu_node" output="screen" />
-    <!-- <node pkg="pacmouse_pkg" type="lidar_node.py" name="lidar_node" output="screen" /> -->
+    <!-- <node pkg="pacmouse_pkg" type="tof_pub" name="lidar_node" output="screen" /> -->
 
     <!-- Higher-level nodes -->
     <!-- planner, pose estimator, maze estimator, etc. -->
