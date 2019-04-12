@@ -40,7 +40,7 @@ int main(int argc, char **argv){
 
 	for (int i=0; i < num_lidars; i++) {
 		digitalWrite(power_pins[i], HIGH);
-		sleep(0.3);
+		sleep(0.5);
 		handles[i] = vl6180_initialise(1);
 		vl6180_change_addr(handles[i], addresses[i]);
 		int dist = get_distance(handles[i]);

@@ -70,7 +70,7 @@ class IMUNode(object):
             self.imu_am_upside_down.publish(Empty())
 
     def reset_heading(self, data):
-        current_pos = np.array([self.bno.read_euler()])
+        current_pos = np.array(self.bno.read_euler())
         print('offset heard at {}'.format(current_pos))
         heading_offset = current_pos[0]
         self.offset[0] = heading_offset
