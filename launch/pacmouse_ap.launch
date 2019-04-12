@@ -1,0 +1,20 @@
+<launch>
+
+    <!-- Load parameters in the /pacmouse/params namespace -->
+    <rosparam command="load" file="$(find pacmouse_pkg)/src/params.yaml" ns="/pacmouse/params" />
+
+    <node pkg="pacmouse_pkg" type="mode_controller_node.py" name="mode_controller_node" output="screen" />
+
+    <!-- Hardware interface nodes -->
+    <!-- <node pkg="pacmouse_pkg" type="cpp_test" name="gpio_handler_cpp" output="screen" /> --> <!-- Handles encoders, motors -->
+    <!-- <node pkg="pacmouse_pkg" type="button_tester.py" name="button_tester" output="screen" /> -->
+    <!-- <node pkg="pacmouse_pkg" type="led_status_node.py" name="led_status_node" output="screen" /> -->
+    <!-- <node pkg="pacmouse_pkg" type="imu_node.py" name="imu_node" output="screen" /> -->
+    <!-- <node pkg="pacmouse_pkg" type="tof_pub" name="lidar_node" output="screen" /> -->
+    <node pkg="pacmouse_pkg" type="controller_node.py" name="controller_node" output="screen" />
+
+    <!-- Higher-level nodes -->
+    <!-- planner, pose estimator, maze estimator, etc. -->
+
+
+</launch>
