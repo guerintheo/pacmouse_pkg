@@ -348,6 +348,9 @@ class ModeLEDSignalFunctions(object):
     OFF = '0x000000'
     ORANGE = '0xFF7F00'
     RED = '0xFF0000'
+    BLUE = '0x0000FF' 
+    PURPLE = '0x4B0082' 
+    VIOLET = '0x9400D3' 
 
     def __init__(self, mode_controller):
         self.mc = mode_controller
@@ -485,12 +488,22 @@ class ModeLEDSignalFunctions(object):
         self.clear_led(2)
 
     def set_leds_for_shortest_path(self):
-        # TODO
-        pass
+        print('In mode SHORTEST_PATH_SOLVING')
+        self.clear_led(0)
+        self.clear_led(2)
+        led_msg = LED()
+        led_msg.led_num = 1
+        led_msg.hex_color = ModeLEDSignalFunctions.PURPLE
+        self.set_leds_pub.publish(led_msg)
 
     def set_leds_for_exploring(self):
-        # TODO
-        pass
+        print('In mode EXPLORING')
+        self.clear_led(0)
+        self.clear_led(2)
+        led_msg = LED()
+        led_msg.led_num = 1
+        led_msg.hex_color = ModeLEDSignalFunctions.BLUE
+        self.set_leds_pub.publish(led_msg)
 
 def main():
     rospy.init_node('mode_controller')
