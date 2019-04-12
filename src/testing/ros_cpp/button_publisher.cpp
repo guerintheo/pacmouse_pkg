@@ -1,7 +1,7 @@
 #include "ros/ros.h"
 #include <pigpio.h>
 #include <iostream>
-#include <std_msgs/Int8.h>
+#include <std_msgs/Bool.h>
 #include <unistd.h>
 
 using namespace std;
@@ -10,8 +10,8 @@ class Buttons {
 public:
 	ros::Publisher publishers[4];
 	int pins[4];
-	int old_levels[4];
-	int levels[4];
+	bool old_levels[4];
+	bool levels[4];
 
 	Buttons(int p[4], ros::NodeHandle n) {
 
@@ -30,14 +30,11 @@ public:
 		}
 	};
 
-
 	void publish_changes();
 };
 
-
-
 void Buttons::publish_changes() {
-   std_msgs::Int8 msg;
+   std_msgs::Bool msg;
 
 	for (int i = 0; i < 4; i++) {
 		levels[i] = gpioRead(pins[i]);
@@ -66,4 +63,3 @@ int main(int argc, char **argv)
   }
   return 0;
 }
-
