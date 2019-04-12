@@ -1,0 +1,14 @@
+<launch>
+
+    <!-- To run on the master Pi (the Pi 3 Model B+, which is in AP Master mode and which runs roscore) -->
+    <!-- Load parameters in the /pacmouse/params namespace -->
+    <rosparam command="load" file="$(find pacmouse_pkg)/src/params.yaml" ns="/pacmouse/params" />
+
+    <node pkg="pacmouse_pkg" type="mode_controller_node.py" name="mode_controller_node" output="screen" />
+    <node pkg="pacmouse_pkg" type="controller_node.py" name="controller_node" output="screen" />
+
+    <!-- Higher-level nodes -->
+    <!-- planner, pose estimator, maze estimator, etc. -->
+
+
+</launch>
