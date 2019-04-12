@@ -114,8 +114,8 @@ class GoToPlan:
 
 	def set_plan(self, x,y,t=0):
 		msg = Vector3()
-		msg.x = x * p.maze_cell_size
-		msg.y = y * p.maze_cell_size
+		msg.x = x
+		msg.y = y
 		msg.z = t
 		self.plan_pub.publish(msg)
 

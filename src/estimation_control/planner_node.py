@@ -5,6 +5,7 @@ from geometry_msgs.msg import Vector3
 from std_msgs.msg import String
 from pacmouse_pkg.msg import Maze
 
+from pacmouse_pkg.src.estimation_control.tremaux import Tremaux
 from pacmouse_pkg.src.utils.maze import Maze2
 import pacmouse_pkg.src.params as p
 
@@ -15,17 +16,20 @@ class PlannerNode:
 		self.plan_publisher = rospy.Publisher('/pacmouse/plan', Vector3, queue_size=1)
 
 		self.pose = np.zeros(3)
-		self.prev_plan = np.zeros(3)
+		self.prev_plan = np.ones(2) * p.maze_cell_size/2
 
 		# self.shortest_path_solving = False
 		# self.maze = None
 
-
-		self.shortest_path_solving = True
+		self.shortest_path_solving = False
 		self.maze = Maze2()
 		self.maze.load('../utils/mini.maze')
+		self.maze.build_adjacency_matrix(threshold=p.wall_transparency_threshold)
+		self.maze.solve()
 
-		self.goal_cell = None
+		self.tremaux = Tremaux(self.maze)
+
+		self.goal_cell = np.zeros(2, dtype=int)
 
 		rospy.Subscriber('/pacmouse/pose/mocap', Vector3, self.pose_callback)
 		rospy.Subscriber('/pacmouse/mode/set_plan_mode', String, self.mode_callback)
@@ -33,31 +37,41 @@ class PlannerNode:
 		rospy.Subscriber('/pacmouse/goal', Vector3, self.set_goal_for_testing)
 		rospy.spin()
 
-	def plan_shortest_path(self):
-		current_cell = np.floor(self.pose/p.maze_cell_size)
+	def plan(self):
+		# if we are within a certain radius of the previous setpoint, then replan
+		if np.linalg.norm(self.pose[:2] - self.prev_plan) < p.distance_to_cell_center_for_replan:
+			current_cell = np.floor(self.pose[:2]/p.maze_cell_size).astype(int)
+			current_index = current_cell[0] + current_cell[1] * self.maze.width
 
-		# only plan if we are within a certain distance of the target of our previous plan
-		if np.linalg.norm(self.pose[:2] - self.prev_plan[:2]) < p.distance_to_cell_center_for_replan:
-			plan = self.maze.get_path(current_cell, self.goal_cell)
-			print 'Replanning!'
-			if len(plan) < 2:
-				print 'The plan is too short... I think we made it??!?'
+			if self.shortest_path_solving:
+				plan = self.maze.get_path(current_cell, self.goal_cell)
+				if len(plan) < 2:
+					print 'The plan is too short... I think we made it??!?'
+					target_index = current_index
+				else:
+					target_index = plan[1]
+
 			else:
-				target_index = plan[1]
-				target_cell = np.array([target_index % self.maze.width, np.floor(target_index/self.maze.width)])
-				target_coord = (target_cell + 0.5) * p.maze_cell_size
-				msg = Vector3()
-				msg.x = target_cell[0]
-				msg.y = target_cell[1]
-				self.plan_publisher.publish(msg)
+				target_index = self.tremaux.get_plan(current_index, self.maze)
+				print 'Tremaux {}'.format(target_index)
+				if self.tremaux.min_count > 0:
+					print 'We\'ve explored the whole maze!'
+
+			target_cell = np.array([target_index % self.maze.width, np.floor(target_index/self.maze.width)])
+			target_coord = (target_cell + 0.5) * p.maze_cell_size
+			self.prev_plan = target_coord
+			msg = Vector3()
+			msg.x = target_coord[0]
+			msg.y = target_coord[1]
+			self.plan_publisher.publish(msg)
+
 
 	def pose_callback(self, msg):
 		self.pose[0] = msg.x
 		self.pose[1] = msg.y
 		self.pose[2] = msg.z
 
-		if self.shortest_path_solving: self.plan_shortest_path()
-		else: self.plan_tremaux()
+		self.plan()
 		
 	def mode_callback(self, msg):
 		if msg.data == 'EXPLORING':
@@ -84,8 +98,9 @@ class PlannerNode:
 			self.maze.solve()
 
 	def set_goal_for_testing(self, msg):
-		self.goal = np.array([msg.x, msg.y])
-		print 'Goal cell set to {} {}'.format(*self.goal)
+		self.goal_cell = np.array([msg.x, msg.y]).astype(int)
+		print 'Goal cell set to {} {}'.format(*self.goal_cell)
+
 
 if __name__ == '__main__':
 	ros_is_garbage = PlannerNode()
