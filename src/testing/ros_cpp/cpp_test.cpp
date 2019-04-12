@@ -9,6 +9,7 @@
 #include "pid.cpp"
 #include "rotary_encoder.hpp"
 #include "rotary_encoder.cpp"
+#include "button_publisher.cpp"
 
 using namespace std; // give access to std library functions withoud std::func
 
@@ -206,6 +207,9 @@ int main(int argc, char **argv)
   PID pid_L = PID(MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);
   PID pid_R = PID(MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);
 
+  // buttons object handles updates from the buttons
+  Buttons buttons = Buttons({7, 13, 16, 12}, n);
+
   float cmd_L, cmd_R;
   while (ros::ok())
   {
@@ -226,9 +230,13 @@ int main(int argc, char **argv)
     cmd_R = pid_R.step(sp_R - vel_msg.R, 1./LOOP_RATE) + MOTOR_COEFF * sp_R;
     set_motors(cmd_L, cmd_R);
 
+    buttons.publish_changes()
+
     ros::spinOnce();
 
     loop_rate.sleep();
   }
   return 0;
 }
+
+// Danielle says "I keep burping lentils."
