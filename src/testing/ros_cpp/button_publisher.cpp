@@ -26,7 +26,7 @@ public:
 
 			// configure the gpio
 			gpioSetMode(pin, PI_INPUT);
-			gpioSetPullUpDown(pin, PI_PUD_UP);
+			gpioSetPullUpDown(pin, PI_PUD_DOWN);
 		}
 	};
 
