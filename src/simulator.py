@@ -79,7 +79,7 @@ class Simulator:
         self.real_bot_state += np.random.normal(u_mu, self.u_sigma)
 
         # get the sensor data (with noise)
-        lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.maze) + np.random.normal(0, self.lidar_sigma, 6)
+        lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.maze) + np.random.normal(0, self.lidar_sigma, p.num_lidars)
         encoders = cmd + np.random.normal(0, self.encoder_sigma, size=2)
 
         return lidars, encoders
@@ -185,7 +185,7 @@ class DrivingSimulator:
         self.real_bot_state += np.random.normal(u_mu, self.u_sigma)
 
         # get the sensor data (with noise)
-        lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.real_maze)[0] + np.random.normal(0, self.lidar_sigma, 6)
+        lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.real_maze)[0] + np.random.normal(0, self.lidar_sigma, p.num_lidars)
         encoders = cmd + np.random.normal(0, self.encoder_sigma, size=2)
 
         return lidars, encoders
@@ -306,7 +306,7 @@ class FullSimulator:
         self.real_bot_state += np.random.normal(u_mu, self.u_sigma)
 
         # get the sensor data (with noise)
-        lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.real_maze)[0] + np.random.normal(0, self.lidar_sigma, 6)
+        lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.real_maze)[0] + np.random.normal(0, self.lidar_sigma, p.num_lidars)
         encoders = cmd + np.random.normal(0, self.encoder_sigma, size=2)
 
         return lidars, encoders
