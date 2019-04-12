@@ -4,8 +4,8 @@ from std_msgs.msg import Empty
 from subprocess import Popen
 import time
 import sys
+import signal
 
-# TODO: Handle Ctrl-C
 
 class MasterStartNode(object):
     """
@@ -21,6 +21,7 @@ class MasterStartNode(object):
     """
 
     def __init__(self):
+        signal.signal(signal.SIGINT, self.sigint_handler)
         self.process_is_active = False
         print('Starting up the master_start_node.')
         rospy.init_node('master_start_node')
@@ -33,6 +34,19 @@ class MasterStartNode(object):
                 self.process_str = 'roslaunch pacmouse_pkg testing.launch'
         self.launch_process()
         rospy.spin()
+
+    def sigint_handler(self, signal, frame):
+        """
+        Exit cleanly upon receiving a SIGINT signal (e.g., from Ctrl-C keyboard
+        interrupt).
+        """
+        print('Caught SIGINT.')
+        if self.process_is_active:
+            print('Terminating launched process.')
+            self.launched_process.terminate()
+            self.launched_process.communicate()
+        print('Terminating this process.')
+        sys.exit()
 
     def launch_process(self):
         print('Launching process: {}'.format(self.process_str))

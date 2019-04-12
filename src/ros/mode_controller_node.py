@@ -8,6 +8,8 @@ from enum import Enum
 from std_msgs.msg import Bool, Empty, String, Int16, Float64
 from pacmouse_pkg.msg import LED, Drive
 
+# TODO: Don't sweep through the entire rainbow with the LED sweeps. From a UI perspective, just go red to green
+# TODO: Figure out why all LEDs get color changed when sweeping
 
 class Mode(Enum):
     IDLE = 0
@@ -31,8 +33,8 @@ class ModeController(object):
 
     def __init__(self):
 
-
         self.idle_submode = None
+        self.num_encoder_callbacks = 0
 
         self.rotary_option_threshold = 3  # number of radians
         # Number of seconds to wait before starting shortest-path solving or
@@ -238,10 +240,14 @@ class ModeController(object):
         selection progress.
         """
         self.rotary_dial_value = data.R
+        self.num_encoder_callbacks += 1
+        if self.num_encoder_callbacks < 10:
+            # Avoid calling the LED function too often
+            return
         # Only set LEDs on encoder callback when not in IDLE mode
-        print 'idle_submode: {}'.format(self.idle_submode)
         if self.idle_submode is None:
             return
+        self.num_encoder_callbacks = 0
         self.led_function()
 
     def restart_software_stack(self):
@@ -415,38 +421,26 @@ class ModeLEDSignalFunctions(object):
         self.set_leds_pub.publish(led_msg)
 
     def compute_color_on_spectrum(self, angle):
-        """Map an angle value to a color between red and blue."""
+        """Map an angle value to a color between red and green."""
         ratio = angle/self.mc.rotary_option_threshold
         r = g = b = 0
         inner_ratio = self._calculate_inner_ratio(ratio)
-        if ratio < 1.0/6.0:
+        if ratio < 1.0/2.0:
             r = 255
             g = int(255*inner_ratio)
             b = 0
-        elif ratio < 1.0/3.0:
+        elif ratio < 1.0:
             r = int(255 - 255*inner_ratio)
             g = 255
             b = 0
-        elif ratio < 1.0/2.0:
+        else:
             r = 0
             g = 255
-            b = int(255*inner_ratio)
-        elif ratio < 2.0/3.0:
-            r = 0
-            g = int(255 - 255*inner_ratio)
-            b = 255
-        elif ratio < 5.0/6.0:
-            r = int(255*inner_ratio)
-            g = 0
-            b = 255
-        else:
-            r = 255
-            g = 0
-            b = int(255 - 255*inner_ratio)
+            b = 0
         return self._rgb_to_hex_str(r, g, b)
 
     def _calculate_inner_ratio(self, num):
-        return (num % (1.0/6.0))/(1.0/6.0)
+        return (num % (1.0/2.0))/(1.0/2.0)
 
     def _rgb_to_hex_str(self, r, g, b):
         return hex((r << 16) + (g << 8) + b)
