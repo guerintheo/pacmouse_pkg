@@ -27,11 +27,13 @@ class Estimator:
         # NOTE(izzy): this is not the right way to do this, I'm just filling in the class so
         # we can get the architecture up and running. In the future this should be in a kalman
         # filter.
-        lidars, encoders = Z
+        lidars, encoders, imu = Z
 
         # right now I'm using the same dynamics from the motion_model
         u_mu = motion_model(self.state, encoders, dt)
-        self.state += u_mu
+
+        # lock the change in rotation to the imu orientation (this is meh, but shred it)
+        u_mu[2] = imu - self.state[2]
 
         # update the particle filter
         self.pf.update(u_mu[:3], self.u_sigma[:3], lidars, self.lidar_obs_func)
