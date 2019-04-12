@@ -54,7 +54,7 @@ class IMUNode(object):
 
 
             self.am_upside_down(roll, pitch)
-            # Convert to radians
+            # Convert to radian
             heading = wrap(np.radians(heading))
             # print('Heading: {} radians'.format(heading)) 
             heading_msg = Float64()
@@ -64,16 +64,18 @@ class IMUNode(object):
 
     def am_upside_down(self, roll, pitch):
         # Needs to be both so you are fully upside down
-        am_upside_down = (-30 <= roll <= 30 and -120 <= pitch <= -60)
+        am_upside_down = (-90 <= roll <= 90 and -180 <= pitch <= 0)
+        # print 'roll: {} pitch: {} am_upside: {}'.format(roll, pitch, am_upside_down)
         if am_upside_down:
             self.imu_am_upside_down.publish(Empty())
 
     def reset_heading(self, data):
-        current_pos = self.bno.read_euler()
+        current_pos = np.array([self.bno.read_euler()])
         print('offset heard at {}'.format(current_pos))
-        self.offset = np.array(current_pos)
+        heading_offset = current_pos[0]
+        self.offset[0] = heading_offset
         print('new orientation: {}'.format(current_pos - self.offset))
 
-if __name__ == '__main__':
+if __name__ == '__main__': 
     imu = IMUNode()
     imu.spin()
