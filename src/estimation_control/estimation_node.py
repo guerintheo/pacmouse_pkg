@@ -14,11 +14,11 @@ class EstimationNode:
 	def __init__(self):
 		rospy.init_node('estimation_node')
 
-		initial_state = np.array([p.maze_cell_size/2, p.maze_cell_size/2, 0.])
+		initial_state = np.array([p.maze_cell_size/2, p.maze_cell_size/2, 0., 0, 0, 0])
 		self.estimator = Estimator(initial_state, p.num_particles)
 
 		self.encoders = np.zeros(2)
-		self.yaw = 0.0
+		self.imu = 0.0
 
 		self.prev_t = time.time()
 
@@ -38,7 +38,7 @@ class EstimationNode:
 
 	def publish_pose_estimate(self):
 		msg = Vector3
-		msg.x, msg.y, msg.z = self.estimator.state
+		msg.x, msg.y, msg.z = self.estimator.state[:3]
 		self.pose_pub.publish(msg)
 
 	def update_pose_estimate(self):
@@ -68,7 +68,7 @@ class EstimationNode:
 		self.publish_pose_estimate()
 
 	def imu_callback(self, msg):
-		self.yaw = msg.data
+		self.imu = msg.data
 
 	def encoders_callback(self, msg):
 		self.encoders = np.array([msg.L, msg.R])
