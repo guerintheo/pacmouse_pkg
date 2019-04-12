@@ -35,15 +35,8 @@ class LEDs:
 		rospy.Subscriber('/pacmouse/mode/set_leds', LED, self.color_callback)
 
 		self.rainbow()
-
-		led_msg = LED()
-		led_msg.led_num = 0
-		led_msg.hex_color = '0x00FF00'
-
-		# self.strip.set_pixel_rgb(0,GREEN)
-		self.color_callback(led_msg)
-		self.strip.show()
-
+		self.color_callback(LED(0, '0x00FF00'))
+		
 		rospy.on_shutdown(self.shutdown) # TODO: Ask ros geniuses if this is the right way to shut down.
 
 		rospy.spin()
@@ -52,7 +45,7 @@ class LEDs:
 		print 'setting {} to {}'.format(LED.led_num, int(LED.hex_color, 16))
 		self.strip.set_pixel_rgb(LED.led_num,int(LED.hex_color, 16))
 
-		self.strip.show()
+		self.strip.show() 
 
 	def setall(self, color):
 		for i in range(p.num_leds):
@@ -61,45 +54,45 @@ class LEDs:
 
 	def rainbow(self):
 		self.setall(RED)
-		time.sleep(0.3)
+		time.sleep(0.2)
 		self.setall(ORANGE)
-		time.sleep(0.3)
+		time.sleep(0.2)
 		self.setall(YELLOW)
-		time.sleep(0.3)
+		time.sleep(0.2)
 		self.setall(GREEN)
-		time.sleep(0.3)
+		time.sleep(0.2)
 		self.setall(BLUE)
-		time.sleep(0.3)
+		time.sleep(0.2)
 		self.setall(PURPLE)
-		time.sleep(0.3)
+		time.sleep(0.2)
 
 		self.strip.set_pixel_rgb(0,RED)
 		self.strip.show()
-		time.sleep(0.2)
+		time.sleep(0.1)
 		self.strip.set_pixel_rgb(1,RED)
 		self.strip.show()
-		time.sleep(0.2)
+		time.sleep(0.1)
 		self.strip.set_pixel_rgb(2,RED)
 		self.strip.show()
-		time.sleep(0.2)
+		time.sleep(0.1)
 		self.strip.set_pixel_rgb(0,GREEN)
 		self.strip.show()
-		time.sleep(0.2)
+		time.sleep(0.1)
 		self.strip.set_pixel_rgb(1,GREEN)
 		self.strip.show()
-		time.sleep(0.2)
+		time.sleep(0.1)
 		self.strip.set_pixel_rgb(2,GREEN)
 		self.strip.show()
-		time.sleep(0.2)
+		time.sleep(0.1)
 		self.strip.set_pixel_rgb(0,OFF)
 		self.strip.show()
-		time.sleep(0.2)
+		time.sleep(0.1)
 		self.strip.set_pixel_rgb(1,OFF)
 		self.strip.show()
-		time.sleep(0.2)
+		time.sleep(0.1)
 		self.strip.set_pixel_rgb(2,OFF)
 		self.strip.show()
-		time.sleep(0.2)
+		time.sleep(0.1)
 
 		print "rainbow test complete"
 

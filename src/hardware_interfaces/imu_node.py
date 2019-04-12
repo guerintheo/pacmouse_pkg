@@ -20,7 +20,8 @@ class IMUNode(object):
 
         rospy.Subscriber('/pacmouse/mode/zero_heading', Empty, self.reset_heading)
 
-        self.bno = BNO055.BNO055(serial_port=rospy.get_param("/pacmouse/params/imu_serial_port"))
+    def start_imu(self):
+        self.bno = BNO055.BNO055(serial_port=rospy.get_param("/pacmouse/params/imu_serial_port"), serial_timeout_sec=5 )
         # Try to initialize the IMU
         if not self.bno.begin():
             raise RuntimeError('The BNO055 failed to initialize. Check if the sensor is connected.')
@@ -42,7 +43,11 @@ class IMUNode(object):
         while not rospy.is_shutdown():
             # Read the Euler angles for heading, roll, and pitch, all given in
             # degrees
-            heading, roll, pitch = np.array(self.bno.read_euler()) - self.offset
+            try:
+                heading, roll, pitch = np.array(self.bno.read_euler()) - self.offset
+            except:
+                print 'cannot poll imu, restarting it'
+                self.start_imu()
 
             # TODO: Do something with roll or pitch data as a means of user input
             self.am_upside_down(roll, pitch)
@@ -65,7 +70,7 @@ class IMUNode(object):
         current_pos = self.bno.read_euler()
         print('offset heard at {}'.format(current_pos))
         self.offset = np.array(current_pos)
-        print('new pose: {}'.format(current_pos - self.offset))
+        print('new orientation: {}'.format(current_pos - self.offset))
 
 if __name__ == '__main__':
     imu = IMUNode()
