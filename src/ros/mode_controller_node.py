@@ -92,6 +92,8 @@ class ModeController(object):
 
     def set_curr_mode_idle(self):
         self.curr_mode = Mode.IDLE
+        # Disarm the motors while in IDLE mode
+        self.set_motor_arm_pub.publish(False)
         self.led_function = self.led_modes.set_leds_for_idle
         self.led_function()
 
@@ -126,8 +128,6 @@ class ModeController(object):
             self.rotary_dial_start_value = self.rotary_dial_value
             self.led_function = self.led_modes.set_leds_for_set_mode
             self.led_function()
-            # Disarm the motors while in IDLE mode
-            self.set_motor_arm_pub.publish(False)
         elif not button1_state and self.idle_submode is Mode.SET_MODE:
             # Button toggled low while in SET_MODE mode: depending on the value
             # of the rotary option, either go back to top-level IDLE mode, go
@@ -169,8 +169,6 @@ class ModeController(object):
             self.rotary_dial_start_value = self.rotary_dial_value
             self.led_function = self.led_modes.set_leds_for_set_speed
             self.led_function()
-            # Disarm the motors while in IDLE mode
-            self.set_motor_arm_pub.publish(False)
         elif not button2_state and self.idle_submode is Mode.SET_SPEED:
             # Button toggled low while in SET_SPEED mode
             self.idle_submode = None  # we are exiting an IDLE sub-mode
@@ -198,8 +196,6 @@ class ModeController(object):
             self.rotary_dial_start_value = self.rotary_dial_value
             self.led_function = self.led_modes.set_leds_for_maze_revert
             self.led_function()
-            # Disarm the motors while in IDLE mode
-            self.set_motor_arm_pub.publish(False)
         elif not button3_state and self.idle_submode is Mode.SET_MAZE_REVERT:
             # Button toggled low while in SET_MAZE_REVERT mode
             self.idle_submode = None  # we are exiting an IDLE sub-mode
@@ -228,8 +224,6 @@ class ModeController(object):
             self.rotary_dial_start_value = self.rotary_dial_value
             self.led_function = self.led_modes.set_leds_for_restart
             self.led_function()
-            # Disarm the motors while in IDLE mode
-            self.set_motor_arm_pub.publish(False)
         elif not button4_state and self.idle_submode is Mode.SET_RESTART:
             # Button toggled low while in SET_RESTART mode
             self.idle_submode = None  # we are exiting an IDLE sub-mode
@@ -258,7 +252,7 @@ class ModeController(object):
             # Avoid calling the LED function too often
             return
         # Only set LEDs on encoder callback when not in top-level IDLE mode
-        if self.curr_mode is Mode.IDLE and self.idle_submode is None:
+        if self.idle_submode is None:
             return
         self.num_encoder_callbacks = 0
         self.led_function()
@@ -347,9 +341,9 @@ class ModeLEDSignalFunctions(object):
     OFF = '0x000000'
     ORANGE = '0xFF7F00'
     RED = '0xFF0000'
-    BLUE = '0x0000FF' 
-    PURPLE = '0x4B0082' 
-    VIOLET = '0x9400D3' 
+    BLUE = '0x0000FF'
+    PURPLE = '0x4B0082'
+    VIOLET = '0x9400D3'
 
     def __init__(self, mode_controller):
         self.mc = mode_controller
