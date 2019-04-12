@@ -38,6 +38,7 @@ void Buttons::publish_changes() {
 
 	for (int i = 0; i < 4; i++) {
 		levels[i] = gpioRead(pins[i]);
+		printf("%d %d", pins[i], (int) levels[i]);
 		if (old_levels[i] != levels[i]) {
 			msg.data = old_levels[i] = levels[i];
 	  		publishers[i].publish(msg);

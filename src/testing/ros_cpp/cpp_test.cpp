@@ -19,9 +19,9 @@ using namespace std; // give access to std library functions withoud std::func
 // re-run this script.
 float LOOP_RATE;
 
-int BUTTON_L;
-int BUTTON_R;
-int BUTTON_3; 
+int BUTTON_1;
+int BUTTON_2;
+int BUTTON_3;
 int BUTTON_4;
 
 int ENCODER_R_A; 
@@ -76,8 +76,8 @@ void set_motors(float L, float R) {
 }
 
 void load_params(ros::NodeHandle n) {
-    n.getParam("/pacmouse/params/button_L", BUTTON_L);
-    n.getParam("/pacmouse/params/button_R", BUTTON_R);
+    n.getParam("/pacmouse/params/button_1", BUTTON_1);
+    n.getParam("/pacmouse/params/button_2", BUTTON_2);
     n.getParam("/pacmouse/params/button_3", BUTTON_3);
     n.getParam("/pacmouse/params/button_4", BUTTON_4);
     n.getParam("/pacmouse/params/loop_rate", LOOP_RATE);
@@ -208,7 +208,7 @@ int main(int argc, char **argv)
   PID pid_R = PID(MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);
 
   // buttons object handles updates from the buttons
-  int button_pins[4] = {7, 13, 16, 12};
+  int button_pins[] = {BUTTON_1, BUTTON_2, BUTTON_3, BUTTON_4};
   Buttons buttons = Buttons(button_pins, n);
 
   float cmd_L, cmd_R;
