@@ -2,7 +2,7 @@ import numpy as np
 import time
 import os
 # only load matplotlib if we are not on the pi
-if os.uname()[1] != 'pi':
+if os.path.expanduser("~") != '/home/pi':
     from matplotlib import pyplot as plt
 
 from pacmouse_pkg.src.utils.maze import Maze, Maze2
@@ -18,7 +18,7 @@ def lidar_observation_function_hyperbolic(Z, x, maze):
         x (1d numpy array): a 6-vector of state (of a particle)
         maze (Maze): the maze
 
-    Returns:
+    # Returns:
         float: how likely that particle is based on agreement the sensor data, Z
     """
     z_exp = estimate_lidar_returns(x, maze)
@@ -64,9 +64,10 @@ def lidar_observation_function_gaussian_multi(Z, xs, maze):
     # to the estimate_lidar_returns model
     base_variance = 0.1
     eps = 1e-3
+    print 'Expected values', z_exp
+    print 'Confidence values', z_conf
     # return np.prod(gaussian(z_exp, Z[None,:], base_variance + (1.-z_conf)/100.)+1e-5, axis=1)
-    # print gaussian(z_exp, Z[None,:], base_variance / (z_conf+eps))
-    return np.prod(gaussian(z_exp, Z[None,:], base_variance / (z_conf+eps))+eps, axis=1)
+    return np.prod(gaussian(z_exp, Z[None,:], base_variance / (z_conf+eps)), axis=1) + eps
 
 def estimate_lidar_returns_old(pose, maze):
     plot = False
@@ -356,6 +357,8 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, return
 
     min_dists -= choose_horizontal * horizontal_dist_to_remove
     min_dists -= (1-choose_horizontal) * vertical_dist_to_remove
+    less_than_max_dist = min_dists < p.max_lidar_dist
+    min_dists = np.clip(min_dists, 0, p.max_lidar_dist)
 
     if debug_plot: debug_plot_lidar_enpoints(debug_plot, lidar_global_vecs, lidar_global_xys, min_dists)
 
@@ -364,7 +367,7 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, return
         h_intersect_argmin_distance = np.ma.masked_equal(h_wall_intersect_distances, 0, copy=False).argmin(axis=2)
         min_dist_h_wall_hit_confidences = np.take_along_axis(h_wall_hit_confidences, h_intersect_argmin_distance[:,:,None], axis=2)[:,:,0]
         min_dist_v_wall_hit_confidences = np.take_along_axis(v_wall_hit_confidences, v_intersect_argmin_distance[:,:,None], axis=2)[:,:,0]
-        confidences = choose_horizontal * min_dist_h_wall_hit_confidences + (1-choose_horizontal) * min_dist_v_wall_hit_confidences
+        confidences = choose_horizontal * min_dist_h_wall_hit_confidences + (1-choose_horizontal) * min_dist_v_wall_hit_confidences * less_than_max_dist
         return min_dists, confidences
 
     else:
@@ -586,10 +589,10 @@ def plot_segment_list(plt, segment_list):
         plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k')
 
 def test_estimate_lidar_returns_multi():
-    maze = Maze2(5,3)
+    maze = Maze2(3,5)
     maze.generate_random_maze()
-    maze.v_walls *= np.random.rand(*maze.v_walls.shape)
-    maze.h_walls *= np.random.rand(*maze.h_walls.shape)
+    # maze.v_walls *= np.random.rand(*maze.v_walls.shape)
+    # maze.h_walls *= np.random.rand(*maze.h_walls.shape)
 
     # # plot the maze
     maze.build_segment_list()

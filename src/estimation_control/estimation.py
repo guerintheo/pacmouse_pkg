@@ -20,6 +20,10 @@ class Estimator:
         self.pf = ParticleFilter(particles)
         self.pf.parallelized = True # compute the observation function simultaneously for all particles
 
+    def set_state(self, state):
+        self.state = state
+        self.pf.particles[:,:] = state[None,:3]
+
     def set_maze(self, maze, obs_func=lidar_observation_function_hyperbolic_multi):
         self.lidar_obs_func = lambda Z, x: obs_func(Z, x, maze)
 

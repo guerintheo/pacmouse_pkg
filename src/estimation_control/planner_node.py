@@ -30,8 +30,9 @@ class PlannerNode:
 		self.tremaux = Tremaux(self.maze)
 
 		self.goal_cell = np.zeros(2, dtype=int)
-
+		
 		rospy.Subscriber('/pacmouse/pose/mocap', Vector3, self.pose_callback)
+		rospy.Subscriber('/pacmouse/pose/estimate', Vector3, self.pose_callback)
 		rospy.Subscriber('/pacmouse/mode/set_plan_mode', String, self.mode_callback)
 		rospy.Subscriber('/pacmouse/maze', Maze, self.maze_callback)
 		rospy.Subscriber('/pacmouse/goal', Vector3, self.set_goal_for_testing)

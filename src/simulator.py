@@ -81,8 +81,9 @@ class Simulator:
         # get the sensor data (with noise)
         lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.maze) + np.random.normal(0, self.lidar_sigma, p.num_lidars)
         encoders = cmd + np.random.normal(0, self.encoder_sigma, size=2)
+        self.imu = self.real_bot_state[2]
 
-        return lidars, encoders
+        return lidars, encoders, imu
 
     def animate_plot(self, i):
         self.update()
@@ -282,7 +283,7 @@ class FullSimulator:
 
         decrement_amount = 0.1
         increment_amount = 0.2
-        update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount)
+        update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount, debug_plot = plt)
 
         self.estimated_maze.build_segment_list()
         self.estimator.set_maze(self.estimated_maze, obs_func=lidar_observation_function_gaussian_multi)
@@ -290,13 +291,9 @@ class FullSimulator:
     def update(self):
         # run the simulator to update the "real" robot
         Z = self.simulate(self.cmd)
-        self.lidars, self.encoders = Z
+        self.lidars, self.encoders, self.imu = Z
 
         self.update_estimated_maze()
-
-        # simulate the IMU by using ground truth yaw data
-        self.estimator.state[2] = self.real_bot_state[2]
-        self.estimator.pf.particles[:,2] = self.real_bot_state[2]
 
         # and update the estimator
         self.estimator.update(Z, self.dt)
@@ -309,15 +306,17 @@ class FullSimulator:
         # get the sensor data (with noise)
         lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.real_maze)[0] + np.random.normal(0, self.lidar_sigma, p.num_lidars)
         encoders = cmd + np.random.normal(0, self.encoder_sigma, size=2)
+        imu = self.real_bot_state[2]
 
-        return lidars, encoders
+        return lidars, encoders, imu
 
     def animate_plot(self, i):
-        self.update()
         ax1.clear()
         plt.xlim(0, self.real_maze.width * p.maze_cell_size)
         plt.ylim(0, self.real_maze.height * p.maze_cell_size)
         plt.gca().set_aspect('equal', adjustable='box')
+
+        self.update()
         self.estimated_maze.plot(plt)
         for particle in self.estimator.pf.particles: self.draw_bot(ax1, particle, 'r', 0.2)   # draw the particles
         self.draw_outer_chassis(ax1, self.estimator.state[:3], 'g', 0.5)        # draw the estimated bot
