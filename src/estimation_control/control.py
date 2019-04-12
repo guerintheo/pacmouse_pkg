@@ -12,10 +12,10 @@ def step(x, sp):
     Returns:
         1d numpy array: a 2-vector [drive, steer]
     """
-    steering_coeff = 0.7
+    steering_coeff = 1.
     drive_coeff    = 1.
-    max_speed = 0.1 # m/s
-    max_angle = np.pi/3
+    max_speed = 0.15 # m/s
+    max_angle = np.pi/4
 
     e_x, e_y = sp[:2] - x[:2]                   # the position difference
     e_t = wrap(np.arctan2(e_y, e_x) - x[2])     # the angular error to point at the desired position

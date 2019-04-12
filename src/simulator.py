@@ -34,7 +34,7 @@ class Simulator:
         self.u_sigma = np.array([.002,.002, np.radians(2), 1e-4, 1e-4, 1e-4])
         # noise to add to simulated sensor data
         self.lidar_sigma = 0.005
-        self.encoder_sigma = 5
+        self.encoder_sigma = 0.05
 
         self.estimator = Estimator(self.real_bot_state, num_particles=50) # initialize the state estimator
         self.estimator.set_maze(self.maze)              # pass it the maze
@@ -144,7 +144,7 @@ class DrivingSimulator:
         self.u_sigma = np.array([.002,.002, np.radians(2), 1e-4, 1e-4, 1e-4])
         # noise to add to simulated sensor data
         self.lidar_sigma = 0.005
-        self.encoder_sigma = 5
+        self.encoder_sigma = 0.05
 
         self.estimator = Estimator(self.real_bot_state) # initialize the state estimator
         self.estimator.set_maze(self.real_maze)              # pass it the maze
@@ -156,8 +156,8 @@ class DrivingSimulator:
         self.estimated_maze.build_segment_list()
 
         self.cmd = np.zeros(2)
-        self.forward_increment = 40.
-        self.steer_increment = 40.
+        self.forward_increment = 0.5
+        self.steer_increment = 0.5
         self.dt = 0.1
 
     def update_estimated_maze(self):
@@ -265,15 +265,15 @@ class FullSimulator:
         self.u_sigma = np.array([.002,.002, np.radians(2), 1e-4, 1e-4, 1e-4])
         # noise to add to simulated sensor data
         self.lidar_sigma = 0.005
-        self.encoder_sigma = 5
+        self.encoder_sigma = 0.05
 
         self.estimator = Estimator(self.real_bot_state)                         # initialize the state estimator
         self.estimator.set_maze(self.estimated_maze, obs_func=lidar_observation_function_gaussian_multi)   # pass it the maze
-        self.estimator.u_sigma = self.u_sigma           # and the noise model
+        # self.estimator.u_sigma = self.u_sigma           # and the noise model
 
         self.cmd = np.zeros(2)
-        self.forward_increment = 40.
-        self.steer_increment = 40.
+        self.forward_increment = 0.5
+        self.steer_increment = 0.5
         self.dt = 0.2
 
     def update_estimated_maze(self):
@@ -292,6 +292,10 @@ class FullSimulator:
         self.lidars, self.encoders = Z
 
         self.update_estimated_maze()
+
+        # simulate the IMU by using ground truth yaw data
+        self.estimator.state[2] = self.real_bot_state[2]
+        self.estimator.pf.particles[:,2] = self.real_bot_state[2]
 
         # and update the estimator
         self.estimator.update(Z, self.dt)

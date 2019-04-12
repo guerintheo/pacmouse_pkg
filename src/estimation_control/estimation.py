@@ -12,7 +12,7 @@ class Estimator:
 
         # NOTE(izzy): this sigma should be estimated by the dyanmics model somehow???
         # We might have to collect mocap data in order to get this
-        self.u_sigma = np.array([.001,.001, 0.05, 1e-4, 1e-4, 1e-4])
+        self.u_sigma = np.array([.002,.002, 0.0, 0, 0, 0])
 
         self.num_particles = num_particles
         particles = np.zeros([self.num_particles, 3])

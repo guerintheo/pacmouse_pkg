@@ -59,8 +59,11 @@ def lidar_observation_function_gaussian_multi(Z, xs, maze):
     # NOTE(aaron): we may need to scale and offset z_conf to avoid zero variance
     # NOTE(aaron): z_conf should never be smaller than the transparency_threshold arg
     # to the estimate_lidar_returns model
-    base_variance = 0.01
-    return np.prod(gaussian(z_exp, Z[None,:], base_variance + (1.-z_conf)/100.)+1e-5, axis=1)
+    base_variance = 0.1
+    eps = 1e-3
+    # return np.prod(gaussian(z_exp, Z[None,:], base_variance + (1.-z_conf)/100.)+1e-5, axis=1)
+    # print gaussian(z_exp, Z[None,:], base_variance / (z_conf+eps))
+    return np.prod(gaussian(z_exp, Z[None,:], base_variance / (z_conf+eps))+eps, axis=1)
 
 def estimate_lidar_returns_old(pose, maze):
     plot = False
