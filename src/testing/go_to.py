@@ -55,8 +55,13 @@ class GoTo:
 			cmd.R = 0
 
 			if self.target is not None:
-				set_point = get_sp(self.pose, self.maze, self.target.astype(int))
-				cmd.L, cmd.R = inverse_motion_model(step(self.pose, self.target))
+				curr_cell = np.floor((self.pose[:2] - self.origin)/p.maze_cell_size).astype(int)
+				path = self.maze.route(curr_cell, self.target.astype(int), threshold = 0.5)
+				if len(path) > 1:
+					set_point = (np.array([path[1]%self.maze.width, np.floor(path[1]/self.maze.width)]) + 0.5) * p.maze_cell_size
+				else:
+					set_point = self.pose[:2]
+				cmd.L, cmd.R = inverse_motion_model(step(self.pose, set_point))
 
 			self.cmd_pub.publish(cmd)
 
