@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import rospy
 import numpy as np
 
@@ -63,4 +64,4 @@ class ControllerNode:
 
 
 if __name__ == '__main__':
-	ros_is_a_piece_of_shit = ControllerNode()
+	controller = ControllerNode()
