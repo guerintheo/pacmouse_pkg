@@ -6,3 +6,4 @@ venv/
 .vscode
 *.swp
 tof_test
+*.mov
