@@ -22,11 +22,11 @@ public:
 
 			// setup a publisher
 			sprintf(channel, "/pacmouse/buttons/%d", i+1);
-			publishers[i] = n.advertise<std_msgs::Int8>(channel, 1);
+			publishers[i] = n.advertise<std_msgs::Bool>(channel, 1);
 
 			// configure the gpio
 			gpioSetMode(pin, PI_INPUT);
-			gpioSetPullUpDown(pin, PI_PUD_UP);
+			gpioSetPullUpDown(pin, PI_PUD_DOWN);
 		}
 	};
 
@@ -38,6 +38,7 @@ void Buttons::publish_changes() {
 
 	for (int i = 0; i < 4; i++) {
 		levels[i] = gpioRead(pins[i]);
+		printf("%d %d", pins[i], (int) levels[i]);
 		if (old_levels[i] != levels[i]) {
 			msg.data = old_levels[i] = levels[i];
 	  		publishers[i].publish(msg);
@@ -45,21 +46,21 @@ void Buttons::publish_changes() {
 	}
 }
 
-int main(int argc, char **argv)
-{
-  if (gpioInitialise() < 0) {
-    ROS_INFO("Could not initialize GPIOs. I'm borked.");
-    return 1;
-  }
-  ros::init(argc, argv, "button_publisher");
-  ros::NodeHandle n;
+// int main(int argc, char **argv)
+// {
+//   if (gpioInitialise() < 0) {
+//     ROS_INFO("Could not initialize GPIOs. I'm borked.");
+//     return 1;
+//   }
+//   ros::init(argc, argv, "button_publisher");
+//   ros::NodeHandle n;
 
-  int p[] = {7, 13, 16, 12};
-  Buttons b = Buttons(p, n);
+//   int p[] = {7, 13, 16, 12};
+//   Buttons b = Buttons(p, n);
 
-  while (ros::ok()) {  
-  	b.publish_changes();
-  	usleep(100000000);
-  }
-  return 0;
-}
+//   while (ros::ok()) {  
+//   	b.publish_changes();
+//   	usleep(100000000);
+//   }
+//   return 0;
+// }
