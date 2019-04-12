@@ -20,8 +20,8 @@ class ControllerNode:
 
 		self.cmd_pub = rospy.Publisher('/pacmouse/motor/cmd', Drive, queue_size=1)
 		rospy.on_shutdown(self.shutdown)
-
 		rospy.Subscriber('/pacmouse/pose/mocap', Vector3, self.pose_callback)
+		rospy.Subscriber('/pacmouse/pose/estimate', Vector3, self.pose_callback)
 		rospy.Subscriber('/pacmouse/plan', Vector3, self.plan_callback)
 		rospy.Subscriber('/pacmouse/mode/set_motor_arm', Bool, self.arm_callback)
 
