@@ -172,7 +172,7 @@ class DrivingSimulator:
     def update(self):
         # run the simulator to update the "real" robot
         Z = self.simulate(self.cmd)
-        self.lidars, self.encoders = Z
+        self.lidars, self.encoders, self.imu = Z
 
         self.update_estimated_maze()
 
@@ -187,8 +187,9 @@ class DrivingSimulator:
         # get the sensor data (with noise)
         lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.real_maze)[0] + np.random.normal(0, self.lidar_sigma, p.num_lidars)
         encoders = cmd + np.random.normal(0, self.encoder_sigma, size=2)
+        imu = self.real_bot_state[2]
 
-        return lidars, encoders
+        return lidars, encoders, imu
 
     def animate_plot(self, i):
         ax1.clear()

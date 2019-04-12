@@ -84,3 +84,4 @@ controller_max_angle = np.pi/6
 
 ######################### ESTIMATION PARAMS ################################
 num_particles = 20
+max_lidar_dist = 0.17
