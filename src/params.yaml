@@ -17,10 +17,10 @@ motor_control_freq: 100.0
 
 ticks_per_radian: 42.7713
 
-button_1: 18
-button_2: 19
-button_3: 20
-button_4: 21
+button_1: 21
+button_2: 20
+button_3: 19
+button_4: 18
 
 motor_coeff: 0.025
 

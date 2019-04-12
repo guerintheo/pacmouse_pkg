@@ -31,8 +31,8 @@ def motion_model(x, u, dt):
     return change_in_state
 
 # constants used in the dynamics model for calculating velocities from wheel speeds
-C_v = p.wheel_radius/p.gear_ratio
-C_psi_dot = (p.wheel_radius*p.wheel_dist_y)/(p.wheel_dist_x**2 + p.wheel_dist_y**2)/p.gear_ratio
+C_v = p.wheel_radius
+C_psi_dot = (p.wheel_radius*p.wheel_dist_y)/(p.wheel_dist_x**2 + p.wheel_dist_y**2)
 
 def vel_and_psi_dot_from_wheel_vels(u):
     """

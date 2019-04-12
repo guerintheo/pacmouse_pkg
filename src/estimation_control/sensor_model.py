@@ -59,8 +59,11 @@ def lidar_observation_function_gaussian_multi(Z, xs, maze):
     # NOTE(aaron): we may need to scale and offset z_conf to avoid zero variance
     # NOTE(aaron): z_conf should never be smaller than the transparency_threshold arg
     # to the estimate_lidar_returns model
-    base_variance = 0.01
-    return np.prod(gaussian(z_exp, Z[None,:], base_variance + (1.-z_conf)/100.)+1e-5, axis=1)
+    base_variance = 0.1
+    eps = 1e-3
+    # return np.prod(gaussian(z_exp, Z[None,:], base_variance + (1.-z_conf)/100.)+1e-5, axis=1)
+    # print gaussian(z_exp, Z[None,:], base_variance / (z_conf+eps))
+    return np.prod(gaussian(z_exp, Z[None,:], base_variance / (z_conf+eps))+eps, axis=1)
 
 def estimate_lidar_returns_old(pose, maze):
     plot = False
@@ -223,6 +226,18 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, return
     # this is an [m] array
     lidar_local_thetas = p.lidar_transforms[:, 2]
 
+    # this is an [n x 2 x 2] array
+    pose_rotation_matricies = np.moveaxis(
+                                 np.array([[np.cos(poses[:,2]), -np.sin(poses[:,2])],
+                                           [np.sin(poses[:,2]), np.cos(poses[:,2])]]),
+                                 2, 0)
+
+    # this is an [m x 2] array
+    lidar_local_xys = p.lidar_transforms[:, :2]
+
+    # [n x m x 2] array
+    lidar_global_xys = poses[:, None, :2] + np.einsum('nij,mj->nmi', pose_rotation_matricies, lidar_local_xys)
+
     # this is an [n x m] array
     lidar_global_thetas = poses[:, 2, None] + lidar_local_thetas[None, :]
 
@@ -232,11 +247,6 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, return
                                                [np.sin(lidar_global_thetas), np.cos(lidar_global_thetas)]]),
                                      [2,3], [0,1])
 
-    # this is an [m x 2] array
-    lidar_local_xys = p.lidar_transforms[:, :2]
-
-    # [n x m x 2] array
-    lidar_global_xys = poses[:, None, :2] + np.einsum('nmij,mj->nmi', lidar_global_rotation_matrices, lidar_local_xys)
 
     # [n x m x 2] array
     lidar_global_vecs = np.einsum('nmij,j->nmi', lidar_global_rotation_matrices, np.array([1,0]))
@@ -400,7 +410,7 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     lidar_local_xys = p.lidar_transforms[:, :2]
 
     # [m x 2] array
-    lidar_global_xys = pose[None, :2] + np.einsum('mij,mj->mi', lidar_global_rotation_matrices, lidar_local_xys)
+    lidar_global_xys = pose[None, :2] + np.einsum('ij,mj->mi', rotation_matrix_2d(pose[2]), lidar_local_xys)
 
     # [m x 2] array
     lidar_global_vecs = np.einsum('mij,mj->mi', lidar_global_rotation_matrices, np.array([[1,0]]) * lidars[:, None])
@@ -581,7 +591,7 @@ def test_estimate_lidar_returns_multi():
     plt.ylim(-border, maze.height * p.maze_cell_size+border)
 
     # generate poses
-    n = 50
+    n = 3
     poses = np.array([np.random.rand(n)*maze.width * p.maze_cell_size,
                       np.random.rand(n)*maze.height * p.maze_cell_size,
                       np.random.rand(n)*np.pi*2]).T
