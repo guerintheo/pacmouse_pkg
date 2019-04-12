@@ -3,7 +3,9 @@ import rospy
 from std_msgs.msg import Empty
 from subprocess import Popen
 import time
+import sys
 
+# TODO: Handle Ctrl-C
 
 class MasterStartNode(object):
     """
@@ -17,7 +19,7 @@ class MasterStartNode(object):
     that roscore stays up the whole time during this process, as this node
     is relying on ROS for message passing.
     """
-    
+
     def __init__(self):
         self.process_is_active = False
         print('Starting up the master_start_node.')
@@ -26,8 +28,12 @@ class MasterStartNode(object):
         print('Subscribing to the restart topic at {}.'.format(restart_topic))
         rospy.Subscriber(restart_topic, Empty, self.cb_restart)
         self.process_str = 'roslaunch pacmouse_pkg gameday.launch'
+        if len(sys.argv) == 2:
+            if sys.argv[1] == 'test':
+                self.process_str = 'roslaunch pacmouse_pkg testing.launch'
         self.launch_process()
-        
+        rospy.spin()
+
     def launch_process(self):
         print('Launching process: {}'.format(self.process_str))
         # NOTE: shell=True can be a security hazard if given
@@ -35,7 +41,7 @@ class MasterStartNode(object):
         self.launched_process = Popen(self.process_str,
                                       shell=True)
         self.process_is_active = True
-        
+
     def cb_restart(self, data):
         """
         Received a message requesting that we shut down the software stack.
@@ -55,4 +61,4 @@ class MasterStartNode(object):
         self.launch_process()
 
 if __name__ == '__main__':
-    master_start = MasterStart()
+    master_start = MasterStartNode()

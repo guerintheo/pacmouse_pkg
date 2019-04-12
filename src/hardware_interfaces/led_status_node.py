@@ -1,10 +1,11 @@
+#!/usr/bin/python
 import rospy
 import pacmouse_pkg.src.params as p
 from pacmouse_pkg.msg import LED
 from apa102_led import apa102
 import time
 
-OFF = 0x000000 #Off 
+OFF = 0x000000 #Off
 RED = 0xFF0000 #Red
 ORANGE = 0xFF7F00 #Orange
 YELLOW = 0xFFFF00 #Yellow
@@ -25,16 +26,16 @@ def append_hex(a, b):
 
     return (a << sizeof_b) | b
 
-class LEDs: 
+class LEDs:
 	def __init__(self):
 		rospy.init_node('led_status_node')
 		# master_status_sub = rospy.Subscriber('/master_status', MasterStatusMsg, master_status_callback)
 		self.strip = apa102.APA102(num_led=p.num_leds, global_brightness=p.led_default_brightness, mosi=p.mosi, sclk=p.sclk, order='rgb')
-		
+
 		rospy.Subscriber('/pacmouse/mode/set_leds', LED, self.color_callback)
 
 		self.rainbow()
-		
+
 		led_msg = LED()
 		led_msg.led_num = 0
 		led_msg.hex_color = '0x00FF00'
@@ -55,7 +56,7 @@ class LEDs:
 
 	def setall(self, color):
 		for i in range(p.num_leds):
-			self.strip.set_pixel_rgb(i,color)	
+			self.strip.set_pixel_rgb(i,color)
 		self.strip.show()
 
 	def rainbow(self):
@@ -120,7 +121,7 @@ class LEDs:
 			self.strip.set_pixel_rgb(1,PURPLE)
 		elif msg == "Pacman AI paused by button":
 			self.strip.set_pixel_rgb(1,ORANGE)
-		
+
 		if msg == "Micromouse AI running mazefinding":
 			self.strip.set_pixel_rgb(1,YELLOW)
 		elif msg == "Micromouse AI running fast mode":
@@ -132,12 +133,12 @@ class LEDs:
 
 		self.strip.show()
 
-	def shutdown(self):  
+	def shutdown(self):
 		print "received shutdown command"
 		self.strip.clear_strip()
 		self.strip.cleanup()
 
-				
+
 
 
 if __name__ == '__main__':

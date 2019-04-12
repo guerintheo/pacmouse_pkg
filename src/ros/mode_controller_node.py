@@ -21,6 +21,7 @@ class Mode(Enum):
     SET_MAZE_REVERT = 6
     SET_RESTART = 7
 
+# TODO: Publish LED messages at a lower rate, probably
 
 class ModeController(object):
     """
@@ -33,7 +34,7 @@ class ModeController(object):
 
         self.idle_submode = None
 
-        self.rotary_option_threshold = 100  # number of ticks # TODO: Set to an intuitive value
+        self.rotary_option_threshold = 3  # number of radians
         # Number of seconds to wait before starting shortest-path solving or
         # exploration if toggled by a human
         self.zero_pose_and_heading_delay_seconds = 3
@@ -339,7 +340,7 @@ class ModeLEDSignalFunctions(object):
 
     def clear_led(self, led_num):
         led_msg = LED()
-        led_msg.hex_color = OFF
+        led_msg.hex_color = ModeLEDSignalFunctions.OFF
         led_msg.led_num = led_num
         self.set_leds_pub.publish(led_msg)
 
@@ -348,7 +349,7 @@ class ModeLEDSignalFunctions(object):
         print 'In Mode Idle'
         led_msg = LED()
         led_msg.led_num = 0
-        led_msg.hex_color = GREEN
+        led_msg.hex_color = ModeLEDSignalFunctions.GREEN
         self.set_leds_pub.publish(led_msg)
         # Clear the other two LEDs
         self.clear_led(1)
@@ -358,7 +359,7 @@ class ModeLEDSignalFunctions(object):
         print('In mode SET_MODE')
         led_msg = LED()
         led_msg.led_num = 1
-        led_msg.hex_color = ORANGE
+        led_msg.hex_color = ModeLEDSignalFunctions.ORANGE
         self.set_leds_pub.publish(led_msg)
 
         rotary_dial_angle_diff = self.mc.rotary_dial_value - self.mc.rotary_dial_start_value
@@ -368,15 +369,15 @@ class ModeLEDSignalFunctions(object):
             if self.mc.found_path_to_maze_goal:
                 # Can only do shortest-path solve if we have found the
                 # goal/center of the maze. Indicate this with LED 2 set to green
-                led_msg.hex_color = GREEN
+                led_msg.hex_color = ModeLEDSignalFunctions.GREEN
             else:
-                led_msg.hex_color = RED
+                led_msg.hex_color = ModeLEDSignalFunctions.RED
             self.set_leds_pub.publish(led_msg)
             self.clear_led(0)
-        elif rotary_dial_angle_diff <= -self.rotary_option_threshold:
+        elif rotary_dial_angle_diff <= -self.mc.rotary_option_threshold:
             # Exploration mode. Set LED 0 to green
             led_msg.led_num = 0
-            led_msg.hex_color = GREEN
+            led_msg.hex_color = ModeLEDSignalFunctions.GREEN
             self.set_leds_pub.publish(led_msg)
             self.clear_led(2)
         else:
@@ -402,7 +403,7 @@ class ModeLEDSignalFunctions(object):
             rotary_dial_angle_diff = rotary_dial_angle_diff - self.mc.rotary_option_threshold
             led_msg.hex_color = self.compute_color_on_spectrum(rotary_dial_angle_diff)
         else:
-            led_msg.hex_color = OFF
+            led_msg.hex_color = ModeLEDSignalFunctions.OFF
         self.set_leds_pub.publish(led_msg)
 
         led_msg.led_num = 2
@@ -410,7 +411,7 @@ class ModeLEDSignalFunctions(object):
             rotary_dial_angle_diff = rotary_dial_angle_diff - self.mc.rotary_option_threshold
             led_msg.hex_color = self.compute_color_on_spectrum(rotary_dial_angle_diff)
         else:
-            led_msg.hex_color = OFF
+            led_msg.hex_color = ModeLEDSignalFunctions.OFF
         self.set_leds_pub.publish(led_msg)
 
     def compute_color_on_spectrum(self, angle):
@@ -420,28 +421,28 @@ class ModeLEDSignalFunctions(object):
         inner_ratio = self._calculate_inner_ratio(ratio)
         if ratio < 1.0/6.0:
             r = 255
-            g = 255*inner_ratio
+            g = int(255*inner_ratio)
             b = 0
         elif ratio < 1.0/3.0:
-            r = 255 - 255*inner_ratio
+            r = int(255 - 255*inner_ratio)
             g = 255
             b = 0
         elif ratio < 1.0/2.0:
             r = 0
             g = 255
-            b = 255*inner_ratio
+            b = int(255*inner_ratio)
         elif ratio < 2.0/3.0:
             r = 0
-            g = 255 - 255*inner_ratio
+            g = int(255 - 255*inner_ratio)
             b = 255
         elif ratio < 5.0/6.0:
-            r = 255*inner_ratio
+            r = int(255*inner_ratio)
             g = 0
             b = 255
         else:
             r = 255
             g = 0
-            b = 255 - 255*inner_ratio
+            b = int(255 - 255*inner_ratio)
         return self._rgb_to_hex_str(r, g, b)
 
     def _calculate_inner_ratio(self, num):

@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import rospy
 import numpy as np
 import pacmouse_pkg.src.params as p
@@ -5,7 +6,7 @@ from std_msgs.msg import Bool
 
 class ButtonTester:
 	def __init__(self):
-		rospy.init_node('button_tester') 
+		rospy.init_node('button_tester')
 		self.publishers = dict()
 		for i, pin in enumerate(p.button_pins):
 			self.publishers[i+1] = rospy.Publisher('/pacmouse/buttons/{}'.format(i+1), Bool, queue_size=1)
