@@ -53,6 +53,7 @@ add_message_files(
   Maze.msg
   Drive.msg
   LED.msg
+  Lidars.msg
 )
 
 ## Generate services in the 'srv' folder
