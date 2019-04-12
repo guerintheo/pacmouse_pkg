@@ -391,11 +391,11 @@ class Maze2:
         for y in range(self.height, -1, -1):
             # build v_wall
             if y < self.height:
-                walls = ['|' if self.v_walls[x,y] else ' ' for x in range(self.width+1)]
+                walls = ['|' if self.v_walls[x,y]>p.wall_transparency_threshold else ' ' for x in range(self.width+1)]
                 output += '   '.join(walls) + '\n'
 
             # build h_wall
-            walls = ['---' if self.h_walls[x,y] else '   ' for x in range(self.width)]
+            walls = ['---' if self.h_walls[x,y]>p.wall_transparency_threshold else '   ' for x in range(self.width)]
             output += '+' + '+'.join(walls) + '+\n'
         return output[:-1]
 

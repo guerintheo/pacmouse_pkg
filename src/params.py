@@ -72,3 +72,7 @@ num_leds = 3
 led_default_brightness = 2 # Range from 0 to 31 (31 is really bright)
 sclk = 8 # GPIO8 (hw pin 24) is hooked up to the SCLK pin
 mosi = 26 # GPIO26 (hw pin 37) is hooked up to the MOSI pin
+
+######################### PLANNER CONTROLLER PARAMS ################################
+wall_transparency_threshold = 0.7
+distance_to_cell_center_for_replan = 0.4
