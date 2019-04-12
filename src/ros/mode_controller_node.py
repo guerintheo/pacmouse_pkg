@@ -8,8 +8,7 @@ from enum import Enum
 from std_msgs.msg import Bool, Empty, String, Int16, Float64
 from pacmouse_pkg.msg import LED, Drive
 
-# TODO: Don't sweep through the entire rainbow with the LED sweeps. From a UI perspective, just go red to green
-# TODO: Figure out why all LEDs get color changed when sweeping
+# TODO: Set leds when transitioned back to IDLE
 
 class Mode(Enum):
     IDLE = 0
@@ -23,7 +22,6 @@ class Mode(Enum):
     SET_MAZE_REVERT = 6
     SET_RESTART = 7
 
-# TODO: Publish LED messages at a lower rate, probably
 
 class ModeController(object):
     """
@@ -36,10 +34,10 @@ class ModeController(object):
         self.idle_submode = None
         self.num_encoder_callbacks = 0
 
-        self.rotary_option_threshold = 3  # number of radians
+        self.rotary_option_threshold = 0.5  # number of radians
         # Number of seconds to wait before starting shortest-path solving or
         # exploration if toggled by a human
-        self.zero_pose_and_heading_delay_seconds = 3
+        self.zero_pose_and_heading_delay_seconds = 5
 
         # TODO: Get this information from planner or pose estimator, or
         # whichever node determines that we have reached maze goal
@@ -95,6 +93,7 @@ class ModeController(object):
     def set_curr_mode_idle(self):
         self.curr_mode = Mode.IDLE
         self.led_function = self.led_modes.set_leds_for_idle
+        self.led_function()
 
     def cb_am_upside_down(self, data):
         """
@@ -255,11 +254,11 @@ class ModeController(object):
         """
         self.rotary_dial_value = data.R
         self.num_encoder_callbacks += 1
-        if self.num_encoder_callbacks < 10:
+        if self.num_encoder_callbacks < 5:
             # Avoid calling the LED function too often
             return
-        # Only set LEDs on encoder callback when not in IDLE mode
-        if self.idle_submode is None:
+        # Only set LEDs on encoder callback when not in top-level IDLE mode
+        if self.curr_mode is Mode.IDLE and self.idle_submode is None:
             return
         self.num_encoder_callbacks = 0
         self.led_function()
