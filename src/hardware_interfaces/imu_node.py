@@ -23,7 +23,7 @@ class IMUNode(object):
 
     def start_imu(self):
         self.bno = BNO055.BNO055(serial_port=rospy.get_param("/pacmouse/params/imu_serial_port"),
-                                 serial_timeout_sec=10)  # default is 5 sec
+                                 serial_timeout_sec=2)  # default is 5 sec
         # Try to initialize the IMU
         if not self.bno.begin():
             raise RuntimeError('The BNO055 failed to initialize. Check if the sensor is connected.')
