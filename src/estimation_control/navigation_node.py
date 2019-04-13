@@ -16,8 +16,8 @@ from std_msgs.msg import Float64, Empty, Int16, String, LED
 
 
 class NavigationNode:
-	def __init__(self):
-		rospy.init_node('navigation_node')
+    def __init__(self):
+        rospy.init_node('navigation_node')
 
 		self.initial_state = np.array([p.maze_cell_size/2, p.maze_cell_size/2, 0., 0, 0, 0])
 		self.estimator = Estimator(self.initial_state, p.num_particles)
@@ -25,51 +25,51 @@ class NavigationNode:
 		self.locked_maze = Maze2()
 		self.backup_counter = 0
 
-		self.lidars = np.zeros(6)
-		self.encoders = np.zeros(2)
-		self.imu = 0.0
+        self.lidars = np.zeros(6)
+        self.encoders = np.zeros(2)
+        self.imu = 0.0
 
-		self.prev_t = time.time()
-		self.prev_plan = self.initial_state[:2]
+        self.prev_t = time.time()
+        self.prev_plan = self.initial_state[:2]
 
 		# publishers
 		self.pose_pub = rospy.Publisher('/pacmouse/pose/estimate', Vector3, queue_size=1)
 		self.plan_pub = rospy.Publisher('/pacmouse/plan', Vector3, queue_size=1)
 		self.led_pub = rospy.Publisher('/pacmouse/mode/set_leds', LED, queue_size=1)
 
-		# sensor callbacks for state estimation
-		rospy.Subscriber('/pacmouse/lidars', Lidars, self.lidars_callback)
-		rospy.Subscriber('/pacmouse/imu', Float64, self.imu_callback)
-		rospy.Subscriber('/pacmouse/encoders/velocity', Drive, self.encoders_callback)
+        # sensor callbacks for state estimation
+        rospy.Subscriber('/pacmouse/lidars', Lidars, self.lidars_callback)
+        rospy.Subscriber('/pacmouse/imu', Float64, self.imu_callback)
+        rospy.Subscriber('/pacmouse/encoders/velocity', Drive, self.encoders_callback)
 
 		# mode controller callbacks
 		rospy.Subscriber('/pacmouse/mode/zero_pose', Empty, self.zero_pose_callback)
 		rospy.Subscriber('/pacmouse/mode/load_maze', Int16, self.maze_backup_callback)
 		rospy.Subscriber('/pacmouse/mode/set_plan_mode', String, self.mode_callback)
 
-	###########################################################################
-	# Estimation stuff
-	###########################################################################
+    ###########################################################################
+    # Estimation stuff
+    ###########################################################################
 
-	def lidars_callback(self, msg):
-		# the lidars message is a fixed array of size 6. we only use the
-		# first five spots because we only have five working lidars :(
-		# we need to convert from millimeters to meters
-		self.lidars = np.array(msg.dists[:p.num_lidars]) / 1000.0
+    def lidars_callback(self, msg):
+        # the lidars message is a fixed array of size 6. we only use the
+        # first five spots because we only have five working lidars :(
+        # we need to convert from millimeters to meters
+        self.lidars = np.array(msg.dists[:p.num_lidars]) / 1000.0
 
-		# pose estimate updates are triggered on the lidars. yay
-		self.update_pose_estimate()
-		# self.update_maze_estimate()
+        # pose estimate updates are triggered on the lidars. yay
+        self.update_pose_estimate()
+        # self.update_maze_estimate()
 
-		# these functions publish a pose and a plan respectively
-		self.publish_pose_estimate()
-		self.replan()
+        # these functions publish a pose and a plan respectively
+        self.publish_pose_estimate()
+        self.replan()
 
-	def imu_callback(self, msg):
-		self.imu = msg.data
+    def imu_callback(self, msg):
+        self.imu = msg.data
 
-	def encoders_callback(self, msg):
-		self.encoders = np.array([msg.L, msg.R])
+    def encoders_callback(self, msg):
+        self.encoders = np.array([msg.L, msg.R])
 
 	def zero_pose_callback(self, msg):
 		print 'Zero estimated pose.'
@@ -86,17 +86,17 @@ class NavigationNode:
 		msg.x, msg.y, msg.z = self.estimator.state[:3]
 		self.pose_pub.publish(msg)
 
-	def update_pose_estimate(self):
-		t = time.time()
-		dt = t - self.prev_t
-		self.prev_t = t
+    def update_pose_estimate(self):
+        t = time.time()
+        dt = t - self.prev_t
+        self.prev_t = t
 
-		Z = (self.lidars, self.encoders, self.imu)
-		self.estimator.update(Z, dt)
+        Z = (self.lidars, self.encoders, self.imu)
+        self.estimator.update(Z, dt)
 
-	 def update_maze_estimate(self):
+    def update_maze_estimate(self):
         update_walls(self.estimator.state[:3], self.lidars, self.maze, p.maze_decrement, p.maze_increment)
-        
+
         # blast out the walls that we've definitely successfully passed through
         self.maze.v_walls *= self.locked_maze.v_walls
         self.maze.h_walls *= self.locked_maze.h_walls
@@ -170,4 +170,4 @@ class NavigationNode:
 		print self.maze
 
 if __name__ == '__main__':
-	ros_is_NOT_a_nice_guy = EstimationNode()
+    ros_is_NOT_a_nice_guy = NavigationNode()

@@ -36,10 +36,15 @@ class MasterStartNode(object):
         rospy.Subscriber(restart_topic, Empty, self.cb_restart)
 
         # TODO: May need full path
-        self.path = 'launch/gameday/gameday_launch_both.launch'
+        pacmouse_pkg_path = '/home/theo/catkin_ws/src/pacmouse_pkg'
+        self.path = '{}/launch/gameday/gameday_pacmouse_ap.launch'.format(pacmouse_pkg_path)
         if len(sys.argv) == 2:
-            if sys.argv[1] == 'test':
-                self.path = 'launch/testing.launch'
+            if sys.argv[1] == 'ap-test':
+                self.path = '{}/launch/testing/testing_pacmouse_ap.launch'.format(pacmouse_pkg_path)
+            elif sys.argv[1] == 'pi-zero-test':
+                self.path = '{}/launch/testing/testing_pacmouse_slave.launch'.format(pacmouse_pkg_path)
+            elif sys.argv[1] == 'pi-zero-gameday':
+                self.path = '{}/launch/gameday/gameday_pacmouse_slave.launch'.format(pacmouse_pkg_path)
 
         self.launch_new_process()
 

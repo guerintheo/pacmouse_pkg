@@ -9,7 +9,6 @@
 
     <!-- Higher-level nodes -->
     <!-- planner, pose estimator, maze estimator, etc. -->
-    <node pkg="pacmouse_pkg" type="planner_node.py" name="planner_node" output="screen" />
-    <node pkg="pacmouse_pkg" type="estimation_node.py" name="estimation_node" output="screen" />
+    <node pkg="pacmouse_pkg" type="navigation_node.py" name="navigation_node" output="screen" />
 
 </launch>
