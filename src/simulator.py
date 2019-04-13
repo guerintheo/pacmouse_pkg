@@ -290,7 +290,7 @@ class FullSimulator:
         pose = self.estimator.state[:3]
 
         decrement_amount = 0.2
-        increment_amount = 0.2
+        increment_amount = 0.1
         update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount, debug_plot = plt)
 
         # change the maze that the pose estimator uses

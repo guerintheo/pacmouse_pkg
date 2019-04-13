@@ -257,6 +257,7 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     # there are m lidars
     # the maze is w x h
 
+    lidars_below_sus_mask = lidars < p.lidar_sus_dist
     lidars = np.clip(lidars, 0, p.lidar_sus_dist)
 
     c = p.maze_cell_size
@@ -298,8 +299,6 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     end_in_maze_mask = np.prod(np.logical_and(normalized_ends > 0,
                                               normalized_ends < np.array([maze.width, maze.height])[None,:]), axis=1)
 
-    max_lidar_dist_mask = lidars < p.lidar_sus_dist
-
     # find which walls are closest. this will be a list with 1s if the h walls are closer. 0s for v walls
     h_wall_mask = np.argmin(np.abs(normalized_ends - np.round(normalized_ends)), axis=1)
 
@@ -314,12 +313,24 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     if debug_plot: debug_plot_mark_lidar_endpoints(debug_plot, lidar_global_ends, h_wall_mask, h_centeredness, v_centeredness)
 
     # create masks to say which walls we end up incrementing
-    h_walls_increment_mask = h_wall_mask * end_in_maze_mask * max_lidar_dist_mask
-    v_walls_increment_mask = (1-h_wall_mask) * end_in_maze_mask * max_lidar_dist_mask
+    h_walls_increment_mask = (h_wall_mask * end_in_maze_mask * lidars_below_sus_mask).astype(bool)
+    v_walls_increment_mask = ((1-h_wall_mask) * end_in_maze_mask * lidars_below_sus_mask).astype(bool)
+
+    # print h_walls_increment_mask, v_walls_increment_mask
 
     # update the maze
     maze.h_walls[h_indices[:,0], h_indices[:,1]] += increment_amount * h_centeredness * h_walls_increment_mask
     maze.v_walls[v_indices[:,0], v_indices[:,1]] += increment_amount * v_centeredness * v_walls_increment_mask
+
+    h_blyat = np.zeros_like(maze.h_walls)
+    h_blyat[h_indices[h_walls_increment_mask,0], h_indices[h_walls_increment_mask,1]] = 1
+    v_blyat = np.zeros_like(maze.v_walls)
+    v_blyat[v_indices[v_walls_increment_mask,0], v_indices[v_walls_increment_mask,1]] = 1
+    # print h_wall_mask
+    # print h_indices[h_walls_increment_mask, :]
+    # print v_indices[v_walls_increment_mask, :]
+    # print h_walls_increment_mask, v_walls_increment_mask
+    # print 'H\n', h_blyat, '\nV\n', v_blyat
 
     ########################## DECREMENT WALLS THAT WE PASS THRU ##########################
     # handle vertical walls first
@@ -327,6 +338,7 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     # [m]
     x_indices = np.arange(maze.width+1)
     x_coords = x_indices * c
+
     # [m x w+1] this is a matrix with one row for each of the lidars
     # y = (x - x0)/dx * dy + y0
     y_coords = (x_coords[None,:] - lidar_global_xys[:,0, None])/lidar_global_vecs[:,0, None] *\
@@ -347,7 +359,7 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     if debug_plot: debug_plot_mark_intersections_vertical(debug_plot, x_coords, y_coords, decrement_coeffs, on_vecs_mask)
 
     # and subtract from all the corresponding walls
-    maze.v_walls[x_indices, y_indices] -= decrement_coeffs * decrement_amount * on_vecs_mask
+    maze.v_walls[x_indices, y_indices] -= decrement_coeffs * decrement_amount * on_vecs_mask * (1-v_blyat[x_indices, y_indices])
 
     # # handle horizontal walls second
     y_indices = np.arange(maze.height+1)
@@ -374,7 +386,7 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     if debug_plot: debug_plot_mark_intersections_horizontal(debug_plot, x_coords, y_coords, decrement_coeffs, on_vecs_mask)
 
     # and subtract from all the corresponding walls
-    maze.h_walls[x_indices, y_indices] -= decrement_coeffs * decrement_amount * on_vecs_mask
+    maze.h_walls[x_indices, y_indices] -= decrement_coeffs * decrement_amount * on_vecs_mask * (1-h_blyat[x_indices, y_indices])
 
     # make sure the wall probabilities stay between 0 and 1
     maze.h_walls = np.clip(maze.h_walls, 0, 1)
@@ -486,10 +498,11 @@ def test_update_walls():
     plt.ylim(-border, maze.height * p.maze_cell_size+border)
 
     # generate poses
-    n = 1
-    pose = np.array([(np.random.randint(maze.width) + 0.5)* p.maze_cell_size,
-                      (np.random.randint(maze.height) + 0.5)* p.maze_cell_size,
-                      np.random.rand()*np.pi*2])
+    # pose = np.array([(np.random.randint(maze.width) + 0.5)* p.maze_cell_size,
+    #                   (np.random.randint(maze.height) + 0.5)* p.maze_cell_size,
+    #                   np.random.rand()*np.pi*2])
+
+    pose = np.array([p.maze_cell_size/2, p.maze_cell_size/2, np.pi/2])
 
     lidars = estimate_lidar_returns_multi(pose[None,:], maze, debug_plot=False)[0]
 
@@ -498,8 +511,8 @@ def test_update_walls():
     plt.show()
 
 if __name__ == '__main__':
-    test_estimate_lidar_returns_multi()
-    # test_update_walls()
+    # test_estimate_lidar_returns_multi()
+    test_update_walls()
 
 
     # m = Maze(16,16)

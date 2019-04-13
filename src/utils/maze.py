@@ -420,6 +420,9 @@ class Maze2:
                 self.v_walls[:, h - (i+1)/2] =  [l[j] == '|' for j in np.arange(w+1)*4]
 
     def get_wall_between(self, i1, i2):
+        wh = self.width * self.height - 1
+        if i1 < 0 or i2 < 0 or i1 > wh or i2 > wh: return 1 # don't accept negative cells
+
         w = self.width
         c1 = [i1%w, np.floor(i1/w).astype(int)]
         c2 = [i2%w, np.floor(i2/w).astype(int)]
@@ -462,6 +465,7 @@ class Maze2:
 
         self.h_walls *= (np.random.rand(*self.h_walls.shape) > prune_walls)
         self.v_walls *= (np.random.rand(*self.v_walls.shape) > prune_walls)
+
         self.add_perimeter()
 
     # NOTE(izzy): unused, and i think this shouldn't be shifted by the wall thickness
