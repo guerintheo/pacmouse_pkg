@@ -59,6 +59,6 @@ def lidar_observation_function_gaussian_multi(Z, xs, maze):
     # NOTE(aaron): z_conf should never be smaller than the p.wall_transparency_threshold arg
     # to the estimate_lidar_returns model
     base_variance = 0.01
-    eps = 1e-5
+    eps = 1e-8
     # return np.prod(gaussian(z_exp, Z[None,:], base_variance + (1.-z_conf)/100.)+1e-5, axis=1)
     return np.prod(gaussian(z_exp, Z[None,:], base_variance / (z_conf+eps)), axis=1) + eps

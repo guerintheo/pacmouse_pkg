@@ -247,14 +247,11 @@ class FullSimulator:
 
     def __init__(self):
         # build a maze and set the target sell
-        self.maze_size = (8,8)
+        self.maze_size = (6,6)
         self.real_maze = Maze2(*self.maze_size)
-
-        temp_maze = Maze(*self.maze_size)
-        temp_maze.build_wall_matrices()
-        print temp_maze
-        self.real_maze.v_walls = 1 - temp_maze.v_walls
-        self.real_maze.h_walls = 1 - temp_maze.h_walls
+        self.real_maze.generate_random_maze()
+        # self.real_maze.load('utils/mini_flipped.maze')
+        print self.real_maze
 
         # specify the initial state
         self.real_bot_state = np.array([0.5*p.maze_cell_size, 0.5*p.maze_cell_size, np.pi/2,0,0,0])
@@ -268,8 +265,12 @@ class FullSimulator:
         # NOTE(izzy): this sigma should be estimated by the dyanmics model somehow???
         # We might have to collect mocap data in order to get this
         self.u_sigma = np.array([.001,.001, np.radians(1), 1e-4, 1e-4, 1e-4])
+        # self.u_sigma = np.zeros(6)
 
         # noise to add to simulated sensor data
+        self.encoder_bias = 1.03
+        self.lidar_bias = 1.02
+        self.imu_bias = np.radians(1)
         self.lidar_sigma = 0.025        # as a percent of the distance
         self.encoder_sigma = 0.05       # as a percent of the angular velocity
         self.imu_sigma = np.radians(2)  # in radians
@@ -289,10 +290,10 @@ class FullSimulator:
     def update_estimated_maze(self):
         pose = self.estimator.state[:3]
 
-        decrement_amount = 0.2
-        increment_amount = 0.1
-        update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount, debug_plot = plt)
-
+        decrement_amount = 0.1
+        increment_amount = 0.2
+        update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount, debug_plot=plt)
+        self.estimated_maze.add_perimeter()
         # change the maze that the pose estimator uses
         self.estimator.set_maze(self.estimated_maze, obs_func=lidar_observation_function_gaussian_multi)
 
@@ -337,18 +338,19 @@ class FullSimulator:
 
         # get the sensor data (with noise)
         lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.real_maze)[0] *\
-                 np.random.normal(1, self.lidar_sigma, p.num_lidars)
+                 np.random.normal(self.lidar_bias, self.lidar_sigma, p.num_lidars)
 
-        encoders = cmd * np.random.normal(1, self.encoder_sigma, size=2)
+        encoders = cmd * np.random.normal(self.encoder_bias, self.encoder_sigma, size=2)
 
-        imu = self.real_bot_state[2] + np.random.normal(0, self.encoder_sigma)
+        imu = self.real_bot_state[2] + np.random.normal(self.imu_bias, self.imu_sigma)
 
         return lidars, encoders, imu
 
     def animate_plot(self, i):
         ax1.clear()
-        plt.xlim(0, self.real_maze.width * p.maze_cell_size)
-        plt.ylim(0, self.real_maze.height * p.maze_cell_size)
+        buf = p.maze_cell_size/2
+        plt.xlim(-buf, self.real_maze.width * p.maze_cell_size + buf)
+        plt.ylim(-buf, self.real_maze.height * p.maze_cell_size + buf)
         plt.gca().set_aspect('equal', adjustable='box')
 
         self.update()
@@ -376,10 +378,6 @@ class FullSimulator:
             x1, y1 = corners[i]
             x2, y2 = corners[j]
             plt.plot((x1, x2), (y1, y2), color=color, alpha=alpha)
-
-        # draw the positions of the lidars
-        # lidar_global_xy = lidar_end_points(pose, self.lidars)
-        # plt.scatter(lidar_global_xy[:,0], lidar_global_xy[:,1], color=color, alpha=alpha)
 
 
     def on_key_press(self, event):
