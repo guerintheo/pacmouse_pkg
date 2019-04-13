@@ -74,7 +74,7 @@ sclk = 8 # GPIO8 (hw pin 24) is hooked up to the SCLK pin
 mosi = 26 # GPIO26 (hw pin 37) is hooked up to the MOSI pin
 
 ######################### PLANNER CONTROLLER PARAMS ################################
-wall_transparency_threshold = 0.7
+wall_transparency_threshold = 0.3
 distance_to_cell_center_for_replan = 0.04
 
 controller_steering_coeff = 1.5

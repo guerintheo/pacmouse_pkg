@@ -1,10 +1,12 @@
 import numpy as np
 import time
 from pacmouse_pkg.src.utils.maze import Maze2
+import pacmouse_pkg.src.params as p
 
 class Tremaux:
     def __init__(self, maze):
         self.markers = np.zeros(maze.width * maze.height)
+        self.markers[0] = 10 # prevent the robot from exploring the start cell multiple times
         self.retracing = False
         self.min_count = 0
 
@@ -12,7 +14,7 @@ class Tremaux:
         self.markers[cell] += 1
 
         possible_cells = cell + np.array([-1, 1, -maze.width, maze.width])
-        possible_cells = [c for c in possible_cells if maze.get_wall_between(cell, c) == 0]
+        possible_cells = [c for c in possible_cells if maze.get_wall_between(cell, c) < p.wall_transparency_threshold]
 
         cell_counts = [self.markers[c] for c in possible_cells]
         self.min_count = np.min(self.markers)

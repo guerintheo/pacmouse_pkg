@@ -333,7 +333,7 @@ class Maze2:
             plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k',
                      color=color, alpha=(seg[4] if confidence else 1))
 
-    def build_adjacency_matrix(self, threshold=None):
+    def build_adjacency_matrix(self, threshold=p.wall_transparency_threshold):
         self.adj_matrix = np.zeros([self.width*self.height, self.width*self.height])
         w = self.width
         h = self.height
@@ -343,18 +343,14 @@ class Maze2:
                 if x < w - 1:
                     i = y*w + x
                     j = i + 1
-                    connected = 1. - self.v_walls[x+1, y]
-                    if threshold is not None:
-                        connected = connected > threshold
+                    connected = self.v_walls[x+1, y] < threshold
                     self.adj_matrix[i, j] = self.adj_matrix[j, i] = connected
 
                 # check cell above
                 if y < h - 1:
                     i = y*w + x
                     j = i + w
-                    connected = 1. - self.h_walls[x, y+1]
-                    if threshold is not None:
-                        connected = connected > threshold
+                    connected = self.h_walls[x, y+1] < threshold
                     self.adj_matrix[i, j] = self.adj_matrix[j, i] = connected
 
     def solve(self):
@@ -391,11 +387,11 @@ class Maze2:
         for y in range(self.height, -1, -1):
             # build v_wall
             if y < self.height:
-                walls = ['|' if self.v_walls[x,y]>p.wall_transparency_threshold else ' ' for x in range(self.width+1)]
+                walls = ['|' if self.v_walls[x,y]>(1-p.wall_transparency_threshold) else ' ' for x in range(self.width+1)]
                 output += '   '.join(walls) + '\n'
 
             # build h_wall
-            walls = ['---' if self.h_walls[x,y]>p.wall_transparency_threshold else '   ' for x in range(self.width)]
+            walls = ['---' if self.h_walls[x,y]>(1-p.wall_transparency_threshold) else '   ' for x in range(self.width)]
             output += '+' + '+'.join(walls) + '+\n'
         return output[:-1]
 
@@ -430,7 +426,7 @@ class Maze2:
         if c1[0] == c2[0]: return self.h_walls[c1[0], max(c1[1], c2[1])]
         elif c1[1] == c2[1]: return self.v_walls[max(c1[0], c2[0]), c1[1]]
         else: 
-            return -1
+            return 1
 
     def is_adjacent(self, i1, i2):
         w = self.width

@@ -168,7 +168,7 @@ class DrivingSimulator:
         decrement_amount = 0.1
         increment_amount = 0.2
         update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount, debug_plot=plt)
-
+        self.estimated_maze.add_perimeter()
         self.estimated_maze.build_segment_list()
 
     def update(self):
@@ -266,7 +266,7 @@ class FullSimulator:
         # a noisey model for when the robot moves (should be the same as the estimator)
         # NOTE(izzy): this sigma should be estimated by the dyanmics model somehow???
         # We might have to collect mocap data in order to get this
-        self.u_sigma = np.array([.005,.005, np.radians(2), 1e-4, 1e-4, 1e-4])
+        self.u_sigma = np.array([.001,.001, np.radians(2), 1e-4, 1e-4, 1e-4])
 
         # noise to add to simulated sensor data
         self.lidar_sigma = 0.025    # as a percent of the distance
@@ -283,17 +283,14 @@ class FullSimulator:
 
         self.forward_increment = 0.5
         self.steer_increment = 0.5
-        self.dt = 0.2
+        self.dt = 1/8.
 
     def update_estimated_maze(self):
         pose = self.estimator.state[:3]
 
-        decrement_amount = 0.1
+        decrement_amount = 0.2
         increment_amount = 0.2
         update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount, debug_plot = plt)
-
-        # rebuild the segment list for visualization
-        self.estimated_maze.build_segment_list()
 
         # change the maze that the pose estimator uses
         self.estimator.set_maze(self.estimated_maze, obs_func=lidar_observation_function_gaussian_multi)
@@ -313,14 +310,13 @@ class FullSimulator:
 
     def control(self):
         forward, turn = step(self.estimator.state, self.plan)
-        print 'Drive forward at {} meters/second.\tTurn at {} radians/second.'.format(forward, turn)
+        # print 'Drive forward at {} meters/second.\tTurn at {} radians/second.'.format(forward, turn)
         self.cmd = inverse_motion_model((forward,turn))
 
     def update(self):
         # run the simulator to update the "real" robot
         Z = self.simulate(self.cmd)
         self.lidars, self.encoders, self.imu = Z
-        print Z
 
         self.update_estimated_maze()
 
@@ -355,7 +351,9 @@ class FullSimulator:
         plt.gca().set_aspect('equal', adjustable='box')
 
         self.update()
+        self.estimated_maze.build_segment_list()
         self.estimated_maze.plot(plt)
+
         for particle in self.estimator.pf.particles: self.draw_bot(ax1, particle, 'r', 0.2)   # draw the particles
         self.draw_outer_chassis(ax1, self.estimator.state[:3], 'g', 0.5)        # draw the estimated bot
         self.draw_outer_chassis(ax1, self.real_bot_state[:3], 'b', 0.5)         # draw the real bot
