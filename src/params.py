@@ -91,3 +91,5 @@ lidar_sus_dist = 0.22 # the distance above which we don't really trust the lidar
 
 maze_increment = 0.2
 maze_decrement = 0.1
+
+maze_backup_path = '/home/pi/ros_catkin_ws/src/pacmouse_pkg/src/utils/maze_backups'

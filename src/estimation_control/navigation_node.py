@@ -5,13 +5,14 @@ import time
 
 from pacmouse_pkg.src.estimation_control.estimation import Estimator
 from pacmouse_pkg.src.utils.maze import Maze2
+from pacmouse_pkg.src.utils.maze_backup import load_backup, save_backup
 from pacmouse_pkg.src.estimation_control.tremaux import Tremaux
 
 import pacmouse_pkg.src.params as p
 
 from pacmouse_pkg.msg import Lidars, Drive, Maze
 from geometry_msgs.msg import Vector3
-from std_msgs.msg import Float64, Empty, String
+from std_msgs.msg import Float64, Int, String, LED
 
 
 class NavigationNode:
@@ -22,6 +23,7 @@ class NavigationNode:
 		self.estimator = Estimator(self.initial_state, p.num_particles)
 		self.maze = Maze2()
 		self.locked_maze = Maze2()
+		self.backup_counter = 0
 
 		self.lidars = np.zeros(6)
 		self.encoders = np.zeros(2)
@@ -33,6 +35,7 @@ class NavigationNode:
 		# publishers
 		self.pose_pub = rospy.Publisher('/pacmouse/pose/estimate', Vector3, queue_size=1)
 		self.plan_pub = rospy.Publisher('/pacmouse/plan', Vector3, queue_size=1)
+		self.led_pub = rospy.Publisher('/pacmouse/mode/set_leds', LED, queue_size=1)
 
 		# sensor callbacks for state estimation
 		rospy.Subscriber('/pacmouse/lidars', Lidars, self.lidars_callback)
@@ -68,8 +71,12 @@ class NavigationNode:
 		self.encoders = np.array([msg.L, msg.R])
 
 	def zero_pose_callback(self, msg):
-		print 'Zero estimated pose'
+		print 'Zero estimated pose.'
 		self.estimator.set_state(self.initial_state)
+		how_many_mazes_back = msg.data
+		self.locked_maze = load_backup(how_many_mazes_back)
+		self.maze.h_walls[:,:] = self.locked_maze.h_walls
+		self.maze.v_walls[:,:] = self.locked_maze.v_walls
 
 	def publish_pose_estimate(self):
 		msg = Vector3()
@@ -126,6 +133,8 @@ class NavigationNode:
 				# if tremaux requests that we go there, then we better hope there's
 				# no wall there
 				self.locked_maze.set_wall_between(current_index, target_index, 0)
+				save_backup(self.locked_maze)
+				self.backup_counter += 1
 
 				print 'Tremaux {}'.format(target_index)
 				if self.tremaux.min_count > 0:
