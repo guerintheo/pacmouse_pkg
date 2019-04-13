@@ -12,7 +12,7 @@ import pacmouse_pkg.src.params as p
 
 from pacmouse_pkg.msg import Lidars, Drive, Maze
 from geometry_msgs.msg import Vector3
-from std_msgs.msg import Float64, Int, String, LED
+from std_msgs.msg import Float64, Empty, Int, String, LED
 
 
 class NavigationNode:
@@ -44,6 +44,7 @@ class NavigationNode:
 
 		# mode controller callbacks
 		rospy.Subscriber('/pacmouse/mode/zero_pose', Empty, self.zero_pose_callback)
+		rospy.Subscriber('/pacmouse/mode/load_maze', Int, self.maze_backup_callback)
 		rospy.Subscriber('/pacmouse/mode/set_plan_mode', String, self.mode_callback)
 
 	###########################################################################
@@ -73,6 +74,8 @@ class NavigationNode:
 	def zero_pose_callback(self, msg):
 		print 'Zero estimated pose.'
 		self.estimator.set_state(self.initial_state)
+
+	def maze_backup_callback(self, msg)
 		how_many_mazes_back = msg.data
 		self.locked_maze = load_backup(how_many_mazes_back)
 		self.maze.h_walls[:,:] = self.locked_maze.h_walls
@@ -133,7 +136,7 @@ class NavigationNode:
 				# if tremaux requests that we go there, then we better hope there's
 				# no wall there
 				self.locked_maze.set_wall_between(current_index, target_index, 0)
-				save_backup(self.locked_maze)
+				save_backup(self.locked_maze, self.backup_counter)
 				self.backup_counter += 1
 
 				print 'Tremaux {}'.format(target_index)
