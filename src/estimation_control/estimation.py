@@ -19,13 +19,14 @@ class Estimator:
         particles[:,:] = self.state[None,:3] # set the particles to be at the same position as the state
         self.pf = ParticleFilter(particles)
         self.pf.parallelized = True # compute the observation function simultaneously for all particles
+        self.obs_func = lidar_observation_function_hyperbolic_multi
 
     def set_state(self, state):
         self.state = state
         self.pf.particles[:,:] = state[None,:3]
 
-    def set_maze(self, maze, obs_func=lidar_observation_function_hyperbolic_multi):
-        self.lidar_obs_func = lambda Z, x: obs_func(Z, x, maze)
+    def set_maze(self, maze):
+        self.lambda_obs_func = lambda Z, x: self.obs_func(Z, x, maze)
 
     def update(self, Z, dt):
         # NOTE(izzy): this is not the right way to do this, I'm just filling in the class so
@@ -40,7 +41,7 @@ class Estimator:
         u_mu[2] = imu - self.state[2]
 
         # update the particle filter
-        self.pf.update(u_mu[:3], self.u_sigma[:3], lidars, self.lidar_obs_func)
+        self.pf.update(u_mu[:3], self.u_sigma[:3], lidars, self.lambda_obs_func)
         # TODO: Consider whether to model each particle as a 3-vector or a
         # 6-vector. If modeled as 6-vectors, then we should probably use the
         # complete motion model on each of the particles

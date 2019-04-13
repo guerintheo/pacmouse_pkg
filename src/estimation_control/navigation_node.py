@@ -1,23 +1,33 @@
+#!/usr/bin/python
 import rospy
+import numpy as np
+import time
+
+from pacmouse_pkg.src.estimation_control.estimation import Estimator
+from pacmouse_pkg.src.utils.maze import Maze2
+from pacmouse_pkg.src.estimation_control.tremaux import Tremaux
+
+import pacmouse_pkg.src.params as p
+
+from pacmouse_pkg.msg import Lidars, Drive, Maze
+from geometry_msgs.msg import Vector3
+from std_msgs.msg import Float64, Empty, String
+
 
 class NavigationNode:
 	def __init__(self):
 		rospy.init_node('navigation_node')
 
-
 		self.initial_state = np.array([p.maze_cell_size/2, p.maze_cell_size/2, 0., 0, 0, 0])
 		self.estimator = Estimator(self.initial_state, p.num_particles)
+		self.maze = Maze2()
 
+		self.lidars = np.zeros(6)
 		self.encoders = np.zeros(2)
 		self.imu = 0.0
 
 		self.prev_t = time.time()
-
-		self.maze = Maze2()
-
-
 		self.prev_plan = self.initial_state[:2]
-
 
 		# publishers
 		self.pose_pub = rospy.Publisher('/pacmouse/pose/estimate', Vector3, queue_size=1)
@@ -44,7 +54,7 @@ class NavigationNode:
 
 		# pose estimate updates are triggered on the lidars. yay
 		self.update_pose_estimate()
-		self.update_maze_estimate()
+		# self.update_maze_estimate()
 
 		# these functions publish a pose and a plan respectively
 		self.publish_pose_estimate()
@@ -73,6 +83,14 @@ class NavigationNode:
 		Z = (self.lidars, self.encoders, self.imu)
 		self.estimator.update(Z, dt)
 
+	 def update_maze_estimate(self):
+        pose = self.estimator.state[:3]
+
+        update_walls(pose, self.lidars, self.maze, p.maze_decrement, p.maze_increment)
+        self.maze.add_perimeter()
+        # change the maze that the pose estimator uses
+        self.estimator.set_maze(self.maze)
+
 
 	###########################################################################
 	# Planning stuff
@@ -80,8 +98,8 @@ class NavigationNode:
 
 	def replan(self):
 		# if we are within a certain radius of the previous setpoint, then replan
-		if np.linalg.norm(self.pose[:2] - self.prev_plan) < p.distance_to_cell_center_for_replan:
-			current_index = self.maze.pose_to_index(self.pose)
+		if np.linalg.norm(self.estimator.state[:2] - self.prev_plan) < p.distance_to_cell_center_for_replan:
+			current_index = self.maze.pose_to_index(self.estimator.state[:2])
 			goal_index = self.goal_index[0] + self.goal_cell[1] * self.maze_width
 
 			if self.shortest_path_solving:
@@ -116,6 +134,13 @@ class NavigationNode:
 		else:
 			print 'Mode {} not recognized.'.format(msg.data)
 
+	###########################################################################
+	# Testing stuff
+	###########################################################################
+
+	def load_mini_maze(self):
+		self.maze.load('../utils/mini.maze')
+		print self.maze
 
 if __name__ == '__main__':
 	ros_is_NOT_a_nice_guy = EstimationNode()

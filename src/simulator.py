@@ -295,7 +295,7 @@ class FullSimulator:
         update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount, debug_plot=plt)
         self.estimated_maze.add_perimeter()
         # change the maze that the pose estimator uses
-        self.estimator.set_maze(self.estimated_maze, obs_func=lidar_observation_function_gaussian_multi)
+        self.estimator.set_maze(self.estimated_maze)
 
     def replan(self):
         # if we are within a certain radius of the previous setpoint, then replan
