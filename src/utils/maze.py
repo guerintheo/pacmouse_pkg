@@ -377,6 +377,32 @@ class Maze2:
 
         else: return []
 
+    def find_goal(self):
+        # Checks if 4 cells don't have walls connecting them to each other
+        w = self.width
+        best_confidence = 100
+        best_index = -1
+        for index in range(w * self.height - w):
+            if (index + 1) % w == 0:
+                continue
+
+            bottom = self.get_wall_between(index, index + 1) 
+            top = self.get_wall_between(index + w, index + w + 1) 
+            left = self.get_wall_between(index, index + w) 
+            right = self.get_wall_between(index + 1, index + w + 1) 
+
+            # print('bottom: {} top: {} left: {} right: {}'.format(bottom, top, left, right))
+            
+            filter = p.wall_transparency_threshold
+            if (bottom < filter and top < filter and left < filter and right < filter):
+                confidence_sum = bottom + top + left + right
+                if confidence_sum < best_confidence:
+                    best_confidence = confidence_sum
+                    best_index = index
+        
+        # bottom left cell index
+        return best_index
+
     def route(self, c1, c2, threshold=None):
         self.build_adjacency_matrix(threshold=threshold)
         self.solve()
@@ -402,6 +428,14 @@ class Maze2:
     def save(self, filename):
         with open(filename, 'w') as f:
             f.write(self.__str__())
+
+    def save_p(self, filename):
+        np.savetxt(filename + ".h_walls", self.h_walls)
+        np.savetxt(filename + ".v_walls", self.v_walls)
+    
+    def load_p(self, filename):
+        self.h_walls = np.loadtxt(filename + ".h_walls")
+        self.v_walls = np.loadtxt(filename + ".v_walls")
 
     def parse(self, s):
         lines = s.split('\n')
@@ -500,7 +534,7 @@ class Maze2:
 
 
 if __name__ == '__main__':
-    m = Maze2(4,3)
+    m = Maze2(3,5)
     m.generate_random_maze()
     print m
     m.save('test.maze')
