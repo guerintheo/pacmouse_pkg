@@ -10,9 +10,9 @@ from pacmouse_pkg.src.estimation_control.tremaux import Tremaux
 
 import pacmouse_pkg.src.params as p
 
-from pacmouse_pkg.msg import Lidars, Drive, Maze
+from pacmouse_pkg.msg import Lidars, Drive, Maze, LED
 from geometry_msgs.msg import Vector3
-from std_msgs.msg import Float64, Empty, Int16, String, LED
+from std_msgs.msg import Float64, Empty, Int16, String
 
 
 class NavigationNode:
@@ -75,7 +75,7 @@ class NavigationNode:
         print 'Zero estimated pose.'
         self.estimator.set_state(self.initial_state)
 
-    def maze_backup_callback(self, msg)
+    def maze_backup_callback(self, msg):
         how_many_mazes_back = msg.data
         self.locked_maze = load_backup(how_many_mazes_back)
         self.maze.h_walls[:,:] = self.locked_maze.h_walls
@@ -171,3 +171,4 @@ class NavigationNode:
 
 if __name__ == '__main__':
     ros_is_NOT_a_nice_guy = NavigationNode()
+    rospy.spin()
