@@ -1,0 +1,10 @@
+<!-- AP Master (pacmouse_ap, the Pi 3) should launch this script -->
+<launch>
+  <!-- Launch the AP Master's local nodes -->
+  <include file="gameday_pacmouse_ap.launch" />
+  <!-- Launch the nodes of the slave (i.e., pacmouse, the Pi Zero) -->
+  <group>
+    <machine name="pi_zero" address="pacmouse" user="pi" default="never" />
+    <include file="gameday_pacmouse_slave.launch" />
+  </group>
+</launch>

@@ -20,7 +20,9 @@ class MasterStartNode(object):
     mode controller indicating a desired restart, at which point this node
     kills the roslaunch process that it spawned and attempts to restart it. Note
     that roscore stays up the whole time during this process, as this node
-    is relying on ROS for message passing.
+    is relying on ROS for message passing. This node should be run on the AP
+    Master (pacmouse_ap, the Pi 3), as it will run roscore for the Pi Zero to
+    connect to.
     """
 
     def __init__(self):
@@ -32,7 +34,7 @@ class MasterStartNode(object):
         print('Subscribing to the restart topic at {}.'.format(restart_topic))
         rospy.Subscriber(restart_topic, Empty, self.cb_restart)
 
-        self.path = 'launch/gameday.launch'
+        self.path = 'launch/gameday_launch_both.launch'
         if len(sys.argv) == 2:
             if sys.argv[1] == 'test':
                 self.path = 'launch/testing.launch'

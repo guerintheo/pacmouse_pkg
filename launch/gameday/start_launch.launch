@@ -1,0 +1,4 @@
+<!-- This script should be automatically launched on power-up of the AP Master (pacmouse_ap, the Pi 3) -->
+<launch>
+  <node pkg="pacmouse_pkg" type="master_start_script.py" name="master_start_node" output="screen" />
+</launch>
