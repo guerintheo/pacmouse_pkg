@@ -433,6 +433,14 @@ class Maze2:
         with open(filename, 'w') as f:
             f.write(self.__str__())
 
+    def save_p(self, filename):
+        np.savetxt(filename + ".h_walls", self.h_walls)
+        np.savetxt(filename + ".v_walls", self.v_walls)
+    
+    def load_p(self, filename):
+        self.h_walls = np.loadtxt(filename + ".h_walls")
+        self.v_walls = np.loadtxt(filename + ".v_walls")
+
     def parse(self, s):
         lines = s.split('\n')
         assert len(lines)%2 == 1 # the number of lines should be odd
@@ -526,7 +534,7 @@ class Maze2:
 
 
 if __name__ == '__main__':
-    m = Maze2(4,3)
+    m = Maze2(3,5)
     m.generate_random_maze()
     print m
     m.save('test.maze')
