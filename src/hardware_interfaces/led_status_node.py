@@ -28,14 +28,15 @@ def append_hex(a, b):
 
 class LEDs:
 	def __init__(self):
+		self.strip = apa102.APA102(num_led=10, global_brightness=1, mosi=p.mosi, sclk=p.sclk, order='rgb')
+		self.color_wheel()
+		# self.color_callback(LED(0, '0x00FF00'))
+		
 		rospy.init_node('led_status_node')
 		# master_status_sub = rospy.Subscriber('/master_status', MasterStatusMsg, master_status_callback)
-		self.strip = apa102.APA102(num_led=p.num_leds, global_brightness=p.led_default_brightness, mosi=p.mosi, sclk=p.sclk, order='rgb')
 
 		rospy.Subscriber('/pacmouse/mode/set_leds', LED, self.color_callback)
 
-		self.rainbow()
-		self.color_callback(LED(0, '0x00FF00'))
 		
 		rospy.on_shutdown(self.shutdown)
 
@@ -51,6 +52,14 @@ class LEDs:
 		for i in range(p.num_leds):
 			self.strip.set_pixel_rgb(i,color)
 		self.strip.show()
+
+	def rgbtohex(self, r, g, b):
+		return int(hex((r << 16) + (g << 8) + b), 16)
+
+	def color_wheel(self):
+		for i in range(255):
+			color = self.rgbtohex(i, 0, 0)
+			self.setall(color) 
 
 	def rainbow(self):
 		self.setall(RED)
