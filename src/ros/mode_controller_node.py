@@ -65,7 +65,7 @@ class ModeController(object):
         self.zero_heading_pub = rospy.Publisher('/pacmouse/mode/zero_heading',
                                                 Empty,
                                                 queue_size=1)
-        self.load_maze_pub = rospy.Publisher('/pacmouse/mode/load_maze', Int,
+        self.load_maze_pub = rospy.Publisher('/pacmouse/mode/load_maze', Int16,
                                              queue_size=1)
         self.set_plan_mode_pub = rospy.Publisher('/pacmouse/mode/set_plan_mode',
                                                  String,
