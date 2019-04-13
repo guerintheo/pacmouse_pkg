@@ -4,6 +4,7 @@ import signal
 import sys
 import time
 from enum import Enum
+import numpy as np
 
 from std_msgs.msg import Bool, Empty, String, Int16, Float64
 from pacmouse_pkg.msg import LED, Drive
@@ -202,7 +203,7 @@ class ModeController(object):
             # TODO: Pass in a file name of a maze to load into memory based on the rotary encoder value indicating how far back in time to revert back to. Coordinate this with the LED indicators.
             clicks_per_rotation = 10
             rotary_dial_angle_diff = self.rotary_dial_value - self.rotary_dial_start_value
-            msg = Int()
+            msg = Int16()
             msg.data = int(max(rotary_dial_angle_diff, 0)*clicks_per_rotation/2/np.pi) + 1
             self.load_maze_pub.publish(msg)
             self.set_curr_mode_idle()
