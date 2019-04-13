@@ -6,6 +6,7 @@ import matplotlib.patches as mpatches
 import matplotlib.animation as animation
 
 from pacmouse_pkg.src.estimation_control.sensor_model import *
+from pacmouse_pkg.src.estimation_control.observation_functions import *
 from pacmouse_pkg.src.estimation_control.estimation import Estimator
 from pacmouse_pkg.src.estimation_control.dynamics import motion_model, inverse_motion_model
 from pacmouse_pkg.src.estimation_control.control import step, get_sp
@@ -266,12 +267,12 @@ class FullSimulator:
         # a noisey model for when the robot moves (should be the same as the estimator)
         # NOTE(izzy): this sigma should be estimated by the dyanmics model somehow???
         # We might have to collect mocap data in order to get this
-        self.u_sigma = np.array([.001,.001, np.radians(2), 1e-4, 1e-4, 1e-4])
+        self.u_sigma = np.array([.001,.001, np.radians(1), 1e-4, 1e-4, 1e-4])
 
         # noise to add to simulated sensor data
-        self.lidar_sigma = 0.025    # as a percent of the distance
-        self.encoder_sigma = 0.05   # as a percent of the angular velocity
-        self.imu_sigma = np.pi/100  # in radians
+        self.lidar_sigma = 0.025        # as a percent of the distance
+        self.encoder_sigma = 0.05       # as a percent of the angular velocity
+        self.imu_sigma = np.radians(2)  # in radians
 
         self.estimator = Estimator(self.real_bot_state)                         # initialize the state estimator
         self.estimator.set_maze(self.estimated_maze, obs_func=lidar_observation_function_gaussian_multi)   # pass it the maze
@@ -310,7 +311,7 @@ class FullSimulator:
 
     def control(self):
         forward, turn = step(self.estimator.state, self.plan)
-        # print 'Drive forward at {} meters/second.\tTurn at {} radians/second.'.format(forward, turn)
+        # print 'Forwad at {}\tTurn at {}'.format(forward, turn)
         self.cmd = inverse_motion_model((forward,turn))
 
     def update(self):

@@ -3,7 +3,7 @@ from copy import deepcopy
 import pacmouse_pkg.src.params as p
 from pacmouse_pkg.src.estimation_control.dynamics import motion_model
 from pacmouse_pkg.src.estimation_control.particle_filter import ParticleFilter
-from pacmouse_pkg.src.estimation_control.sensor_model import *
+from pacmouse_pkg.src.estimation_control.observation_functions import *
 
 class Estimator:
 

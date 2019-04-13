@@ -75,7 +75,7 @@ mosi = 26 # GPIO26 (hw pin 37) is hooked up to the MOSI pin
 
 ######################### PLANNER CONTROLLER PARAMS ################################
 wall_transparency_threshold = 0.3
-distance_to_cell_center_for_replan = 0.04
+distance_to_cell_center_for_replan = 0.02
 
 controller_steering_coeff = 1.5
 controller_drive_coeff    = 1.5
@@ -86,4 +86,4 @@ controller_max_angle = np.pi/6
 ######################### ESTIMATION PARAMS ################################
 num_particles = 20
 lidar_max_dist = 0.255 # the distance the lidars return when they are bad
-lidar_sus_dist = 0.2 # the distance above which we don't really trust the lidars
+lidar_sus_dist = 0.22 # the distance above which we don't really trust the lidars

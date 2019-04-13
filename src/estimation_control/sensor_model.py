@@ -9,63 +9,6 @@ from pacmouse_pkg.src.utils.maze import Maze, Maze2
 import pacmouse_pkg.src.params as p
 from pacmouse_pkg.src.utils.math_utils import *
 
-def lidar_observation_function_hyperbolic(Z, x, maze):
-    """Computes a likelihood given sensor data and a particle position. A higher
-    number means x is more likely to produce an observation similar to Z
-
-    Args:
-        Z (1d numpy array): a 6-vector of lidar measurements
-        x (1d numpy array): a 6-vector of state (of a particle)
-        maze (Maze): the maze
-
-    # Returns:
-        float: how likely that particle is based on agreement the sensor data, Z
-    """
-    z_exp = estimate_lidar_returns(x, maze)
-    return np.prod(1/(np.abs(z_exp - Z) + 1e-5))
-
-def lidar_observation_function_hyperbolic_multi(Z, xs, maze):
-    """Computes a likelihood given sensor data and a particle position. A higher
-    number means x is more likely to produce an observation similar to Z
-
-    Args:
-        Z (1d numpy array): a 6-vector of lidar measurements
-        x (2d numpy array): an n by 6 of state (of a particle)
-        maze (Maze): the maze
-
-    Returns:
-        1d numpy array: how likely each particle is based on agreement the sensor data, Z
-    """
-    z_exp = estimate_lidar_returns_multi(xs, maze)
-    return np.prod(1/(np.abs(z_exp - Z) + 1e-5), axis=1)
-
-def lidar_observation_function_gaussian(Z, x, maze):
-    z_exp, z_conf = estimate_lidar_returns(x, maze)
-
-    # NOTE(izzy): we take 1-z_conf because z_conf represents how likely there is to be
-    # wall at the point where the lidar hits, and we want the variance to be lower if
-    # we are more certain that there is a wall at that position.
-
-    # NOTE(aaron): we may need to scale and offset z_conf to avoid zero variance
-    # NOTE(aaron): z_conf should never be smaller than the p.wall_transparency_threshold arg
-    # to the estimate_lidar_returns model
-    base_variance = 0.01
-    return np.prod(gaussian(z_exp, Z, base_variance + (1.-z_conf)/100.))
-
-def lidar_observation_function_gaussian_multi(Z, xs, maze):
-    z_exp, z_conf = estimate_lidar_returns_multi(xs, maze, return_confidences=True)
-
-    # NOTE(izzy): we take 1-z_conf because z_conf represents how likely there is to be
-    # wall at the point where the lidar hits, and we want the variance to be lower if
-    # we are more certain that there is a wall at that position.
-
-    # NOTE(aaron): we may need to scale and offset z_conf to avoid zero variance
-    # NOTE(aaron): z_conf should never be smaller than the p.wall_transparency_threshold arg
-    # to the estimate_lidar_returns model
-    base_variance = 0.1
-    eps = 1e-3
-    # return np.prod(gaussian(z_exp, Z[None,:], base_variance + (1.-z_conf)/100.)+1e-5, axis=1)
-    return np.prod(gaussian(z_exp, Z[None,:], base_variance / (z_conf+eps)), axis=1) + eps
 
 def estimate_lidar_returns_old(pose, maze):
     plot = False
@@ -281,6 +224,7 @@ def estimate_lidar_returns_multi(poses, maze, return_confidences=False, debug_pl
         min_dist_h_wall_hit_confidences = np.take_along_axis(h_wall_hit_confidences, h_intersect_argmin_distance[:,:,None], axis=2)[:,:,0]
         min_dist_v_wall_hit_confidences = np.take_along_axis(v_wall_hit_confidences, v_intersect_argmin_distance[:,:,None], axis=2)[:,:,0]
         confidences = choose_horizontal * min_dist_h_wall_hit_confidences + (1-choose_horizontal) * min_dist_v_wall_hit_confidences * less_than_sus_dist
+        
         return min_dists, confidences
 
     else:
@@ -346,6 +290,36 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     if debug_plot: debug_plot_poses(debug_plot, pose[None,:])
     if debug_plot: debug_plot_lidar_vecs(debug_plot, lidar_global_xys[None,:,:], lidar_global_vecs[None,:,:])
 
+    ########################## INCREMENT WALLS THAT WE HIT ##########################
+    # divide by the cell size
+    normalized_ends = lidar_global_ends/c
+
+    end_in_maze_mask = np.prod(np.logical_and(normalized_ends > 0,
+                                              normalized_ends < np.array([maze.width, maze.height])[None,:]), axis=1)
+
+    max_lidar_dist_mask = lidars < p.lidar_sus_dist
+
+    # find which walls are closest. this will be a list with 1s if the h walls are closer. 0s for v walls
+    h_wall_mask = np.argmin(np.abs(normalized_ends - np.round(normalized_ends)), axis=1)
+
+    # convert coordinates to x,y indices of the walls
+    h_indices = np.clip(np.array([np.floor(normalized_ends[:,0]), np.round(normalized_ends[:,1])], dtype=int).T, 0, maze.height-1)
+    v_indices = np.clip(np.array([np.round(normalized_ends[:,0]), np.floor(normalized_ends[:,1])], dtype=int).T, 0, maze.width-1)
+
+    # this is 1 when the lidar is centered on the wall. zero when it is at the edge of the wall
+    h_centeredness = 1 - 2*np.abs(normalized_ends[:,0]%1 - 0.5)
+    v_centeredness = 1 - 2*np.abs(normalized_ends[:,1]%1 - 0.5)
+
+    if debug_plot: debug_plot_mark_lidar_endpoints(debug_plot, lidar_global_ends, h_wall_mask, h_centeredness, v_centeredness)
+
+    # create masks to say which walls we end up incrementing
+    h_walls_increment_mask = h_wall_mask * end_in_maze_mask * max_lidar_dist_mask
+    v_walls_increment_mask = (1-h_wall_mask) * end_in_maze_mask * max_lidar_dist_mask
+
+    # update the maze
+    maze.h_walls[h_indices[:,0], h_indices[:,1]] += increment_amount * h_centeredness * h_walls_increment_mask
+    maze.v_walls[v_indices[:,0], v_indices[:,1]] += increment_amount * v_centeredness * v_walls_increment_mask
+
     ########################## DECREMENT WALLS THAT WE PASS THRU ##########################
     # handle vertical walls first
 
@@ -400,32 +374,6 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
 
     # and subtract from all the corresponding walls
     maze.h_walls[x_indices, y_indices] -= decrement_coeffs * decrement_amount * on_vecs_mask
-
-    ########################## INCREMENT WALLS THAT WE HIT ##########################
-    # divide by the cell size
-    normalized_ends = lidar_global_ends/c
-
-    end_in_maze_mask = np.prod(np.logical_and(normalized_ends > 0,
-                                              normalized_ends < np.array([maze.width, maze.height])[None,:]), axis=1)
-
-    max_lidar_dist_mask = lidars < p.lidar_sus_dist
-
-    # find which walls are closest. this will be a list with 1s if the h walls are closer. 0s for v walls
-    h_wall_mask = np.argmin(np.abs(normalized_ends - np.round(normalized_ends)), axis=1)
-
-    # convert coordinates to x,y indices of the walls
-    h_indices = np.clip(np.array([np.floor(normalized_ends[:,0]), np.round(normalized_ends[:,1])], dtype=int).T, 0, maze.height-1)
-    v_indices = np.clip(np.array([np.round(normalized_ends[:,0]), np.floor(normalized_ends[:,1])], dtype=int).T, 0, maze.width-1)
-
-    # this is 1 when the lidar is centered on the wall. zero when it is at the edge of the wall
-    h_centeredness = 1 - 2*np.abs(normalized_ends[:,0]%1 - 0.5)
-    v_centeredness = 1 - 2*np.abs(normalized_ends[:,1]%1 - 0.5)
-
-    if debug_plot: debug_plot_mark_lidar_endpoints(debug_plot, lidar_global_ends, h_wall_mask, h_centeredness, v_centeredness)
-
-    # update the maze
-    maze.h_walls[h_indices[:,0], h_indices[:,1]] += increment_amount * h_wall_mask * h_centeredness * end_in_maze_mask * max_lidar_dist_mask
-    maze.v_walls[v_indices[:,0], v_indices[:,1]] += increment_amount * (1-h_wall_mask) * v_centeredness * end_in_maze_mask * max_lidar_dist_mask
 
     # make sure the wall probabilities stay between 0 and 1
     maze.h_walls = np.clip(maze.h_walls, 0, 1)
