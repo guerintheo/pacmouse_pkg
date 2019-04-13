@@ -464,7 +464,7 @@ class ModeLEDSignalFunctions(object):
     def set_leds_for_maze_revert(self):
         print('In mode SET_MAZE_REVERT')
         clicks_per_rotation = 10
-        rotary_dial_angle_diff = self.rotary_dial_value - self.rotary_dial_start_value
+        rotary_dial_angle_diff = self.mc.rotary_dial_value - self.mc.rotary_dial_start_value
         val = int(rotary_dial_angle_diff*clicks_per_rotation/2/np.pi)
 
         led_msg = LED()
