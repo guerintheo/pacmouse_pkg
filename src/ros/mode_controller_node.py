@@ -65,7 +65,7 @@ class ModeController(object):
         self.zero_heading_pub = rospy.Publisher('/pacmouse/mode/zero_heading',
                                                 Empty,
                                                 queue_size=1)
-        self.load_maze_pub = rospy.Publisher('/pacmouse/mode/load_maze', String,
+        self.load_maze_pub = rospy.Publisher('/pacmouse/mode/load_maze', Int,
                                              queue_size=1)
         self.set_plan_mode_pub = rospy.Publisher('/pacmouse/mode/set_plan_mode',
                                                  String,
@@ -200,8 +200,11 @@ class ModeController(object):
             # Button toggled low while in SET_MAZE_REVERT mode
             self.idle_submode = None  # we are exiting an IDLE sub-mode
             # TODO: Pass in a file name of a maze to load into memory based on the rotary encoder value indicating how far back in time to revert back to. Coordinate this with the LED indicators.
+            clicks_per_rotation = 10
             rotary_dial_angle_diff = self.rotary_dial_value - self.rotary_dial_start_value
-            # self.load_maze_pub.publish()
+            msg = Int()
+            msg.data = int(max(rotary_dial_angle_diff, 0)*clicks_per_rotation/2/np.pi) + 1
+            self.load_maze_pub.publish(msg)
             self.set_curr_mode_idle()
 
     def cb_button4(self, data):
@@ -460,7 +463,19 @@ class ModeLEDSignalFunctions(object):
 
     def set_leds_for_maze_revert(self):
         print('In mode SET_MAZE_REVERT')
-        self.set_leds_spectrum()
+        clicks_per_rotation = 10
+        rotary_dial_angle_diff = self.rotary_dial_value - self.rotary_dial_start_value
+        val = int(rotary_dial_angle_diff*clicks_per_rotation/2/np.pi)
+
+        led_msg = LED()
+        led_msg.led_num = 0
+        if val < 0:         led_msg.hex_color = ModeLEDSignalFunctions.GREEN
+        elif val%2 == 0:    led_msg.hex_color = ModeLEDSignalFunctions.BLUE
+        else:               led_msg.hex_color = ModeLEDSignalFunctions.PURPLE
+
+        self.set_leds_pub.publish(led_msg)
+        self.clear_led(1)
+        self.clear_led(2)
 
     def set_leds_for_restart(self):
         print('In mode SET_RESTART')

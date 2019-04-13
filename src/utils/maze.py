@@ -303,12 +303,13 @@ class Maze2:
     def __init__(self, width=16, height=16):
         self.width = width
         self.height = height
-        self.create_empty_maze()
+        self.create_maze()
         self.add_perimeter()
 
-    def create_empty_maze(self):
-        self.h_walls = np.zeros([self.width, self.height+1])
-        self.v_walls = np.zeros([self.width+1, self.height])
+    def create_maze(self):
+        self.h_walls = np.ones([self.width, self.height+1])
+        self.v_walls = np.ones([self.width+1, self.height])
+        self.h_walls[0,1] = 0 # there is no wall immediately in front the vehicle at start
 
     def add_perimeter(self):
         self.v_walls[[0,-1],:] = 1
