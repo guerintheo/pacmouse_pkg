@@ -21,6 +21,7 @@ class NavigationNode:
 		self.initial_state = np.array([p.maze_cell_size/2, p.maze_cell_size/2, 0., 0, 0, 0])
 		self.estimator = Estimator(self.initial_state, p.num_particles)
 		self.maze = Maze2()
+		self.locked_maze = Maze2()
 
 		self.lidars = np.zeros(6)
 		self.encoders = np.zeros(2)
@@ -84,12 +85,22 @@ class NavigationNode:
 		self.estimator.update(Z, dt)
 
 	 def update_maze_estimate(self):
-        pose = self.estimator.state[:3]
+        update_walls(self.estimator.state[:3], self.lidars, self.maze, p.maze_decrement, p.maze_increment)
+        
+        # blast out the walls that we've definitely successfully passed through
+        self.maze.v_walls *= self.locked_maze.v_walls
+        self.maze.h_walls *= self.locked_maze.h_walls
 
-        update_walls(pose, self.lidars, self.maze, p.maze_decrement, p.maze_increment)
         self.maze.add_perimeter()
+
         # change the maze that the pose estimator uses
         self.estimator.set_maze(self.maze)
+
+        # look for the goal state
+        goal = self.maze.find_goal()
+        if goal > 0:
+        	self.goal = goal
+        	print 'HOLY FUCK (ros boner)'
 
 
 	###########################################################################
@@ -100,10 +111,9 @@ class NavigationNode:
 		# if we are within a certain radius of the previous setpoint, then replan
 		if np.linalg.norm(self.estimator.state[:2] - self.prev_plan) < p.distance_to_cell_center_for_replan:
 			current_index = self.maze.pose_to_index(self.estimator.state[:2])
-			goal_index = self.goal_index[0] + self.goal_cell[1] * self.maze_width
 
-			if self.shortest_path_solving:
-				plan = self.maze.get_path(current_index, goal_index)
+			if self.goal is not None and self.shortest_path_solving:
+				plan = self.maze.get_path(current_index, self.goal)
 				if len(plan) < 2:
 					print 'The plan is too short... I think we made it??!?'
 					target_index = current_index
@@ -112,6 +122,11 @@ class NavigationNode:
 
 			else:
 				target_index = self.tremaux.get_plan(current_index, self.maze)
+
+				# if tremaux requests that we go there, then we better hope there's
+				# no wall there
+				self.locked_maze.set_wall_between(current_index, target_index, 0)
+
 				print 'Tremaux {}'.format(target_index)
 				if self.tremaux.min_count > 0:
 					print 'We\'ve explored the whole maze!'
@@ -128,7 +143,7 @@ class NavigationNode:
 			self.shortest_path_solving = False
 		elif msg.data == 'SHORTEST_PATH_SOLVING':
 			if self.goal_cell is None:
-				print 'We haven\'t found the goal cell yet. No shortest path solve'
+				print 'We haven\'t found the goal cell yet. No shortest path to solve.'
 			else:
 				self.shortest_path_solving = True
 		else:
