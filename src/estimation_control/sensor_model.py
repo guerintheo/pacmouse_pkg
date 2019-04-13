@@ -47,7 +47,7 @@ def lidar_observation_function_gaussian(Z, x, maze):
     # we are more certain that there is a wall at that position.
 
     # NOTE(aaron): we may need to scale and offset z_conf to avoid zero variance
-    # NOTE(aaron): z_conf should never be smaller than the transparency_threshold arg
+    # NOTE(aaron): z_conf should never be smaller than the p.wall_transparency_threshold arg
     # to the estimate_lidar_returns model
     base_variance = 0.01
     return np.prod(gaussian(z_exp, Z, base_variance + (1.-z_conf)/100.))
@@ -60,7 +60,7 @@ def lidar_observation_function_gaussian_multi(Z, xs, maze):
     # we are more certain that there is a wall at that position.
 
     # NOTE(aaron): we may need to scale and offset z_conf to avoid zero variance
-    # NOTE(aaron): z_conf should never be smaller than the transparency_threshold arg
+    # NOTE(aaron): z_conf should never be smaller than the p.wall_transparency_threshold arg
     # to the estimate_lidar_returns model
     base_variance = 0.1
     eps = 1e-3
@@ -105,7 +105,7 @@ def estimate_lidar_returns_old(pose, maze):
 def debug_plot_poses(debug_plot, poses):
     plt.scatter(*poses[:,:2].T)
 
-def debug_plot_lidar_vecs(debug_plot, lidar_global_xys, lidar_global_vecs, lidar_length=1.0):
+def debug_plot_lidar_vecs(debug_plot, lidar_global_xys, lidar_global_vecs, lidar_length=p.lidar_max_dist):
     start_x, start_y = np.moveaxis(lidar_global_xys,2,0)
     end_x, end_y = np.moveaxis(lidar_global_xys+lidar_global_vecs*lidar_length,2,0)
     plt.plot((np.ravel(start_x), np.ravel(end_x)), (np.ravel(start_y), np.ravel(end_y)), c='r', alpha=0.2)
@@ -126,7 +126,7 @@ def debug_plot_lidar_enpoints(debug_plot, lidar_global_vecs, lidar_global_xys, m
     ys = np.ravel(endpoints[:,:,1])
     plt.scatter(xs, ys)
 
-def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, return_confidences=False, debug_plot=None):
+def estimate_lidar_returns_multi(poses, maze, return_confidences=False, debug_plot=None):
     # each pose is a 3-vector [x, y, 3]
     # there are n poses, so poses is an [n x 3] matrix
     # there are m lidars
@@ -166,8 +166,8 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, return
     if debug_plot: debug_plot_poses(debug_plot, poses)
     if debug_plot: debug_plot_lidar_vecs(debug_plot, lidar_global_xys, lidar_global_vecs)
     
-    # v_num_observable_walls = np.min(np.floor(p.max_lidar_dist * 2/p.maze_cell_size) + 2, maze.width)
-    # h_num_observable_wals = np.min(np.floor(p.max_lidar_dist * 2/p.maze_cell_size) + 2, maze.height)
+    # v_num_observable_walls = np.min(np.floor(p.lidar_max_dist * 2/p.maze_cell_size) + 2, maze.width)
+    # h_num_observable_wals = np.min(np.floor(p.lidar_max_dist * 2/p.maze_cell_size) + 2, maze.height)
 
     ################## FIND VERTICAL WALL INTERSECTIONS ##################
     # [w+1] the global x coordinates of all the sets vertical walls
@@ -202,7 +202,7 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, return
                                           v_wall_intersect_indices[:,:,1,:]]
 
     # [n x m x w+1] only consider the hits which occur on a sufficiently confident wall
-    v_wall_hit_mask = v_wall_hit_confidences > transparency_threshold
+    v_wall_hit_mask = v_wall_hit_confidences > p.wall_transparency_threshold
 
     # [n x m x w+1] a mask of which potential wall intersections are valid
     v_wall_mask = v_wall_hit_mask * v_wall_in_maze_mask * v_wall_in_front_mask
@@ -242,7 +242,7 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, return
                                           h_wall_intersect_indices[:,:,1,:]]
 
     # [n x m x h+1] only consider the hits which occur on a sufficiently confident wall
-    h_wall_hit_mask = h_wall_hit_confidences > transparency_threshold
+    h_wall_hit_mask = h_wall_hit_confidences > p.wall_transparency_threshold
 
     # [n x m x h+1] a mask of which potential wall intersections are valid
     h_wall_mask = h_wall_hit_mask * h_wall_in_maze_mask * h_wall_in_front_mask
@@ -270,8 +270,8 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, return
 
     min_dists -= choose_horizontal * horizontal_dist_to_remove
     min_dists -= (1-choose_horizontal) * vertical_dist_to_remove
-    less_than_max_dist = min_dists < p.max_lidar_dist
-    min_dists = np.clip(min_dists, 0, p.max_lidar_dist)
+    less_than_sus_dist = min_dists < p.lidar_sus_dist
+    min_dists = np.clip(min_dists, 0, p.lidar_max_dist)
 
     if debug_plot: debug_plot_lidar_enpoints(debug_plot, lidar_global_vecs, lidar_global_xys, min_dists)
 
@@ -280,7 +280,7 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, return
         h_intersect_argmin_distance = np.ma.masked_equal(h_wall_intersect_distances, 0, copy=False).argmin(axis=2)
         min_dist_h_wall_hit_confidences = np.take_along_axis(h_wall_hit_confidences, h_intersect_argmin_distance[:,:,None], axis=2)[:,:,0]
         min_dist_v_wall_hit_confidences = np.take_along_axis(v_wall_hit_confidences, v_intersect_argmin_distance[:,:,None], axis=2)[:,:,0]
-        confidences = choose_horizontal * min_dist_h_wall_hit_confidences + (1-choose_horizontal) * min_dist_v_wall_hit_confidences * less_than_max_dist
+        confidences = choose_horizontal * min_dist_h_wall_hit_confidences + (1-choose_horizontal) * min_dist_v_wall_hit_confidences * less_than_sus_dist
         return min_dists, confidences
 
     else:
@@ -310,13 +310,14 @@ def debug_plot_mark_lidar_endpoints(debug_plot, lidar_global_ends, h_wall_mask, 
         plt.scatter(lidar_global_ends[l, 0], lidar_global_ends[l,1], color=(0, on_h_wall, 0, alpha[l]))
 
 def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.05, debug_plot=None):
-    assert isinstance(maze, Maze2)
-
     # there are m lidars
     # the maze is w x h
+
+    lidars = np.clip(lidars, 0, p.lidar_sus_dist)
+
     c = p.maze_cell_size
 
-# this is an [m] array
+    # this is an [m] array
     lidar_local_thetas = p.lidar_transforms[:, 2]
 
     # this is an [m] array
@@ -407,7 +408,7 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
     end_in_maze_mask = np.prod(np.logical_and(normalized_ends > 0,
                                               normalized_ends < np.array([maze.width, maze.height])[None,:]), axis=1)
 
-    max_lidar_dist_mask = lidars < p.max_lidar_dist
+    max_lidar_dist_mask = lidars < p.lidar_sus_dist
 
     # find which walls are closest. this will be a list with 1s if the h walls are closer. 0s for v walls
     h_wall_mask = np.argmin(np.abs(normalized_ends - np.round(normalized_ends)), axis=1)
@@ -502,7 +503,7 @@ def plot_segment_list(plt, segment_list):
         plt.plot((seg[0], seg[2]), (seg[1], seg[3]), 'k')
 
 def test_estimate_lidar_returns_multi():
-    maze = Maze2(3,5)
+    maze = Maze2(8,8)
     maze.generate_random_maze()
     # maze.v_walls *= np.random.rand(*maze.v_walls.shape)
     # maze.h_walls *= np.random.rand(*maze.h_walls.shape)
@@ -515,7 +516,7 @@ def test_estimate_lidar_returns_multi():
     plt.ylim(-border, maze.height * p.maze_cell_size+border)
 
     # generate poses
-    n = 1
+    n = 3
     poses = np.array([np.random.rand(n)*maze.width * p.maze_cell_size,
                       np.random.rand(n)*maze.height * p.maze_cell_size,
                       np.random.rand(n)*np.pi*2]).T

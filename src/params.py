@@ -85,4 +85,5 @@ controller_max_angle = np.pi/6
 
 ######################### ESTIMATION PARAMS ################################
 num_particles = 20
-max_lidar_dist = 0.255
+lidar_max_dist = 0.255 # the distance the lidars return when they are bad
+lidar_sus_dist = 0.2 # the distance above which we don't really trust the lidars
