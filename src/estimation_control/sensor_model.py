@@ -104,6 +104,8 @@ def estimate_lidar_returns_multi(poses, maze, return_confidences=False, debug_pl
 
     # [n x m x 2] array
     lidar_global_vecs = np.einsum('nmij,j->nmi', lidar_global_rotation_matrices, np.array([1,0]))
+    lidar_global_vecs += (lidar_global_vecs == 0) * 1e-8 # hedge away from zero
+
     lidar_global_directions = np.sign(lidar_global_vecs)
 
     if debug_plot: debug_plot_poses(debug_plot, poses)
@@ -116,8 +118,6 @@ def estimate_lidar_returns_multi(poses, maze, return_confidences=False, debug_pl
     # [w+1] the global x coordinates of all the sets vertical walls
     # v_wall_x_coords = np.arange(0, v_num_observable_walls) * p.maze_cell_size + 
     v_wall_x_coords = np.arange(0,maze.width+1) * p.maze_cell_size
-
-
 
     # [n x m x w+1] # calculate the x and y distances from each lidar to each set of vertical walls
     x_dists_to_v_walls = v_wall_x_coords[None, None, :] - lidar_global_xys[:,:,0,None]
@@ -281,6 +281,7 @@ def update_walls(pose, lidars, maze, decrement_amount=0.05, increment_amount=0.0
 
     # [m x 2] array
     lidar_global_vecs = np.einsum('mij,mj->mi', lidar_global_rotation_matrices, np.array([[1,0]]) * lidars[:, None])
+    lidar_global_vecs += (lidar_global_vecs == 0) * 1e-8 # hedge away from zero
 
     lidar_global_ends = lidar_global_xys + lidar_global_vecs
 
