@@ -381,6 +381,32 @@ class Maze2:
 
         else: return []
 
+    def find_goal(self):
+        # Checks if 4 cells don't have walls connecting them to each other
+        w = self.width
+        best_confidence = 100
+        best_index = -1
+        for index in range(w * self.height - w):
+            if (index + 1) % w == 0:
+                continue
+
+            bottom = self.get_wall_between(index, index + 1) 
+            top = self.get_wall_between(index + w, index + w + 1) 
+            left = self.get_wall_between(index, index + w) 
+            right = self.get_wall_between(index + 1, index + w + 1) 
+
+            # print('bottom: {} top: {} left: {} right: {}'.format(bottom, top, left, right))
+            
+            filter = p.wall_transparency_threshold
+            if (bottom < filter and top < filter and left < filter and right < filter):
+                confidence_sum = bottom + top + left + right
+                if confidence_sum < best_confidence:
+                    best_confidence = confidence_sum
+                    best_index = index
+        
+        # bottom left cell index
+        return best_index
+
     def route(self, c1, c2, threshold=None):
         self.build_adjacency_matrix(threshold=threshold)
         self.solve()
