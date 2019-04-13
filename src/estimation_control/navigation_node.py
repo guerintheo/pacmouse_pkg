@@ -12,7 +12,7 @@ import pacmouse_pkg.src.params as p
 
 from pacmouse_pkg.msg import Lidars, Drive, Maze
 from geometry_msgs.msg import Vector3
-from std_msgs.msg import Float64, Empty, Int, String, LED
+from std_msgs.msg import Float64, Empty, Int16, String, LED
 
 
 class NavigationNode:
@@ -44,7 +44,7 @@ class NavigationNode:
 
 		# mode controller callbacks
 		rospy.Subscriber('/pacmouse/mode/zero_pose', Empty, self.zero_pose_callback)
-		rospy.Subscriber('/pacmouse/mode/load_maze', Int, self.maze_backup_callback)
+		rospy.Subscriber('/pacmouse/mode/load_maze', Int16, self.maze_backup_callback)
 		rospy.Subscriber('/pacmouse/mode/set_plan_mode', String, self.mode_callback)
 
 	###########################################################################
