@@ -41,11 +41,11 @@ class PlannerNode:
 	def plan(self):
 		# if we are within a certain radius of the previous setpoint, then replan
 		if np.linalg.norm(self.pose[:2] - self.prev_plan) < p.distance_to_cell_center_for_replan:
-			current_cell = np.floor(self.pose[:2]/p.maze_cell_size).astype(int)
-			current_index = current_cell[0] + current_cell[1] * self.maze.width
+			current_index = self.maze.pose_to_index(self.pose)
+			goal_index = self.goal_index[0] + self.goal_cell[1] * self.maze_width
 
 			if self.shortest_path_solving:
-				plan = self.maze.get_path(current_cell, self.goal_cell)
+				plan = self.maze.get_path(current_index, goal_index)
 				if len(plan) < 2:
 					print 'The plan is too short... I think we made it??!?'
 					target_index = current_index
@@ -58,8 +58,7 @@ class PlannerNode:
 				if self.tremaux.min_count > 0:
 					print 'We\'ve explored the whole maze!'
 
-			target_cell = np.array([target_index % self.maze.width, np.floor(target_index/self.maze.width)])
-			target_coord = (target_cell + 0.5) * p.maze_cell_size
+			target_coord = self.maze.index_to_cell_center(target_cell)
 			self.prev_plan = target_coord
 			msg = Vector3()
 			msg.x = target_coord[0]

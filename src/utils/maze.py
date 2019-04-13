@@ -361,9 +361,9 @@ class Maze2:
         self.dists, self.predecessors = dijkstra(self.adj_matrix, directed=False,
                                         unweighted=True, return_predecessors=True)
 
-    def get_path(self, c1, c2):
-        c1_index = c1[1] * self.width + c1[0]
-        c2_index = c2[1] * self.width + c2[0]
+    def get_path(self, c1_index, c2_index):
+        # c1_index = c1[1] * self.width + c1[0]
+        # c2_index = c2[1] * self.width + c2[0]
 
         if self.dists[c1_index, c2_index] > 0:
             path = []
@@ -468,23 +468,33 @@ class Maze2:
         self.v_walls *= (np.random.rand(*self.v_walls.shape) > prune_walls)
         self.add_perimeter()
 
-    def get_cell_from_global_xy(self, x, y):
-        """
-        Return the cell corresponding to the global x,y coordinates. Return None
-        if the coordinates fall outside of the maze. If the coordinates land on
-        a wall, choose the cell whose center is closest. Return cell in [r, c]
-        format.
-        """
-        # Shift origin to middle of the intersection of the walls in the bottom
-        # left corner of the maze
-        x = x + p.maze_wall_thickness/2.0
-        y = y + p.maze_wall_thickness/2.0
-        # int() truncates the value
-        row = int(y/p.maze_cell_size)
-        col = int(x/p.maze_cell_size)
-        if (row > self.height - 1) or (col > self.width - 1):
-            return None
-        return [row, col]
+    # NOTE(izzy): unused, and i think this shouldn't be shifted by the wall thickness
+    # def get_cell_from_global_xy(self, x, y):
+    #     """
+    #     Return the cell corresponding to the global x,y coordinates. Return None
+    #     if the coordinates fall outside of the maze. If the coordinates land on
+    #     a wall, choose the cell whose center is closest. Return cell in [r, c]
+    #     format.
+    #     """
+    #     # Shift origin to middle of the intersection of the walls in the bottom
+    #     # left corner of the maze
+    #     x = x + p.maze_wall_thickness/2.0
+    #     y = y + p.maze_wall_thickness/2.0
+    #     # int() truncates the value
+    #     row = int(y/p.maze_cell_size)
+    #     col = int(x/p.maze_cell_size)
+    #     if (row > self.height - 1) or (col > self.width - 1):
+    #         return None
+    #     return [row, col]
+
+
+    def pose_to_index(self, pose):
+        xi, yi = np.floor(pose[:2] / p.maze_cell_size).astype(int)
+        return xi + yi * self.width
+
+    def index_to_cell_center(self, i):
+        xy = np.array([i % self.width, np.floor(i/self.width)])
+        return (xy + 0.5) * p.maze_cell_size
         
         
 

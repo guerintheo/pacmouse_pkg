@@ -79,7 +79,8 @@ distance_to_cell_center_for_replan = 0.04
 
 controller_steering_coeff = 1.5
 controller_drive_coeff    = 1.5
-controller_max_speed = 0.2 # m/s
+controller_max_speed = 0.05 # m/s
+controller_max_turn = 0.5 # r/s
 controller_max_angle = np.pi/6
 
 ######################### ESTIMATION PARAMS ################################

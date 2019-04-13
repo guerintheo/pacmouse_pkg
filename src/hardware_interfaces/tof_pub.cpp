@@ -55,8 +55,6 @@ int main(int argc, char **argv){
 		}
 	}
 
-
-
 	ros::Publisher lidar_publisher = n.advertise<pacmouse_pkg::Lidars>("/pacmouse/lidars", 1);
 	
 	pacmouse_pkg::Lidars msg;

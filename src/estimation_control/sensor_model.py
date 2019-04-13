@@ -64,8 +64,6 @@ def lidar_observation_function_gaussian_multi(Z, xs, maze):
     # to the estimate_lidar_returns model
     base_variance = 0.1
     eps = 1e-3
-    print 'Expected values', z_exp
-    print 'Confidence values', z_conf
     # return np.prod(gaussian(z_exp, Z[None,:], base_variance + (1.-z_conf)/100.)+1e-5, axis=1)
     return np.prod(gaussian(z_exp, Z[None,:], base_variance / (z_conf+eps)), axis=1) + eps
 
@@ -103,97 +101,6 @@ def estimate_lidar_returns_old(pose, maze):
 
     return returns
 
-
-# NOTE(izzy): I rewrote this function to avoid using line intersections.
-# It's about 6 times faster, and from my testing, the two implementations seem to agree.
-# there's certainly some performance left to be extracted, but I'll leave that for later if
-# we need to
-def estimate_lidar_returns(pose, maze, plot=False, transparency_threshold=0.5):
-    # Only use this when debugging. If this is true when you
-    # run ParticleFilterTests it will break due to matplotlib.
-
-    c = p.maze_cell_size
-    w = p.maze_wall_thickness/2.
-    returns = np.zeros(p.lidar_transforms.shape[0])
-    confidences = np.zeros(p.lidar_transforms.shape[0])
-
-    h_walls_list = np.ravel(maze.h_walls)
-    v_walls_list = np.ravel(maze.v_walls)
-
-    for lidar, lidar_transform in enumerate(p.lidar_transforms):
-        lidar_global_xy = pose[:2] + rotate_2d(lidar_transform[:2], pose[2])
-        lidar_global_theta = pose[2] + lidar_transform[2]
-        lidar_global_vec = rotate_2d([1,0], lidar_global_theta) # x, y
-        x_wall_thickness, y_wall_thickness = np.sign(lidar_global_vec) * w
-
-        # get the coordinate of where the lidar line will hit the walls
-        h_wall_y_coords = np.arange(0,maze.height+1) * c
-        v_wall_x_coords = np.arange(0,maze.width+1) * c
-
-        # calculate the distance from the lidar to those points
-        x_dists_to_v_walls = v_wall_x_coords - lidar_global_xy[0]
-        y_dists_to_h_walls = h_wall_y_coords - lidar_global_xy[1]
-
-        # only take the walls that are in front of the lidar
-        x_dists_to_v_walls = x_dists_to_v_walls[np.sign(x_dists_to_v_walls) == np.sign(lidar_global_vec[0])]
-        y_dists_to_h_walls = y_dists_to_h_walls[np.sign(y_dists_to_h_walls) == np.sign(lidar_global_vec[1])]
-
-        # get the other coordinates
-        x_dists_to_h_walls = y_dists_to_h_walls/lidar_global_vec[1]*lidar_global_vec[0]
-        y_dists_to_v_walls = x_dists_to_v_walls/lidar_global_vec[0]*lidar_global_vec[1]
-
-        # and pair them off and shift back to global coordinates
-        h_wall_hit_coords = np.vstack([x_dists_to_h_walls, y_dists_to_h_walls]).T + lidar_global_xy[None,:]
-        v_wall_hit_coords = np.vstack([x_dists_to_v_walls, y_dists_to_v_walls]).T + lidar_global_xy[None,:]
-
-        # convert coordinates to x,y indices of the walls
-        h_wall_hit_indices = np.floor(h_wall_hit_coords/c).astype(int)
-        v_wall_hit_indices = np.floor(v_wall_hit_coords/c).astype(int)
-
-        # convert x,y indices to global array indices
-        h_wall_hit_indices = (maze.height+1) * h_wall_hit_indices[:,0] + h_wall_hit_indices[:,1]
-        v_wall_hit_indices = maze.height * v_wall_hit_indices[:,0] + v_wall_hit_indices[:,1]
-
-        # only consider indices inside the array
-        h_wall_hit_indices = np.clip(h_wall_hit_indices, 0, h_walls_list.size-1)
-        v_wall_hit_indices = np.clip(v_wall_hit_indices, 0, v_walls_list.size-1)
-        
-        # pull up the wall confidences corresponding to the intersection corrdinates
-        h_wall_confidences = h_walls_list[h_wall_hit_indices]
-        v_wall_confidences = v_walls_list[v_wall_hit_indices]
-
-        # and only take the walls and confidences which are not transparent
-        h_wall_hit_coords = h_wall_hit_coords[h_wall_confidences > transparency_threshold,:]
-        v_wall_hit_coords = v_wall_hit_coords[v_wall_confidences > transparency_threshold,:]
-        h_wall_confidences = h_wall_confidences[h_wall_confidences > transparency_threshold]
-        v_wall_confidences = v_wall_confidences[v_wall_confidences > transparency_threshold]
-
-        # retract by the wall thickness
-        # NOTE(izzy): for very oblique hits, it's possible that when retracting from the middle of the wall
-        # to the outside of the wall that we record an intersection that doesn't actually occur on the wall
-        h_wall_hit_coords -= lidar_global_vec / np.abs(lidar_global_vec[1]) * w
-        v_wall_hit_coords -= lidar_global_vec / np.abs(lidar_global_vec[0]) * w
-
-        # compute the distances to each intersection coordinate
-        dists = np.hstack([np.linalg.norm(h_wall_hit_coords - lidar_global_xy, axis=1),
-                           np.linalg.norm(v_wall_hit_coords - lidar_global_xy, axis=1)])
-
-        returns[lidar] = np.min(dists) if dists.size else -1
-        confidences[lidar] = np.hstack([h_wall_confidences, v_wall_confidences])[np.argmin(dists)] if dists.size else -1
-
-
-        if plot:
-            lidar_end = lidar_global_xy + lidar_global_vec*5
-            plt.plot((lidar_global_xy[0], lidar_end[0]), (lidar_global_xy[1],lidar_end[1]), 'r')
-
-            plt.scatter(*h_wall_hit_coords.T)
-            plt.scatter(*v_wall_hit_coords.T)
-
-    if plot:
-        plot_segment_list(plt, maze_to_segment_list(maze))
-        plt.show()
-
-    return returns, confidences
 
 def debug_plot_poses(debug_plot, poses):
     plt.scatter(*poses[:,:2].T)
@@ -259,9 +166,15 @@ def estimate_lidar_returns_multi(poses, maze, transparency_threshold=0.5, return
     if debug_plot: debug_plot_poses(debug_plot, poses)
     if debug_plot: debug_plot_lidar_vecs(debug_plot, lidar_global_xys, lidar_global_vecs)
     
+    # v_num_observable_walls = np.min(np.floor(p.max_lidar_dist * 2/p.maze_cell_size) + 2, maze.width)
+    # h_num_observable_wals = np.min(np.floor(p.max_lidar_dist * 2/p.maze_cell_size) + 2, maze.height)
+
     ################## FIND VERTICAL WALL INTERSECTIONS ##################
     # [w+1] the global x coordinates of all the sets vertical walls
+    # v_wall_x_coords = np.arange(0, v_num_observable_walls) * p.maze_cell_size + 
     v_wall_x_coords = np.arange(0,maze.width+1) * p.maze_cell_size
+
+
 
     # [n x m x w+1] # calculate the x and y distances from each lidar to each set of vertical walls
     x_dists_to_v_walls = v_wall_x_coords[None, None, :] - lidar_global_xys[:,:,0,None]

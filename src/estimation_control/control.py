@@ -23,6 +23,7 @@ def step(x, sp):
     facing_target = (p.controller_max_angle - np.abs(e_t))/(p.controller_max_angle) if np.abs(e_t) < p.controller_max_angle else 0
 
     steering_command = e_t * p.controller_steering_coeff             # turn to face the target
+    steering_command = np.clip(steering_command, -p.controller_max_turn, p.controller_max_turn)
     drive_command = d * facing_target * p.controller_drive_coeff     # drive forward faster when facing the target
     drive_command = np.clip(drive_command, 0, p.controller_max_speed)
     return np.array([drive_command, steering_command])

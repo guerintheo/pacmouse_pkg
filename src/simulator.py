@@ -9,6 +9,7 @@ from pacmouse_pkg.src.estimation_control.sensor_model import *
 from pacmouse_pkg.src.estimation_control.estimation import Estimator
 from pacmouse_pkg.src.estimation_control.dynamics import motion_model, inverse_motion_model
 from pacmouse_pkg.src.estimation_control.control import step, get_sp
+from pacmouse_pkg.src.estimation_control.tremaux import Tremaux
 from pacmouse_pkg.src.utils.maze import Maze, Maze2
 from pacmouse_pkg.src.utils.math_utils import rotate_2d, rotation_matrix_2d
 import pacmouse_pkg.src.params as p
@@ -258,22 +259,28 @@ class FullSimulator:
         self.real_bot_state = np.array([0.5*p.maze_cell_size, 0.5*p.maze_cell_size, np.pi/2,0,0,0])
 
         self.estimated_maze = Maze2(*self.maze_size)
-        self.estimated_maze.v_walls[1:-1, :] = 0.5 # set all the confidences to one half
-        self.estimated_maze.h_walls[:, 1:-1] = 0.5
+        self.estimated_maze.v_walls[1:-1, :] = 1. # set all the confidences to an initial value
+        self.estimated_maze.h_walls[:, 1:-1] = 1.
+        self.estimated_maze.h_walls[0,1] = 0. # the wall directly in front of the robot is clear
 
-        # a nosie model for when the robot moves (should be the same as the estimator)
+        # a noisey model for when the robot moves (should be the same as the estimator)
         # NOTE(izzy): this sigma should be estimated by the dyanmics model somehow???
         # We might have to collect mocap data in order to get this
-        self.u_sigma = np.array([.002,.002, np.radians(2), 1e-4, 1e-4, 1e-4])
+        self.u_sigma = np.array([.005,.005, np.radians(2), 1e-4, 1e-4, 1e-4])
+
         # noise to add to simulated sensor data
-        self.lidar_sigma = 0.005
-        self.encoder_sigma = 0.05
+        self.lidar_sigma = 0.025    # as a percent of the distance
+        self.encoder_sigma = 0.05   # as a percent of the angular velocity
+        self.imu_sigma = np.pi/100  # in radians
 
         self.estimator = Estimator(self.real_bot_state)                         # initialize the state estimator
         self.estimator.set_maze(self.estimated_maze, obs_func=lidar_observation_function_gaussian_multi)   # pass it the maze
-        # self.estimator.u_sigma = self.u_sigma           # and the noise model
+        self.estimator.u_sigma = self.u_sigma           # and the noise model
 
+        self.plan = self.real_bot_state[:2]
         self.cmd = np.zeros(2)
+        self.tremaux = Tremaux(self.estimated_maze) # pass tremaux the maze just to set the width and height
+
         self.forward_increment = 0.5
         self.steer_increment = 0.5
         self.dt = 0.2
@@ -285,18 +292,46 @@ class FullSimulator:
         increment_amount = 0.2
         update_walls(pose, self.lidars, self.estimated_maze, decrement_amount, increment_amount, debug_plot = plt)
 
+        # rebuild the segment list for visualization
         self.estimated_maze.build_segment_list()
+
+        # change the maze that the pose estimator uses
         self.estimator.set_maze(self.estimated_maze, obs_func=lidar_observation_function_gaussian_multi)
+
+    def replan(self):
+        # if we are within a certain radius of the previous setpoint, then replan
+        if np.linalg.norm(self.estimator.state[:2] - self.plan) < p.distance_to_cell_center_for_replan:
+            current_index = self.estimated_maze.pose_to_index(self.estimator.state)
+
+            target_index = self.tremaux.get_plan(current_index, self.estimated_maze)
+            print 'Replanning! New target: {}'.format(target_index)
+            if self.tremaux.min_count > 0:
+                print 'We\'ve explored the whole maze!'
+
+            target_coord = self.estimated_maze.index_to_cell_center(target_index)
+            self.plan = target_coord
+
+    def control(self):
+        forward, turn = step(self.estimator.state, self.plan)
+        print 'Drive forward at {} meters/second.\tTurn at {} radians/second.'.format(forward, turn)
+        self.cmd = inverse_motion_model((forward,turn))
 
     def update(self):
         # run the simulator to update the "real" robot
         Z = self.simulate(self.cmd)
         self.lidars, self.encoders, self.imu = Z
+        print Z
 
         self.update_estimated_maze()
 
         # and update the estimator
         self.estimator.update(Z, self.dt)
+
+        # run the planner to get target coordinates
+        self.replan()
+
+        # run the controller to get a command
+        self.control()
 
     def simulate(self, cmd):
         # update the actual robot according to the commands (with noise)
@@ -304,9 +339,12 @@ class FullSimulator:
         self.real_bot_state += np.random.normal(u_mu, self.u_sigma)
 
         # get the sensor data (with noise)
-        lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.real_maze)[0] + np.random.normal(0, self.lidar_sigma, p.num_lidars)
-        encoders = cmd + np.random.normal(0, self.encoder_sigma, size=2)
-        imu = self.real_bot_state[2]
+        lidars = estimate_lidar_returns_multi(self.real_bot_state[None,:3], self.real_maze)[0] *\
+                 np.random.normal(1, self.lidar_sigma, p.num_lidars)
+
+        encoders = cmd * np.random.normal(1, self.encoder_sigma, size=2)
+
+        imu = self.real_bot_state[2] + np.random.normal(0, self.encoder_sigma)
 
         return lidars, encoders, imu
 
