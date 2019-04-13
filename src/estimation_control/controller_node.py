@@ -2,7 +2,7 @@
 import rospy
 import numpy as np
 
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float64
 from geometry_msgs.msg import Vector3
 
 from pacmouse_pkg.msg import Drive
@@ -17,6 +17,7 @@ class ControllerNode:
 		self.pose = np.zeros(3)
 		self.plan = np.zeros(3)
 		self.arm = False
+		self.plan_speed = 1
 
 		self.cmd_pub = rospy.Publisher('/pacmouse/motor/cmd', Drive, queue_size=1)
 		rospy.on_shutdown(self.shutdown)
@@ -24,6 +25,7 @@ class ControllerNode:
 		rospy.Subscriber('/pacmouse/pose/estimate', Vector3, self.pose_callback)
 		rospy.Subscriber('/pacmouse/plan', Vector3, self.plan_callback)
 		rospy.Subscriber('/pacmouse/mode/set_motor_arm', Bool, self.arm_callback)
+		rospy.Subscriber('/pacmouse/mode/set_plan_speed', Float64, self.plan_speed_callback)
 
 		rospy.spin()
 
@@ -40,6 +42,7 @@ class ControllerNode:
 		   np.linalg.norm(self.pose[:2] - self.plan[:2]) > 0.005:
 
 			forward, turn = step(self.pose, self.plan)
+			forward *= self.plan_speed
 			print 'Drive forward at {} meters/second.\tTurn at {} radians/second.'.format(forward, turn)
  			cmd.L, cmd.R = inverse_motion_model((forward,turn))
 
@@ -54,6 +57,10 @@ class ControllerNode:
 	def arm_callback(self, msg):
 		self.arm = msg.data
 		print 'Armed' if self.arm else 'Disarmed'
+
+	def plan_speed_callback(self, msg):
+		self.plan_speed = msg.data
+		print 'Speed updated to {}'.format(self.plan_speed)
 
 	def shutdown(self):
 		cmd = Drive()
