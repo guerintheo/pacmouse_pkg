@@ -1,8 +1,9 @@
 #!/usr/bin/python
-import sys, os
-if os.geteuid() != 0:
-    exit("YOU GOTTA RUN ME WITH SUDO BRO!!!")
+# import sys, os
+# if os.geteuid() != 0:
+#     exit("YOU GOTTA RUN ME WITH SUDO BRO!!!")
 
+import sys
 import rospy
 from std_msgs.msg import Empty
 from subprocess import Popen
@@ -34,7 +35,8 @@ class MasterStartNode(object):
         print('Subscribing to the restart topic at {}.'.format(restart_topic))
         rospy.Subscriber(restart_topic, Empty, self.cb_restart)
 
-        self.path = 'launch/gameday_launch_both.launch'
+        # TODO: May need full path
+        self.path = 'launch/gameday/gameday_launch_both.launch'
         if len(sys.argv) == 2:
             if sys.argv[1] == 'test':
                 self.path = 'launch/testing.launch'
