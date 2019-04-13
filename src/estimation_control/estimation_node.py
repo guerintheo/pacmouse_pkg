@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import rospy
 import numpy as np
 import time
@@ -59,7 +60,7 @@ class EstimationNode:
 		self.maze_pub.publish(msg)
 
 	def lidars_callback(self, msg):
-		# the lidars message is a fixed array of size 6. we only use the 
+		# the lidars message is a fixed array of size 6. we only use the
 		# first five spots because we only have five working lidars :(
 		# we need to convert from millimeters to meters
 		self.lidars = np.array(msg.dists[:p.num_lidars]) / 1000.0

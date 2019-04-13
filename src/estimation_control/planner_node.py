@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import rospy
 import numpy as np
 
@@ -30,7 +31,7 @@ class PlannerNode:
 		self.tremaux = Tremaux(self.maze)
 
 		self.goal_cell = np.zeros(2, dtype=int)
-		
+
 		rospy.Subscriber('/pacmouse/pose/mocap', Vector3, self.pose_callback)
 		rospy.Subscriber('/pacmouse/pose/estimate', Vector3, self.pose_callback)
 		rospy.Subscriber('/pacmouse/mode/set_plan_mode', String, self.mode_callback)
@@ -72,7 +73,7 @@ class PlannerNode:
 		self.pose[2] = msg.z
 
 		self.plan()
-		
+
 	def mode_callback(self, msg):
 		if msg.data == 'EXPLORING':
 			self.shortest_path_solving = False
