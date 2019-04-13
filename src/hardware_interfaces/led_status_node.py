@@ -29,7 +29,7 @@ def append_hex(a, b):
 class LEDs:
 	def __init__(self):
 		self.strip = apa102.APA102(num_led=10, global_brightness=1, mosi=p.mosi, sclk=p.sclk, order='rgb')
-		self.color_wheel()
+		self.rainbow()
 		# self.color_callback(LED(0, '0x00FF00'))
 		
 		rospy.init_node('led_status_node')
