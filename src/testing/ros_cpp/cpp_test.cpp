@@ -51,6 +51,9 @@ float sp_R = 0;
 int pos_L = 0;
 int pos_R = 0;
 
+int num_lidars = 5; // This is hardcoded because the array of power pins needs to know how many lidars exist to instantiate the right sized array. 
+int power_pins[num_lidars];
+
 re_decoder *decoder1 = NULL;
 re_decoder *decoder2 = NULL;
 
@@ -97,6 +100,9 @@ void load_params(ros::NodeHandle n) {
     n.getParam("/pacmouse/params/motor_pid/kd", MOTOR_PID_KD);
     n.getParam("/pacmouse/params/motor_coeff", MOTOR_COEFF);
     n.getParam("/pacmouse/params/pwm_cmd_max", PWM_CMD_MAX);
+
+    n.getParam("/pacmouse/params/num_lidars", num_lidars);
+    n.getParam("/pacmouse/params/lidar_pins", power_pins);
 }
 
 void callback_L(int way)
@@ -149,6 +155,8 @@ int main(int argc, char **argv)
    * part of the ROS system.
    */
   ros::init(argc, argv, "gpio_handler_cpp");
+  // Is it possible to instantiate multiple nodes in the same cpp file? 
+  // ros::init(argc, argv, "lidar_publisher");
 
   /**
    * NodeHandle is the main access point to communications with the ROS system.
