@@ -223,7 +223,9 @@ install(DIRECTORY launch rviz urdf
 # Our big cpp file will need to have pigpio linked to run properly
 add_executable(cpp_test src/testing/ros_cpp/cpp_test.cpp)
 target_link_libraries(cpp_test ${catkin_LIBRARIES} pigpio)
+target_link_libraries(cpp_test ${catkin_LIBRARIES} vl6180_pi)
 add_dependencies(cpp_test pacmouse_pkg_generate_messages_cpp)
+
 
 #add_executable(button_publisher src/testing/ros_cpp/button_publisher.cpp)
 #target_link_libraries(button_publisher ${catkin_LIBRARIES} pigpio)
