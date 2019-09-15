@@ -10,9 +10,9 @@ from pacmouse_pkg.src.estimation_control.tremaux import Tremaux
 
 import pacmouse_pkg.src.params as p
 
-from pacmouse_pkg.msg import Lidars, Drive, Maze
+from pacmouse_pkg.msg import Lidars, Drive, Maze, LED
 from geometry_msgs.msg import Vector3
-from std_msgs.msg import Float64, Empty, Int16, String, LED
+from std_msgs.msg import Float64, Empty, Int16, String
 
 
 class NavigationNode:
@@ -21,6 +21,7 @@ class NavigationNode:
 
         self.initial_state = np.array([p.maze_cell_size/2, p.maze_cell_size/2, 0., 0, 0, 0])
         self.estimator = Estimator(self.initial_state, p.num_particles)
+        self.estimator.set_maze(self.maze)
         self.maze = Maze2()
         self.locked_maze = Maze2()
         self.backup_counter = 0
@@ -31,6 +32,7 @@ class NavigationNode:
 
         self.prev_t = time.time()
         self.prev_plan = self.initial_state[:2]
+        self.shortest_path_solving = False
 
         # publishers
         self.pose_pub = rospy.Publisher('/pacmouse/pose/estimate', Vector3, queue_size=1)
@@ -75,7 +77,7 @@ class NavigationNode:
         print 'Zero estimated pose.'
         self.estimator.set_state(self.initial_state)
 
-    def maze_backup_callback(self, msg)
+    def maze_backup_callback(self, msg):
         how_many_mazes_back = msg.data
         self.locked_maze = load_backup(how_many_mazes_back)
         self.maze.h_walls[:,:] = self.locked_maze.h_walls
@@ -123,7 +125,7 @@ class NavigationNode:
             current_index = self.maze.pose_to_index(self.estimator.state[:2])
 
             if self.goal is not None and self.shortest_path_solving:
-                plan = self.maze.get_path(current_index, self.goal)
+                plan = self.locked_maze.get_path(current_index, self.goal)
                 if len(plan) < 2:
                     print 'The plan is too short... I think we made it??!?'
                     target_index = current_index
@@ -171,3 +173,4 @@ class NavigationNode:
 
 if __name__ == '__main__':
     ros_is_NOT_a_nice_guy = NavigationNode()
+    rospy.spin()
