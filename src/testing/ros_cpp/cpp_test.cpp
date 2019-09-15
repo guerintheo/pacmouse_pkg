@@ -1,5 +1,7 @@
 #include "ros/ros.h"
 #include "pacmouse_pkg/Drive.h"
+#include "vl6180_pi/vl6180_pi.h"
+
 #include <iostream>
 
 #include <pigpio.h>
@@ -51,6 +53,9 @@ float sp_R = 0;
 int pos_L = 0;
 int pos_R = 0;
 
+// int num_lidars = 5; // This is hardcoded because the array of power pins needs to know how many lidars exist to instantiate the right sized array. 
+// int power_pins[5];
+
 re_decoder *decoder1 = NULL;
 re_decoder *decoder2 = NULL;
 
@@ -97,6 +102,9 @@ void load_params(ros::NodeHandle n) {
     n.getParam("/pacmouse/params/motor_pid/kd", MOTOR_PID_KD);
     n.getParam("/pacmouse/params/motor_coeff", MOTOR_COEFF);
     n.getParam("/pacmouse/params/pwm_cmd_max", PWM_CMD_MAX);
+
+    // n.getParam("/pacmouse/params/num_lidars", num_lidars);
+    // n.getParam("/pacmouse/params/lidar_pins", power_pins);
 }
 
 void callback_L(int way)
@@ -142,6 +150,34 @@ void shutdown(int s){
 
 }
 
+void setup_lidars(int num_lidars, int power_pins[5], char addresses[5], vl6180 handles[5]){
+  
+  gpioSetMode(R_MOT_DIR, PI_OUTPUT);
+  for (int i=0; i < num_lidars; i++) {
+		gpioSetMode(power_pins[i], PI_OUTPUT);
+    gpioWrite(power_pins[i], 0);
+	}
+	printf("VL6180s OFF\n");
+
+  for (int i=0; i < num_lidars; i++) {
+		gpioWrite(power_pins[i], 1);
+		sleep(0.5);
+		handles[i] = vl6180_initialise(1);
+		vl6180_change_addr(handles[i], addresses[i]);
+		int dist = get_distance(handles[i]);
+		printf("test dist: %d\n", dist);
+		if (handles[i]<=0) {
+			printf("Failed %x\n", addresses[i]);
+			return;
+		}
+		else {
+			printf("Init %x\n", addresses[i]);
+			set_scaling(handles[i],1);
+		}
+	}
+
+}
+
 int main(int argc, char **argv)
 {
   /**
@@ -149,6 +185,8 @@ int main(int argc, char **argv)
    * part of the ROS system.
    */
   ros::init(argc, argv, "gpio_handler_cpp");
+  // Is it possible to instantiate multiple nodes in the same cpp file? 
+  // ros::init(argc, argv, "lidar_publisher");
 
   /**
    * NodeHandle is the main access point to communications with the ROS system.
@@ -158,6 +196,16 @@ int main(int argc, char **argv)
   ros::NodeHandle n;
   // Load the initial parameters from file
   load_params(n);
+
+  int num_lidars;
+  n.getParam("/pacmouse/params/num_lidars", num_lidars);
+
+  int power_pins[num_lidars] = {7, 19, 11, 23, 29};
+  char addresses[] = {0x40, 0x41, 0x42, 0x43, 0x44};
+  vl6180 handles[num_lidars];
+
+  setup_lidars(num_lidars, power_pins, addresses, handles);
+
 
 // SHUTDOWN CODE
   // struct sigaction sigIntHandler;

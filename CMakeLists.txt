@@ -137,6 +137,13 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/pacmouse_pkg_node.cpp)
 
+# Our big cpp file will need to have pigpio linked to run properly
+add_executable(cpp_test src/testing/ros_cpp/cpp_test.cpp)
+target_link_libraries(cpp_test ${catkin_LIBRARIES} 
+  pigpio 
+  vl6180_pi)
+add_dependencies(cpp_test pacmouse_pkg_generate_messages_cpp)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -202,12 +209,6 @@ install(DIRECTORY launch rviz urdf
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-# add_executable(pigpio_cpp_test src/testing/ros_cpp/pigpio_cpp_test.cpp)
-
-# target_link_libraries(pigpio_cpp_test ${catkin_LIBRARIES} pigpio) # link pigpio library
-
-# add_dependencies(pigpio_cpp_test pacmouse_pkg_generate_messages_cpp )
-
 #############
 ## Example ##
 #############
@@ -219,12 +220,3 @@ install(DIRECTORY launch rviz urdf
 # add_executable(listener src/testing/ros_cpp/listener.cpp)
 # target_link_libraries(listener ${catkin_LIBRARIES})
 # add_dependencies(listener pacmouse_pkg_generate_messages_cpp)
-
-# Our big cpp file will need to have pigpio linked to run properly
-add_executable(cpp_test src/testing/ros_cpp/cpp_test.cpp)
-target_link_libraries(cpp_test ${catkin_LIBRARIES} pigpio)
-add_dependencies(cpp_test pacmouse_pkg_generate_messages_cpp)
-
-#add_executable(button_publisher src/testing/ros_cpp/button_publisher.cpp)
-#target_link_libraries(button_publisher ${catkin_LIBRARIES} pigpio)
-#add_dependencies(button_publisher pacmouse_pkg_generate_messages_cpp)
