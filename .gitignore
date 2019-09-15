@@ -3,9 +3,5 @@ __pycache__/
 sftp-config.json
 venv/
 .DS_Store
-.vscode
 *.swp
-tof_test
 *.mov
-local_CMakeLists*
-.idea
