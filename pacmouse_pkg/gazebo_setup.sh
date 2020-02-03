@@ -1,0 +1,2 @@
+export GAZEBO_MODEL_PATH=$(git rev-parse --show-toplevel)/pacmouse_pkg/gazebo_models:${GAZEBO_MODEL_PATH}
+export GAZEBO_RESOURCE_PATH=$(git rev-parse --show-toplevel)/pacmouse_pkg/gazebo_worlds:${GAZEBO_RESOURCE_PATH}
