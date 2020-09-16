@@ -1,6 +1,6 @@
 <p float="left">
-    <img src="/pacmouse_pkg/readme_resources/IMG_0239.PNG" alt="Pacmouse CAD" width="250"/>
-    <img src="/pacmouse_pkg/readme_resources/IMG_9050.jpeg" alt="Pacmouse in all its glory" width="250"/>
+    <img src="/pacmouse_pkg/readme_resources/IMG_0239.PNG" alt="Pacmouse CAD" width="350"/>
+    <img src="/pacmouse_pkg/readme_resources/IMG_9050.jpeg" alt="Pacmouse in all its glory" width="350"/>
 </p>
 
 # PacMouse
@@ -12,8 +12,8 @@ Pacmouse is a robotic platform which was developed to compete in the IEEE microm
 
 ### Hardware
 <p float="left">
-    <img src="/pacmouse_pkg/readme_resources/IMG_4706.png" alt="Block Diagram" width="250"/>
-    <img src="/pacmouse_pkg/readme_resources/PCB_Layout.png" alt="Block Diagram" width="260"/>
+    <img src="/pacmouse_pkg/readme_resources/IMG_4706.png" alt="Block Diagram" width="350"/>
+    <img src="/pacmouse_pkg/readme_resources/PCB_Layout.png" alt="Block Diagram" width="360"/>
 </p>
 
 ### BOM
